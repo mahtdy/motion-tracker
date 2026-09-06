@@ -6,6 +6,110 @@
 
 ---
 
+## [1.3.5] - 2024-01-XX
+
+### ✨ Added (اضافه شده)
+
+#### 🔒 Orientation Lock Feature
+- دکمه 🔓/🔒 برای قفل کردن orientation
+- جلوگیری از reconfiguration اتوماتیک در حین timing
+- تابع `toggleOrientationLock()` - فعال/غیرفعال کردن lock
+- نمایش status message برای lock/unlock
+- دکمه در topActions با toggle visual feedback
+
+#### 💾 Ratio-Based Calibration Storage
+- تابع `saveCalibrationAsRatio()` - ذخیره calibration به صورت نسبی
+- تابع `restoreCalibrationFromRatio()` - بازیابی از ratio
+- ذخیره gate points به صورت ratio نسبت به canvas
+- ذخیره jump calibration به صورت ratio نسبت به height
+- Preservation در تغییرات جزئی size
+
+#### 📐 Minor Orientation Change Detection
+- تابع `isMinorOrientationChange()` - تشخیص تغییرات کوچک (<10°)
+- حفظ calibration در rotation های جزئی
+- Track کردن `lastOrientationAngle` برای مقایسه
+- Log کردن angle differences
+
+#### ❓ Orientation Change Confirmation
+- تابع `showOrientationChangeConfirmation()` - modal تایید
+- دو گزینه: "تایید و ادامه" یا "انصراف (حفظ کالیبراسیون)"
+- نمایش پیام واضح درباره پاک شدن calibration
+- تلاش برای restore در صورت انصراف
+- Smooth transition بعد از تایید
+
+#### 🔄 Smart Calibration Preservation
+- حفظ calibration در تغییرات کوچک orientation
+- Automatic save قبل از reconfiguration
+- Restore attempt بعد از orientation change
+- Fallback به reset در صورت شکست restore
+
+### 🔧 Changed (تغییر یافته)
+
+#### app.js
+- بازنویسی کامل تابع `refreshCanvasForOrientation()` با:
+  - بررسی orientation lock
+  - تشخیص minor changes
+  - confirmation modal برای major changes
+  - save/restore calibration logic
+  - ~100 خط کد اضافه
+- اضافه کردن ~150 خط کد برای orientation management
+- اضافه کردن 4 تابع جدید برای calibration ratio
+- اضافه کردن event listener برای orientation lock button
+- 4 متغیر global جدید: orientationLocked, lastOrientationAngle, calibrationData, etc.
+
+#### index.html
+- اضافه کردن دکمه 🔓 orientation lock در topActions
+- آپدیت نسخه از 1.3.4 به 1.3.5
+
+#### sw.js
+- ارتقا نسخه cache از `v14` به `v15`
+
+#### manifest.json
+- آپدیت version از 1.3.4 به 1.3.5
+
+### 🐛 Fixed (رفع شده)
+- از بین رفتن calibration در تغییرات جزئی orientation
+- reset اجباری calibration بدون اطلاع کاربر
+- عدم امکان قفل کردن orientation در timing
+- calibration pixel-based که با resize شکسته می‌شد
+
+### 📈 Improved (بهبود یافته)
+- User experience با confirmation قبل از reset
+- دقت calibration با ratio-based storage
+- کنترل کاربر با orientation lock
+- Smooth transition در orientation changes
+- جلوگیری از reset های غیرضروری
+
+### 🎯 Technical Details
+- 4 تابع جدید برای calibration management
+- 3 تابع جدید برای orientation management
+- Minor angle threshold: 10 degrees
+- Calibration stored as: {x/width, y/height} ratios
+- Modal با 2 دکمه (confirm/cancel)
+- Lock button toggle visual: 🔓 (gray) ↔ 🔒 (green)
+- Save calibration قبل از هر reconfiguration
+
+### 📊 Calibration Data Structure
+```javascript
+// Run mode:
+{
+  type: 'run',
+  gate1: { x: ratio, y: ratio },
+  gate2: { x: ratio, y: ratio },
+  distance: meters
+}
+
+// Jump mode:
+{
+  type: 'jump',
+  legLengthRatio: ratio,
+  airThresholdRatio: ratio,
+  landThresholdRatio: ratio
+}
+```
+
+---
+
 ## [1.3.4] - 2024-01-XX
 
 ### ✨ Added (اضافه شده)

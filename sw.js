@@ -1,4 +1,4 @@
-const CACHE_NAME = 'motion-tracker-v14';
+const CACHE_NAME = 'motion-tracker-v15';
 const CORE_FILES = ['index.html', 'app.js', 'manifest.json', 'icon.svg'];
 
 self.addEventListener('install', (event) => {

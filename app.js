@@ -748,8 +748,201 @@ function updateFPSIndicator() {
   }
 }
 
-// ================== ORIENTATION & RESOLUTION MANAGEMENT ==================
+// ================== ORIENTATION & CALIBRATION MANAGEMENT ==================
 let currentOrientation = null; // 'portrait' | 'landscape'
+let currentCameraStream = null;
+let isReconfiguring = false;
+let orientationLocked = false; // برای lock کردن orientation
+let lastOrientationAngle = window.orientation || 0;
+let calibrationData = null; // ذخیره calibration به صورت ratio
+
+/**
+ * Save calibration data as ratios (relative to canvas size)
+ */
+function saveCalibrationAsRatio() {
+  if (mode === 'run') {
+    if (gatePoints[0] && gatePoints[1]) {
+      calibrationData = {
+        type: 'run',
+        gate1: {
+          x: gatePoints[0].x / canvas.width,
+          y: gatePoints[0].y / canvas.height
+        },
+        gate2: {
+          x: gatePoints[1].x / canvas.width,
+          y: gatePoints[1].y / canvas.height
+        },
+        distance: distanceMeters
+      };
+      console.log('💾 Saved run calibration as ratio:', calibrationData);
+    }
+  } else if (mode === 'jump') {
+    if (legLengthPx !== null) {
+      calibrationData = {
+        type: 'jump',
+        legLengthRatio: legLengthPx / canvas.height,
+        airThresholdRatio: airThresholdPx / canvas.height,
+        landThresholdRatio: landThresholdPx / canvas.height
+      };
+      console.log('💾 Saved jump calibration as ratio:', calibrationData);
+    }
+  }
+}
+
+/**
+ * Restore calibration data from ratios
+ */
+function restoreCalibrationFromRatio() {
+  if (!calibrationData) return false;
+  
+  if (calibrationData.type === 'run' && mode === 'run') {
+    gatePoints[0] = {
+      x: calibrationData.gate1.x * canvas.width,
+      y: calibrationData.gate1.y * canvas.height
+    };
+    gatePoints[1] = {
+      x: calibrationData.gate2.x * canvas.width,
+      y: calibrationData.gate2.y * canvas.height
+    };
+    distanceMeters = calibrationData.distance;
+    console.log('✅ Restored run calibration from ratio');
+    return true;
+  } else if (calibrationData.type === 'jump' && mode === 'jump') {
+    legLengthPx = calibrationData.legLengthRatio * canvas.height;
+    airThresholdPx = calibrationData.airThresholdRatio * canvas.height;
+    landThresholdPx = calibrationData.landThresholdRatio * canvas.height;
+    console.log('✅ Restored jump calibration from ratio');
+    return true;
+  }
+  
+  return false;
+}
+
+/**
+ * Check if orientation change is minor (less than threshold)
+ */
+function isMinorOrientationChange() {
+  const currentAngle = window.orientation || 0;
+  const angleDiff = Math.abs(currentAngle - lastOrientationAngle);
+  
+  // Consider changes less than 10 degrees as minor
+  const isMinor = angleDiff < 10 && angleDiff > 0;
+  
+  console.log(`📐 Orientation angle: ${lastOrientationAngle}° → ${currentAngle}° (diff: ${angleDiff}°, minor: ${isMinor})`);
+  
+  lastOrientationAngle = currentAngle;
+  return isMinor;
+}
+
+/**
+ * Show orientation change confirmation modal
+ */
+function showOrientationChangeConfirmation(onConfirm, onCancel) {
+  const modal = document.createElement('div');
+  modal.id = 'orientationModal';
+  modal.style.cssText = `
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  `;
+  
+  modal.innerHTML = `
+    <div style="
+      background: #1e293b;
+      border: 2px solid #3b82f6;
+      border-radius: 20px;
+      padding: 24px;
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+      color: #e2e8f0;
+    ">
+      <div style="font-size: 48px; margin-bottom: 16px;">🔄</div>
+      <h3 style="color: #3b82f6; margin-bottom: 12px; font-size: 18px;">تغییر جهت صفحه</h3>
+      <p style="color: #94a3b8; margin-bottom: 20px; line-height: 1.6; font-size: 14px;">
+        جهت صفحه تغییر کرد. کالیبراسیون فعلی پاک می‌شه.<br><br>
+        می‌خوای ادامه بدی؟
+      </p>
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <button id="orientationConfirmBtn" style="
+          background: #22c55e;
+          color: #052e16;
+          border: none;
+          padding: 14px 24px;
+          font-size: 16px;
+          font-weight: bold;
+          border-radius: 999px;
+          cursor: pointer;
+          min-height: 44px;
+        ">✓ تایید و ادامه</button>
+        <button id="orientationCancelBtn" style="
+          background: transparent;
+          color: #94a3b8;
+          border: 2px solid #475569;
+          padding: 12px 24px;
+          font-size: 14px;
+          font-weight: bold;
+          border-radius: 999px;
+          cursor: pointer;
+          min-height: 44px;
+        ">✗ انصراف (حفظ کالیبراسیون)</button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  document.getElementById('orientationConfirmBtn').onclick = () => {
+    modal.remove();
+    onConfirm();
+  };
+  
+  document.getElementById('orientationCancelBtn').onclick = () => {
+    modal.remove();
+    if (onCancel) onCancel();
+  };
+}
+
+/**
+ * Toggle orientation lock
+ */
+function toggleOrientationLock() {
+  orientationLocked = !orientationLocked;
+  
+  const lockBtn = document.getElementById('orientationLockBtn');
+  if (lockBtn) {
+    if (orientationLocked) {
+      lockBtn.textContent = '🔒';
+      lockBtn.style.background = '#22c55e';
+      lockBtn.style.color = '#052e16';
+      setStatus('🔒 جهت صفحه قفل شد');
+    } else {
+      lockBtn.textContent = '🔓';
+      lockBtn.style.background = 'rgba(30, 41, 59, 0.9)';
+      lockBtn.style.color = '#94a3b8';
+      setStatus('🔓 جهت صفحه آزاد شد');
+    }
+    
+    setTimeout(() => {
+      if (mode === 'run' && runPhase === 'ready') {
+        setStatus('آماده! از کنار یکی از موانع رد شو تا زمان شروع بشه');
+      } else if (mode === 'run' && runPhase === 'timing') {
+        setStatus('در حال دویدن... ⏱');
+      } else if (mode === 'jump' && jumpPhase === 'ready') {
+        setStatus('آماده! بپر 🤸');
+      }
+    }, 2000);
+  }
+  
+  console.log(`🔒 Orientation lock: ${orientationLocked ? 'ENABLED' : 'DISABLED'}`);
+}
+
+// ================== ORIENTATION & RESOLUTION MANAGEMENT ==================
 let currentCameraStream = null;
 let isReconfiguring = false;
 
@@ -1235,6 +1428,12 @@ settingsBtn.addEventListener('click', () => {
   loadSettingsUI();
   settingsPanel.classList.add('visible');
 });
+
+// Orientation lock button
+const orientationLockBtn = document.getElementById('orientationLockBtn');
+if (orientationLockBtn) {
+  orientationLockBtn.addEventListener('click', toggleOrientationLock);
+}
 
 closeSettingsBtn.addEventListener('click', () => {
   const lowPowerChecked = document.getElementById('lowPowerMode').checked;
@@ -2001,6 +2200,12 @@ function resizeCanvas() {
  * Refresh canvas and reconfigure camera on orientation change
  */
 async function refreshCanvasForOrientation() {
+  // Check if orientation is locked
+  if (orientationLocked) {
+    console.log('🔒 Orientation locked, ignoring change');
+    return;
+  }
+  
   if (isReconfiguring) {
     console.log('⏳ Already reconfiguring, skipping...');
     return;
@@ -2017,9 +2222,39 @@ async function refreshCanvasForOrientation() {
 
   // If orientation actually changed (not just a small resize)
   if (newOrientation !== currentOrientation && running) {
+    // Check if it's a minor orientation change
+    if (isMinorOrientationChange()) {
+      console.log('📐 Minor orientation change detected, preserving calibration');
+      
+      // Just save and restore calibration
+      saveCalibrationAsRatio();
+      resizeCanvas();
+      
+      if (restoreCalibrationFromRatio()) {
+        setStatus('✅ کالیبراسیون حفظ شد');
+        setTimeout(() => {
+          if (mode === 'run' && runPhase === 'ready') {
+            setStatus('آماده! از کنار یکی از موانع رد شو تا زمان شروع بشه');
+          } else if (mode === 'jump' && jumpPhase === 'ready') {
+            setStatus('آماده! بپر 🤸');
+          }
+        }, 2000);
+        return;
+      }
+    }
+    
     isReconfiguring = true;
     
     console.log(`🔄 Orientation changed: ${currentOrientation} → ${newOrientation}`);
+    
+    // Save calibration before reconfiguring
+    const hadCalibration = (mode === 'run' && gatePoints[0] && gatePoints[1]) || 
+                          (mode === 'jump' && legLengthPx !== null);
+    
+    if (hadCalibration) {
+      saveCalibrationAsRatio();
+    }
+    
     setStatus(`در حال تنظیم برای ${newOrientation === 'portrait' ? 'حالت عمودی' : 'حالت افقی'}...`);
 
     try {
@@ -2027,13 +2262,48 @@ async function refreshCanvasForOrientation() {
       await setupCamera(true);
       resizeCanvas();
 
-      // Reset calibration since pixel coordinates changed
-      if (mode === 'run' && runPhase !== 'calibrate1') {
-        console.log('🔄 Resetting run calibration due to orientation change');
-        runEnterCalibrate1();
-      } else if (mode === 'jump' && jumpPhase !== 'calibrating') {
-        console.log('🔄 Resetting jump calibration due to orientation change');
-        jumpEnterCalibrating();
+      // Ask user if they want to reset calibration
+      if (hadCalibration && calibrationData) {
+        showOrientationChangeConfirmation(
+          // User confirmed - reset calibration
+          () => {
+            calibrationData = null;
+            if (mode === 'run' && runPhase !== 'calibrate1') {
+              console.log('🔄 Resetting run calibration due to orientation change');
+              runEnterCalibrate1();
+            } else if (mode === 'jump' && jumpPhase !== 'calibrating') {
+              console.log('🔄 Resetting jump calibration due to orientation change');
+              jumpEnterCalibrating();
+            }
+          },
+          // User cancelled - try to restore calibration
+          () => {
+            if (restoreCalibrationFromRatio()) {
+              setStatus('✅ کالیبراسیون بازیابی شد');
+              setTimeout(() => {
+                if (mode === 'run' && runPhase === 'ready') {
+                  setStatus('آماده! از کنار یکی از موانع رد شو تا زمان شروع بشه');
+                } else if (mode === 'jump' && jumpPhase === 'ready') {
+                  setStatus('آماده! بپر 🤸');
+                }
+              }, 2000);
+            } else {
+              // Failed to restore, reset
+              if (mode === 'run') {
+                runEnterCalibrate1();
+              } else if (mode === 'jump') {
+                jumpEnterCalibrating();
+              }
+            }
+          }
+        );
+      } else {
+        // No calibration to save, just reset
+        if (mode === 'run' && runPhase !== 'calibrate1') {
+          runEnterCalibrate1();
+        } else if (mode === 'jump' && jumpPhase !== 'calibrating') {
+          jumpEnterCalibrating();
+        }
       }
 
       console.log('✅ Orientation reconfiguration complete');
@@ -2049,13 +2319,18 @@ async function refreshCanvasForOrientation() {
     }
   } else if (changed && running) {
     // Canvas size changed but orientation didn't (minor resize)
-    // Just reset calibration if we're mid-process
-    if (mode === 'run' && runPhase !== 'calibrate1' && runPhase !== 'ready' && runPhase !== 'timing') {
-      console.log('⚠️ Canvas resized, resetting calibration');
-      runEnterCalibrate1();
-    } else if (mode === 'jump' && jumpPhase !== 'calibrating' && jumpPhase !== 'ready') {
-      console.log('⚠️ Canvas resized, resetting calibration');
-      jumpEnterCalibrating();
+    // Save and try to restore calibration
+    saveCalibrationAsRatio();
+    
+    if (!restoreCalibrationFromRatio()) {
+      // Failed to restore, reset if we're mid-process
+      if (mode === 'run' && runPhase !== 'calibrate1' && runPhase !== 'ready' && runPhase !== 'timing') {
+        console.log('⚠️ Canvas resized, resetting calibration');
+        runEnterCalibrate1();
+      } else if (mode === 'jump' && jumpPhase !== 'calibrating' && jumpPhase !== 'ready') {
+        console.log('⚠️ Canvas resized, resetting calibration');
+        jumpEnterCalibrating();
+      }
     }
   }
 }

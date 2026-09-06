@@ -6,6 +6,92 @@
 
 ---
 
+## [1.3.3] - 2024-01-XX
+
+### ✨ Added (اضافه شده)
+
+#### ✅ Comprehensive Validation System
+- تابع `validateGatePoints()` - اعتبارسنجی فاصله بین موانع
+- تابع `validateDistance()` - اعتبارسنجی فاصله ورودی کاربر
+- تابع `validateJumpAirTime()` - اعتبارسنجی زمان پرواز
+- تابع `validateRunSpeed()` - اعتبارسنجی سرعت دویدن
+- تابع `validateJumpHeight()` - اعتبارسنجی ارتفاع پرش
+- تابع `showValidationWarning()` - نمایش modal هشدار اعتبارسنجی
+
+#### 🎯 Validation Rules
+- **Gate Points**: حداقل 20% عرض صفحه فاصله بین دو مانع
+- **Distance Input**: حداقل 0.1m، حداکثر 100m، نباید منفی یا صفر باشه
+- **Jump Air Time**: حداکثر 2 ثانیه (بیشتر غیرمنطقیه)
+- **Run Speed**: حداقل 0.5 m/s، حداکثر 15 m/s (رکورد جهان ~12.4 m/s)
+- **Jump Height**: حداقل 1cm، حداکثر 150cm (رکورد جهان ~63cm)
+- **Timing**: زمان‌های خیلی کوتاه (<0.3s) رو هشدار می‌ده
+
+#### 🔔 Warning System
+- هشدار برای سرعت غیرمنطقی (بیش از 15 m/s)
+- هشدار برای سرعت خیلی کم (<0.5 m/s)
+- هشدار برای ارتفاع غیرمنطقی (>150cm)
+- هشدار برای زمان‌های خیلی کوتاه
+- دو گزینه: "ادامه با این نتیجه" یا "دوباره تلاش کن"
+- ذخیره اختیاری نتایج غیرمنطقی
+
+#### 🛡️ Safety & UX Improvements
+- جلوگیری از انتخاب موانع خیلی نزدیک به هم
+- Validation real-time برای distance input
+- Confirmation مشروح برای پاک کردن تاریخچه
+- نمایش تعداد رکوردها قبل از حذف
+- پیام‌های خطای واضح و راهنما به فارسی
+
+### 🔧 Changed (تغییر یافته)
+
+#### app.js
+- بازنویسی تابع `runFinish()` با speed validation
+- بازنویسی تابع `jumpFinish()` با air time و height validation
+- بهبود handler `gateNextBtn` - validation قبل از ادامه
+- بهبود handler `confirmDistBtn` - validation قبل از تایید
+- بهبود handler `clearHistoryBtn` - confirmation با جزئیات
+- اضافه کردن ~200 خط کد برای validation system
+
+#### index.html
+- آپدیت نسخه از 1.3.2 به 1.3.3
+
+#### sw.js
+- ارتقا نسخه cache از `v12` به `v13`
+
+#### manifest.json
+- آپدیت version از 1.3.2 به 1.3.3
+
+### 🐛 Fixed (رفع شده)
+- ذخیره نتایج غیرمنطقی بدون هشدار
+- انتخاب موانع خیلی نزدیک به هم
+- ورود فاصله‌های منفی یا صفر
+- حذف تصادفی تاریخچه با confirm ساده
+- عدم validation نتایج قبل از ذخیره
+
+### 📈 Improved (بهبود یافته)
+- دقت اندازه‌گیری با validation موانع
+- اعتماد به نتایج با هشدار موارد غیرمنطقی
+- امنیت داده‌ها با confirmation برای حذف
+- User experience با پیام‌های واضح فارسی
+- جلوگیری از خطاهای کاربر با validation پیشگیرانه
+
+### 🎯 Technical Details
+- 6 تابع جدید برای validation
+- 1 object constant: `VALIDATION_SETTINGS` با 8 قانون
+- Validation در 5 نقطه مختلف: gate points, distance input, speed result, jump result, clear history
+- Modal system با دو دکمه (confirm/cancel) برای validation warnings
+- Color-coded warnings: نارنجی برای validation، قرمز برای errors
+- عدم ذخیره خودکار نتایج غیرمنطقی - نیاز به تایید کاربر
+
+### 📊 Validation Thresholds
+- Min gate distance: 20% screen width
+- Distance range: 0.1m - 100m
+- Max air time: 2.0s
+- Speed range: 0.5 m/s - 15 m/s
+- Height range: 1cm - 150cm
+- Min timing: 0.3s
+
+---
+
 ## [1.3.2] - 2024-01-XX
 
 ### ✨ Added (اضافه شده)

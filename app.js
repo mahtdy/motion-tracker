@@ -1,4 +1,209 @@
-// ================== Skeleton drawing setup ==================
+// ================== VALIDATION SYSTEM ==================
+/**
+ * Validation constants and settings
+ */
+const VALIDATION_SETTINGS = {
+  minGateDistancePercent: 0.20, // حداقل 20% عرض صفحه
+  minDistance: 0.1, // حداقل 0.1 متر
+  maxDistance: 100, // حداکثر 100 متر
+  maxJumpAirTime: 2.0, // حداکثر 2 ثانیه
+  maxRealisticSpeed: 15, // حداکثر سرعت منطقی (m/s) - رکورد جهان ~12.4 m/s
+  minRealisticSpeed: 0.5, // حداقل سرعت منطقی (m/s)
+  maxJumpHeight: 150, // حداکثر ارتفاع پرش منطقی (cm) - رکورد جهان ~63cm
+  minJumpHeight: 1 // حداقل ارتفاع پرش (cm)
+};
+
+/**
+ * Validate gate points distance
+ */
+function validateGatePoints(point1, point2) {
+  if (!point1 || !point2) {
+    return { valid: false, message: 'هر دو نقطه باید مشخص شده باشند' };
+  }
+  
+  const distance = Math.abs(point1.x - point2.x);
+  const minDistance = canvas.width * VALIDATION_SETTINGS.minGateDistancePercent;
+  
+  if (distance < minDistance) {
+    return {
+      valid: false,
+      message: `فاصله بین دو مانع خیلی کمه! لطفاً دو نقطه رو دورتر از هم انتخاب کن.\n\nفاصله فعلی: ${Math.round(distance)}px\nحداقل فاصله: ${Math.round(minDistance)}px`
+    };
+  }
+  
+  return { valid: true };
+}
+
+/**
+ * Validate distance input
+ */
+function validateDistance(distance) {
+  const num = parseFloat(distance);
+  
+  if (isNaN(num)) {
+    return { valid: false, message: 'لطفاً یک عدد معتبر وارد کن' };
+  }
+  
+  if (num <= VALIDATION_SETTINGS.minDistance) {
+    return {
+      valid: false,
+      message: `فاصله نباید کمتر از ${VALIDATION_SETTINGS.minDistance} متر باشه`
+    };
+  }
+  
+  if (num > VALIDATION_SETTINGS.maxDistance) {
+    return {
+      valid: false,
+      message: `فاصله نباید بیشتر از ${VALIDATION_SETTINGS.maxDistance} متر باشه`
+    };
+  }
+  
+  return { valid: true, value: num };
+}
+
+/**
+ * Validate jump air time
+ */
+function validateJumpAirTime(airTime) {
+  if (airTime > VALIDATION_SETTINGS.maxJumpAirTime) {
+    return {
+      valid: false,
+      warning: true,
+      message: `⚠️ زمان پرواز غیرمنطقیه!\n\nزمان اندازه‌گیری شده: ${airTime.toFixed(2)}s\nحداکثر منطقی: ${VALIDATION_SETTINGS.maxJumpAirTime}s\n\nاحتمالاً مشکلی در تشخیص پیش اومده. دوباره امتحان کن.`
+    };
+  }
+  
+  return { valid: true };
+}
+
+/**
+ * Validate run speed result
+ */
+function validateRunSpeed(speed, time, distance) {
+  const warnings = [];
+  
+  // Check if speed is unrealistically high
+  if (speed > VALIDATION_SETTINGS.maxRealisticSpeed) {
+    warnings.push(`⚠️ سرعت غیرمنطقی: ${speed.toFixed(2)} m/s\n\nرکورد جهان دو سرعت: ~12.4 m/s (Usain Bolt)\nسرعت اندازه‌گیری شده شما بیشتر از حد معمول است.`);
+  }
+  
+  // Check if speed is unrealistically low
+  if (speed < VALIDATION_SETTINGS.minRealisticSpeed) {
+    warnings.push(`⚠️ سرعت خیلی کم: ${speed.toFixed(2)} m/s\n\nاحتمالاً مشکلی در اندازه‌گیری زمان پیش اومده.`);
+  }
+  
+  // Check if time is too short (might be false trigger)
+  if (time < 0.3) {
+    warnings.push(`⚠️ زمان خیلی کوتاه: ${time.toFixed(2)}s\n\nممکنه trigger اشتباهی اتفاق افتاده باشه.`);
+  }
+  
+  return {
+    valid: warnings.length === 0,
+    warnings: warnings
+  };
+}
+
+/**
+ * Validate jump height result
+ */
+function validateJumpHeight(height, airTime) {
+  const warnings = [];
+  
+  if (height > VALIDATION_SETTINGS.maxJumpHeight) {
+    warnings.push(`⚠️ ارتفاع غیرمنطقی: ${height.toFixed(0)} cm\n\nرکورد جهان پرش عمودی: ~63 cm\nارتفاع اندازه‌گیری شده شما بیشتر از حد معمول است.`);
+  }
+  
+  if (height < VALIDATION_SETTINGS.minJumpHeight) {
+    warnings.push(`⚠️ ارتفاع خیلی کم: ${height.toFixed(0)} cm\n\nاحتمالاً مشکلی در تشخیص پیش اومده.`);
+  }
+  
+  return {
+    valid: warnings.length === 0,
+    warnings: warnings
+  };
+}
+
+/**
+ * Show validation warning modal
+ */
+function showValidationWarning(title, message, onConfirm, onCancel) {
+  const modal = document.createElement('div');
+  modal.id = 'validationModal';
+  modal.style.cssText = `
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  `;
+  
+  modal.innerHTML = `
+    <div style="
+      background: #1e293b;
+      border: 2px solid #f59e0b;
+      border-radius: 20px;
+      padding: 24px;
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+      color: #e2e8f0;
+    ">
+      <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
+      <h3 style="color: #f59e0b; margin-bottom: 12px; font-size: 18px;">${title}</h3>
+      <p style="color: #94a3b8; margin-bottom: 20px; line-height: 1.6; font-size: 14px; white-space: pre-line;">${message}</p>
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        ${onConfirm ? `
+          <button id="validationConfirmBtn" style="
+            background: #22c55e;
+            color: #052e16;
+            border: none;
+            padding: 14px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 999px;
+            cursor: pointer;
+            min-height: 44px;
+          ">ادامه با این نتیجه</button>
+        ` : ''}
+        <button id="validationCancelBtn" style="
+          background: ${onConfirm ? 'transparent' : '#22c55e'};
+          color: ${onConfirm ? '#94a3b8' : '#052e16'};
+          border: ${onConfirm ? '2px solid #475569' : 'none'};
+          padding: ${onConfirm ? '12px 24px' : '14px 24px'};
+          font-size: ${onConfirm ? '14px' : '16px'};
+          font-weight: bold;
+          border-radius: 999px;
+          cursor: pointer;
+          min-height: 44px;
+        ">${onConfirm ? 'دوباره تلاش کن' : 'متوجه شدم'}</button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  const confirmBtn = document.getElementById('validationConfirmBtn');
+  const cancelBtn = document.getElementById('validationCancelBtn');
+  
+  if (confirmBtn && onConfirm) {
+    confirmBtn.onclick = () => {
+      modal.remove();
+      onConfirm();
+    };
+  }
+  
+  if (cancelBtn) {
+    cancelBtn.onclick = () => {
+      modal.remove();
+      if (onCancel) onCancel();
+    };
+  }
+}
+
+// ================== SKELETON DRAWING SETUP ==================
 const CONNECTIONS = [
   ['left_shoulder', 'right_shoulder'],
   ['left_shoulder', 'left_elbow'],
@@ -706,10 +911,37 @@ closeHistoryBtn.addEventListener('click', () => {
 });
 
 clearHistoryBtn.addEventListener('click', () => {
-  if (confirm('آیا از پاک کردن همه تاریخچه مطمئن هستید؟')) {
-    localStorage.removeItem(HISTORY_KEY);
-    renderHistory();
+  const history = getHistory();
+  const count = history.length;
+  
+  if (count === 0) {
+    showValidationWarning(
+      'تاریخچه خالی است',
+      'هیچ رکوردی برای پاک کردن وجود نداره.',
+      null,
+      null
+    );
+    return;
   }
+  
+  showValidationWarning(
+    'پاک کردن تاریخچه',
+    `آیا از پاک کردن همه ${count} رکورد مطمئن هستی؟\n\nاین عمل قابل بازگشت نیست!`,
+    () => {
+      // User confirmed - delete all
+      localStorage.removeItem(HISTORY_KEY);
+      renderHistory();
+      setStatus('✅ تاریخچه پاک شد');
+      setTimeout(() => {
+        if (mode === 'run' && runPhase === 'ready') {
+          setStatus('آماده! از کنار یکی از موانع رد شو تا زمان شروع بشه');
+        } else if (mode === 'jump' && jumpPhase === 'ready') {
+          setStatus('آماده! بپر 🤸');
+        }
+      }, 2000);
+    },
+    null
+  );
 });
 
 // ================== SETTINGS SYSTEM ==================
@@ -882,17 +1114,44 @@ function runFinish() {
   runPhase = 'done';
   const elapsedSec = (runEndTime - runStartTime) / 1000;
   const speed = distanceMeters / elapsedSec;
+  
+  // Validate speed result
+  const validation = validateRunSpeed(speed, elapsedSec, distanceMeters);
+  
   timeResultEl.textContent = elapsedSec.toFixed(2);
   speedResultEl.textContent = speed.toFixed(2);
   resultPanel.classList.add('visible');
-  setStatus('تمام شد!');
-
-  // Save to history
-  saveToHistory('run', {
-    time: elapsedSec.toFixed(2),
-    speed: speed.toFixed(2),
-    distance: distanceMeters
-  });
+  
+  if (!validation.valid && validation.warnings.length > 0) {
+    // Show warning but allow continuing
+    setStatus('⚠️ نتیجه نامعقول!');
+    showValidationWarning(
+      'نتیجه غیرمنطقی',
+      validation.warnings.join('\n\n'),
+      () => {
+        // User confirmed - save anyway
+        setStatus('تمام شد!');
+        saveToHistory('run', {
+          time: elapsedSec.toFixed(2),
+          speed: speed.toFixed(2),
+          distance: distanceMeters
+        });
+      },
+      () => {
+        // User wants to retry
+        resultPanel.classList.remove('visible');
+        runEnterReady();
+      }
+    );
+  } else {
+    setStatus('تمام شد!');
+    // Save to history
+    saveToHistory('run', {
+      time: elapsedSec.toFixed(2),
+      speed: speed.toFixed(2),
+      distance: distanceMeters
+    });
+  }
 }
 
 function runUpdateGateCrossing(ankleX) {
@@ -974,6 +1233,20 @@ gateNextBtn.addEventListener('click', () => {
     // If the second gate point was already set before going back, skip re-showing the guide.
     runEnterCalibrate2(!gatePoints[1]);
   } else if (runPhase === 'calibrate2') {
+    // Validate gate points before proceeding
+    const validation = validateGatePoints(gatePoints[0], gatePoints[1]);
+    if (!validation.valid) {
+      showValidationWarning(
+        'فاصله موانع کافی نیست',
+        validation.message,
+        null,
+        () => {
+          // Go back to calibrate2 so user can fix
+          runEnterCalibrate2(false);
+        }
+      );
+      return;
+    }
     runEnterEnterDistance();
   }
 });
@@ -990,8 +1263,21 @@ backToGatesBtn.addEventListener('click', () => {
 });
 
 confirmDistBtn.addEventListener('click', () => {
-  const val = parseFloat(distInput.value);
-  distanceMeters = (val > 0) ? val : 5;
+  const val = distInput.value;
+  
+  // Validate distance
+  const validation = validateDistance(val);
+  if (!validation.valid) {
+    showValidationWarning(
+      'فاصله نامعتبر',
+      validation.message,
+      null,
+      null
+    );
+    return;
+  }
+  
+  distanceMeters = validation.value;
   runEnterReady();
 });
 
@@ -1039,16 +1325,59 @@ function jumpFinish() {
   jumpPhase = 'done';
   const airTimeSec = (jumpLandTime - jumpTakeoffTime) / 1000;
   const heightMeters = (9.81 * airTimeSec * airTimeSec) / 8;
+  const heightCm = heightMeters * 100;
+  
+  // Validate air time
+  const airTimeValidation = validateJumpAirTime(airTimeSec);
+  if (!airTimeValidation.valid) {
+    setStatus('⚠️ زمان غیرمنطقی!');
+    showValidationWarning(
+      'زمان پرواز غیرمنطقی',
+      airTimeValidation.message,
+      null,
+      () => {
+        // Retry
+        jumpEnterReady();
+      }
+    );
+    return;
+  }
+  
+  // Validate jump height
+  const heightValidation = validateJumpHeight(heightCm, airTimeSec);
+  
   airTimeResultEl.textContent = airTimeSec.toFixed(2);
-  jumpHeightResultEl.textContent = (heightMeters * 100).toFixed(1);
+  jumpHeightResultEl.textContent = heightCm.toFixed(1);
   jumpResultPanel.classList.add('visible');
-  setStatus('تمام شد!');
-
-  // Save to history
-  saveToHistory('jump', {
-    airTime: airTimeSec.toFixed(2),
-    height: (heightMeters * 100).toFixed(1)
-  });
+  
+  if (!heightValidation.valid && heightValidation.warnings.length > 0) {
+    // Show warning but allow continuing
+    setStatus('⚠️ نتیجه نامعقول!');
+    showValidationWarning(
+      'ارتفاع غیرمنطقی',
+      heightValidation.warnings.join('\n\n'),
+      () => {
+        // User confirmed - save anyway
+        setStatus('تمام شد!');
+        saveToHistory('jump', {
+          airTime: airTimeSec.toFixed(2),
+          height: heightCm.toFixed(1)
+        });
+      },
+      () => {
+        // User wants to retry
+        jumpResultPanel.classList.remove('visible');
+        jumpEnterReady();
+      }
+    );
+  } else {
+    setStatus('تمام شد!');
+    // Save to history
+    saveToHistory('jump', {
+      airTime: airTimeSec.toFixed(2),
+      height: heightCm.toFixed(1)
+    });
+  }
 }
 
 function getHipAnkleY(kp) {

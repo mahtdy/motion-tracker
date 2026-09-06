@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>تست Error Handling - حرکت‌سنج</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", Tahoma, sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 20px;
+    line-height: 1.6;
+  }
+  .container { max-width: 800px; margin: 0 auto; }
+  h1 { color: #4ade80; margin-bottom: 20px; text-align: center; }
+  .test-section {
+    background: #1e293b;
+    border: 2px solid #334155;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .test-section h2 {
+    color: #22c55e;
+    margin-bottom: 12px;
+    font-size: 18px;
+  }
+  .test-section p {
+    color: #94a3b8;
+    margin-bottom: 12px;
+    font-size: 14px;
+  }
+  button {
+    background: #22c55e;
+    color: #052e16;
+    border: none;
+    padding: 12px 24px;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 8px;
+    cursor: pointer;
+    margin: 8px 8px 8px 0;
+  }
+  button:hover { background: #16a34a; }
+  button.secondary {
+    background: #475569;
+    color: #e2e8f0;
+  }
+  .result {
+    background: #0f172a;
+    padding: 12px;
+    border-radius: 8px;
+    margin-top: 12px;
+    font-family: monospace;
+    font-size: 12px;
+    border: 1px solid #334155;
+  }
+  .success { color: #4ade80; }
+  .error { color: #ef4444; }
+  .warning { color: #facc15; }
+  .info { color: #38bdf8; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>🧪 تست سیستم Error Handling</h1>
+
+  <div class="test-section">
+    <h2>1️⃣ تست Browser Compatibility</h2>
+    <p>بررسی می‌کنه که مرورگر از ویژگی‌های لازم پشتیبانی می‌کنه یا نه</p>
+    <button onclick="testBrowserCompatibility()">اجرای تست</button>
+    <div id="result1" class="result"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>2️⃣ تست Camera Error Classification</h2>
+    <p>بررسی می‌کنه که خطاهای دوربین به درستی شناسایی می‌شن</p>
+    <button onclick="testCameraErrorClassification()">اجرای تست</button>
+    <div id="result2" class="result"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>3️⃣ تست Error Logging</h2>
+    <p>بررسی می‌کنه که سیستم لاگ به درستی کار می‌کنه</p>
+    <button onclick="testErrorLogging()">اجرای تست (Console رو باز کن)</button>
+    <div id="result3" class="result"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>4️⃣ تست Error Modal</h2>
+    <p>نمایش انواع مختلف خطاها</p>
+    <button onclick="showTestError('CAMERA_PERMISSION_DENIED')">خطای دسترسی دوربین</button>
+    <button onclick="showTestError('MODEL_LOAD_FAILED')">خطای بارگذاری مدل</button>
+    <button onclick="showTestError('WEBGL_NOT_SUPPORTED')">خطای WebGL</button>
+    <button onclick="showTestError('UNKNOWN_ERROR')">خطای ناشناخته</button>
+    <div id="result4" class="result">روی دکمه‌ها بزن تا modal ها نمایش داده بشن</div>
+  </div>
+
+  <div class="test-section">
+    <h2>5️⃣ تست برنامه اصلی</h2>
+    <p>اگر همه تست‌ها موفق بودن، برنامه اصلی رو باز کن</p>
+    <button onclick="window.location.href='index.html'">باز کردن برنامه اصلی</button>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+function testBrowserCompatibility() {
+  const result = document.getElementById('result1');
+  result.innerHTML = '<div class="info">در حال بررسی...</div>';
+  
+  setTimeout(() => {
+    let output = '';
+    
+    // Test getUserMedia
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      output += '<div class="success">✅ getUserMedia پشتیبانی می‌شه</div>';
+    } else {
+      output += '<div class="error">❌ getUserMedia پشتیبانی نمی‌شه</div>';
+    }
+    
+    // Test WebGL
+    try {
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      if (gl) {
+        output += '<div class="success">✅ WebGL پشتیبانی می‌شه</div>';
+      } else {
+        output += '<div class="error">❌ WebGL پشتیبانی نمی‌شه</div>';
+      }
+    } catch (e) {
+      output += '<div class="error">❌ خطا در بررسی WebGL: ' + e.message + '</div>';
+    }
+    
+    // Test localStorage
+    try {
+      localStorage.setItem('test', 'test');
+      localStorage.removeItem('test');
+      output += '<div class="success">✅ localStorage پشتیبانی می‌شه</div>';
+    } catch (e) {
+      output += '<div class="warning">⚠️ localStorage پشتیبانی نمی‌شه یا غیرفعاله</div>';
+    }
+    
+    // Browser info
+    output += '<div class="info">ℹ️ مرورگر: ' + navigator.userAgent.split(' ').slice(-2).join(' ') + '</div>';
+    
+    result.innerHTML = output;
+  }, 100);
+}
+
+function testCameraErrorClassification() {
+  const result = document.getElementById('result2');
+  result.innerHTML = '<div class="info">در حال بررسی...</div>';
+  
+  setTimeout(() => {
+    if (typeof classifyCameraError !== 'function') {
+      result.innerHTML = '<div class="error">❌ تابع classifyCameraError یافت نشد!</div>';
+      return;
+    }
+    
+    let output = '<div class="success">✅ تست‌های Classification:</div>';
+    
+    // Test different error types
+    const tests = [
+      { name: 'NotAllowedError', error: { name: 'NotAllowedError' }, expected: 'CAMERA_PERMISSION_DENIED' },
+      { name: 'NotFoundError', error: { name: 'NotFoundError' }, expected: 'CAMERA_NOT_FOUND' },
+      { name: 'NotReadableError', error: { name: 'NotReadableError' }, expected: 'CAMERA_IN_USE' },
+      { name: 'Unknown', error: { name: 'UnknownError' }, expected: 'CAMERA_UNKNOWN' }
+    ];
+    
+    tests.forEach(test => {
+      const classified = classifyCameraError(test.error);
+      if (classified === test.expected) {
+        output += `<div class="success">  ✓ ${test.name} → ${classified}</div>`;
+      } else {
+        output += `<div class="error">  ✗ ${test.name} → ${classified} (انتظار: ${test.expected})</div>`;
+      }
+    });
+    
+    result.innerHTML = output;
+  }, 100);
+}
+
+function testErrorLogging() {
+  const result = document.getElementById('result3');
+  
+  if (typeof logError !== 'function') {
+    result.innerHTML = '<div class="error">❌ تابع logError یافت نشد!</div>';
+    return;
+  }
+  
+  console.log('=== شروع تست Error Logging ===');
+  
+  // Test different scenarios
+  logError('Test Context 1', new Error('تست خطای ساده'));
+  logError('Test Context 2', new Error('تست با اطلاعات اضافی'), { 
+    userId: 123, 
+    action: 'test' 
+  });
+  
+  console.log('=== پایان تست Error Logging ===');
+  
+  result.innerHTML = '<div class="success">✅ لاگ‌ها در Console ثبت شدند. Console رو بررسی کن!</div>';
+}
+
+function showTestError(errorType) {
+  if (typeof showErrorModal !== 'function') {
+    alert('تابع showErrorModal یافت نشد!');
+    return;
+  }
+  
+  showErrorModal(errorType, 'این یک تست است.\n\nخطای شبیه‌سازی شده: ' + errorType);
+}
+
+// Run initial test on load
+window.addEventListener('load', () => {
+  console.log('🧪 صفحه تست Error Handling بارگذاری شد');
+  console.log('برای شروع تست‌ها، روی دکمه‌ها کلیک کن');
+});
+</script>
+
+</body>
+</html>

@@ -66,6 +66,257 @@ let running = false;
 // mode: 'run' | 'jump'
 let mode = 'run';
 
+// ================== ERROR HANDLING SYSTEM ==================
+/**
+ * Error types and their Persian user-friendly messages
+ */
+const ERROR_MESSAGES = {
+  CAMERA_PERMISSION_DENIED: {
+    title: '❌ دسترسی دوربین رد شد',
+    message: 'لطفاً در تنظیمات مرورگر، دسترسی به دوربین رو فعال کن و دوباره امتحان کن.',
+    recoverable: true
+  },
+  CAMERA_NOT_FOUND: {
+    title: '📷 دوربین یافت نشد',
+    message: 'دوربینی در دستگاه پیدا نشد. مطمئن شو که دوربین به درستی متصل و فعال هست.',
+    recoverable: true
+  },
+  CAMERA_IN_USE: {
+    title: '🔒 دوربین در حال استفاده',
+    message: 'دوربین توسط برنامه دیگری استفاده می‌شه. لطفاً اون رو ببند و دوباره تلاش کن.',
+    recoverable: true
+  },
+  CAMERA_UNKNOWN: {
+    title: '⚠️ خطای دوربین',
+    message: 'مشکلی در فعال‌سازی دوربین پیش اومد. لطفاً دوباره تلاش کن.',
+    recoverable: true
+  },
+  MODEL_LOAD_FAILED: {
+    title: '🧠 خطا در بارگذاری مدل',
+    message: 'مدل هوش مصنوعی بارگذاری نشد. اتصال اینترنت رو بررسی کن و دوباره امتحان کن.',
+    recoverable: true
+  },
+  MODEL_INIT_FAILED: {
+    title: '⚙️ خطا در راه‌اندازی مدل',
+    message: 'مشکلی در راه‌اندازی سیستم تشخیص بدن پیش اومد. لطفاً صفحه رو رفرش کن.',
+    recoverable: true
+  },
+  DETECTION_FAILED: {
+    title: '🔍 خطا در تشخیص',
+    message: 'تشخیص حرکت با مشکل مواجه شد. دوباره شروع کن.',
+    recoverable: true
+  },
+  WEBGL_NOT_SUPPORTED: {
+    title: '🎮 WebGL پشتیبانی نمی‌شه',
+    message: 'مرورگر یا دستگاه شما از WebGL پشتیبانی نمی‌کنه که برای اجرای این برنامه ضروریه.',
+    recoverable: false
+  },
+  UNSUPPORTED_BROWSER: {
+    title: '🌐 مرورگر پشتیبانی نمی‌شه',
+    message: 'لطفاً از مرورگر Chrome، Safari، Firefox یا Edge استفاده کن.',
+    recoverable: false
+  },
+  UNKNOWN_ERROR: {
+    title: '❓ خطای ناشناخته',
+    message: 'مشکل پیش‌بینی نشده‌ای رخ داد. لطفاً دوباره تلاش کن.',
+    recoverable: true
+  }
+};
+
+/**
+ * Log error to console with context
+ */
+function logError(context, error, additionalInfo = {}) {
+  console.group(`🔴 Error in ${context}`);
+  console.error('Error object:', error);
+  console.error('Error message:', error?.message || 'No message');
+  console.error('Error stack:', error?.stack || 'No stack');
+  if (Object.keys(additionalInfo).length > 0) {
+    console.error('Additional info:', additionalInfo);
+  }
+  console.groupEnd();
+}
+
+/**
+ * Classify camera errors
+ */
+function classifyCameraError(error) {
+  const errorName = error?.name || '';
+  const errorMessage = error?.message?.toLowerCase() || '';
+
+  if (errorName === 'NotAllowedError' || errorName === 'PermissionDeniedError') {
+    return 'CAMERA_PERMISSION_DENIED';
+  }
+  if (errorName === 'NotFoundError' || errorName === 'DevicesNotFoundError') {
+    return 'CAMERA_NOT_FOUND';
+  }
+  if (errorName === 'NotReadableError' || errorName === 'TrackStartError' || errorMessage.includes('in use')) {
+    return 'CAMERA_IN_USE';
+  }
+  return 'CAMERA_UNKNOWN';
+}
+
+/**
+ * Show error modal with retry option
+ */
+function showErrorModal(errorType, technicalDetails = null) {
+  const errorInfo = ERROR_MESSAGES[errorType] || ERROR_MESSAGES.UNKNOWN_ERROR;
+  
+  // Hide any existing panels
+  hideAllPanels();
+  guideOverlay.classList.remove('visible');
+  
+  // Create or get error modal
+  let errorModal = document.getElementById('errorModal');
+  if (!errorModal) {
+    errorModal = document.createElement('div');
+    errorModal.id = 'errorModal';
+    errorModal.style.cssText = `
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: rgba(0, 0, 0, 0.95);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    `;
+    document.body.appendChild(errorModal);
+  }
+
+  errorModal.innerHTML = `
+    <div style="
+      background: #1e293b;
+      border: 2px solid #ef4444;
+      border-radius: 20px;
+      padding: 24px;
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+      color: #e2e8f0;
+    ">
+      <div style="font-size: 48px; margin-bottom: 16px;">${errorInfo.title.split(' ')[0]}</div>
+      <h3 style="color: #ef4444; margin-bottom: 12px; font-size: 18px;">${errorInfo.title.substring(2)}</h3>
+      <p style="color: #94a3b8; margin-bottom: 20px; line-height: 1.6; font-size: 14px;">${errorInfo.message}</p>
+      ${technicalDetails ? `
+        <details style="margin-bottom: 20px; text-align: right;">
+          <summary style="color: #64748b; cursor: pointer; font-size: 12px; margin-bottom: 8px;">جزئیات فنی</summary>
+          <pre style="
+            background: #0f172a;
+            padding: 12px;
+            border-radius: 8px;
+            overflow-x: auto;
+            text-align: left;
+            font-size: 11px;
+            color: #94a3b8;
+            border: 1px solid #334155;
+          ">${technicalDetails}</pre>
+        </details>
+      ` : ''}
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        ${errorInfo.recoverable ? `
+          <button id="errorRetryBtn" style="
+            background: #22c55e;
+            color: #052e16;
+            border: none;
+            padding: 14px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 999px;
+            cursor: pointer;
+          ">🔄 تلاش مجدد</button>
+        ` : ''}
+        <button id="errorCloseBtn" style="
+          background: transparent;
+          color: #94a3b8;
+          border: 2px solid #475569;
+          padding: 12px 24px;
+          font-size: 14px;
+          font-weight: bold;
+          border-radius: 999px;
+          cursor: pointer;
+        ">${errorInfo.recoverable ? 'بستن' : 'متوجه شدم'}</button>
+      </div>
+    </div>
+  `;
+
+  const retryBtn = document.getElementById('errorRetryBtn');
+  const closeBtn = document.getElementById('errorCloseBtn');
+
+  if (retryBtn) {
+    retryBtn.onclick = () => {
+      errorModal.style.display = 'none';
+      // Reset and retry based on context
+      if (errorType.includes('CAMERA')) {
+        retryStart();
+      } else if (errorType.includes('MODEL')) {
+        retryStart();
+      } else {
+        window.location.reload();
+      }
+    };
+  }
+
+  closeBtn.onclick = () => {
+    errorModal.style.display = 'none';
+    if (!errorInfo.recoverable) {
+      startOverlay.style.display = 'flex';
+      startBtn.textContent = 'بازگشت به صفحه اصلی';
+    }
+  };
+
+  errorModal.style.display = 'flex';
+}
+
+/**
+ * Retry starting the application
+ */
+function retryStart() {
+  // Reset UI
+  startOverlay.style.display = 'flex';
+  startBtn.textContent = 'شروع مجدد';
+  document.getElementById('hint').textContent = 'برای شروع، اجازهٔ دسترسی به دوربین رو بده. مدل تشخیص بدن کاملاً روی گوشی اجرا می‌شه.';
+  
+  // Reset state
+  running = false;
+  detector = null;
+  
+  // Stop any existing video stream
+  if (video.srcObject) {
+    video.srcObject.getTracks().forEach(track => track.stop());
+    video.srcObject = null;
+  }
+}
+
+/**
+ * Check browser compatibility
+ */
+function checkBrowserCompatibility() {
+  // Check getUserMedia support
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    logError('Browser Check', new Error('getUserMedia not supported'));
+    showErrorModal('UNSUPPORTED_BROWSER', 'navigator.mediaDevices.getUserMedia is not available');
+    return false;
+  }
+
+  // Check WebGL support
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    if (!gl) {
+      logError('Browser Check', new Error('WebGL not supported'));
+      showErrorModal('WEBGL_NOT_SUPPORTED', 'WebGL context could not be created');
+      return false;
+    }
+  } catch (e) {
+    logError('Browser Check', e);
+    showErrorModal('WEBGL_NOT_SUPPORTED', e.message);
+    return false;
+  }
+
+  return true;
+}
+
 // ================== HISTORY SYSTEM ==================
 const HISTORY_KEY = 'motion_tracker_history';
 
@@ -584,44 +835,71 @@ function clientToCanvasCoords(clientX, clientY) {
 }
 
 // ================== Camera + model setup ==================
+/**
+ * Setup camera with comprehensive error handling
+ */
 async function setupCamera() {
-  const isPortrait = window.innerHeight >= window.innerWidth;
-  const constraints = {
-    video: {
-      facingMode: { ideal: 'environment' },
-      // Match the requested resolution's orientation to the phone's actual
-      // orientation, so object-fit: cover doesn't have to crop a wide
-      // landscape frame down to a narrow strip (which looks like extreme zoom).
-      width: { ideal: isPortrait ? 1080 : 1920 },
-      height: { ideal: isPortrait ? 1920 : 1080 },
-    },
-    audio: false,
-  };
-  const stream = await navigator.mediaDevices.getUserMedia(constraints);
-  video.srcObject = stream;
-
-  // Some phones (especially multi-lens Android devices) default the back
-  // camera to a non-1x lens or apply digital zoom, which looks "zoomed in"
-  // with no way to undo it from the video element. Where the browser exposes
-  // a zoom capability, explicitly reset it to its minimum (widest) value.
-  const track = stream.getVideoTracks()[0];
-  if (track && track.getCapabilities) {
-    try {
-      const caps = track.getCapabilities();
-      if (caps.zoom) {
-        await track.applyConstraints({ advanced: [{ zoom: caps.zoom.min }] });
-      }
-    } catch (e) {
-      // Not all browsers/devices support programmatic zoom control; safe to ignore.
-    }
-  }
-
-  return new Promise((resolve) => {
-    video.onloadedmetadata = () => {
-      video.play();
-      resolve();
+  try {
+    const isPortrait = window.innerHeight >= window.innerWidth;
+    const constraints = {
+      video: {
+        facingMode: { ideal: 'environment' },
+        // Match the requested resolution's orientation to the phone's actual
+        // orientation, so object-fit: cover doesn't have to crop a wide
+        // landscape frame down to a narrow strip (which looks like extreme zoom).
+        width: { ideal: isPortrait ? 1080 : 1920 },
+        height: { ideal: isPortrait ? 1920 : 1080 },
+      },
+      audio: false,
     };
-  });
+
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia(constraints);
+    } catch (error) {
+      const errorType = classifyCameraError(error);
+      logError('setupCamera - getUserMedia', error, { constraints });
+      throw { type: errorType, original: error };
+    }
+
+    video.srcObject = stream;
+
+    // Some phones (especially multi-lens Android devices) default the back
+    // camera to a non-1x lens or apply digital zoom, which looks "zoomed in"
+    // with no way to undo it from the video element. Where the browser exposes
+    // a zoom capability, explicitly reset it to its minimum (widest) value.
+    const track = stream.getVideoTracks()[0];
+    if (track && track.getCapabilities) {
+      try {
+        const caps = track.getCapabilities();
+        if (caps.zoom) {
+          await track.applyConstraints({ advanced: [{ zoom: caps.zoom.min }] });
+        }
+      } catch (e) {
+        // Not all browsers/devices support programmatic zoom control; safe to ignore.
+        console.warn('Zoom control not available:', e);
+      }
+    }
+
+    return new Promise((resolve, reject) => {
+      video.onloadedmetadata = () => {
+        video.play()
+          .then(() => resolve())
+          .catch((err) => {
+            logError('setupCamera - video.play', err);
+            reject({ type: 'CAMERA_UNKNOWN', original: err });
+          });
+      };
+      
+      // Timeout after 10 seconds
+      setTimeout(() => {
+        reject({ type: 'CAMERA_UNKNOWN', original: new Error('Camera setup timeout') });
+      }, 10000);
+    });
+
+  } catch (error) {
+    throw error;
+  }
 }
 
 function resizeCanvas() {
@@ -648,50 +926,98 @@ function refreshCanvasForOrientation() {
   }
 }
 
+/**
+ * Load AI model with comprehensive error handling and retry logic
+ */
 async function loadModel() {
-  detector = await poseDetection.createDetector(
-    poseDetection.SupportedModels.BlazePose,
-    {
-      runtime: 'mediapipe',
-      modelType: 'lite',
-      solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404',
+  const maxRetries = 3;
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`Loading model (attempt ${attempt}/${maxRetries})...`);
+      
+      // Check if TensorFlow.js is loaded
+      if (typeof poseDetection === 'undefined') {
+        throw new Error('TensorFlow.js libraries not loaded. Check your internet connection.');
+      }
+
+      detector = await poseDetection.createDetector(
+        poseDetection.SupportedModels.BlazePose,
+        {
+          runtime: 'mediapipe',
+          modelType: 'lite',
+          solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404',
+        }
+      );
+
+      console.log('✅ Model loaded successfully');
+      return; // Success!
+
+    } catch (error) {
+      lastError = error;
+      logError(`loadModel - attempt ${attempt}`, error, {
+        attempt,
+        maxRetries,
+        tfLoaded: typeof tf !== 'undefined',
+        poseDetectionLoaded: typeof poseDetection !== 'undefined'
+      });
+
+      // Wait before retry (exponential backoff)
+      if (attempt < maxRetries) {
+        const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+        console.log(`Waiting ${waitTime}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
     }
-  );
+  }
+
+  // All retries failed
+  throw { type: 'MODEL_LOAD_FAILED', original: lastError };
 }
 
 // ================== Drawing / main loop ==================
+/**
+ * Draw pose with error handling
+ */
 function drawPose(poses) {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  try {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  if (mode === 'run') runDrawGates();
-  if (mode === 'jump') jumpDrawOverlay();
+    if (mode === 'run') runDrawGates();
+    if (mode === 'jump') jumpDrawOverlay();
 
-  if (!poses.length) return;
-  const kp = {};
-  for (const point of poses[0].keypoints) kp[point.name] = point;
+    if (!poses.length) return;
+    const kp = {};
+    for (const point of poses[0].keypoints) kp[point.name] = point;
 
-  ctx.strokeStyle = '#38bdf8';
-  ctx.lineWidth = 3;
-  for (const [a, b] of CONNECTIONS) {
-    const pa = kp[a], pb = kp[b];
-    if (pa && pb && pa.score > 0.3 && pb.score > 0.3) {
-      ctx.beginPath();
-      ctx.moveTo(pa.x, pa.y);
-      ctx.lineTo(pb.x, pb.y);
-      ctx.stroke();
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 3;
+    for (const [a, b] of CONNECTIONS) {
+      const pa = kp[a], pb = kp[b];
+      if (pa && pb && pa.score > 0.3 && pb.score > 0.3) {
+        ctx.beginPath();
+        ctx.moveTo(pa.x, pa.y);
+        ctx.lineTo(pb.x, pb.y);
+        ctx.stroke();
+      }
     }
-  }
-  ctx.fillStyle = '#4ade80';
-  for (const point of poses[0].keypoints) {
-    if (point.score > 0.3) {
-      ctx.beginPath();
-      ctx.arc(point.x, point.y, 5, 0, 2 * Math.PI);
-      ctx.fill();
+    ctx.fillStyle = '#4ade80';
+    for (const point of poses[0].keypoints) {
+      if (point.score > 0.3) {
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 5, 0, 2 * Math.PI);
+        ctx.fill();
+      }
     }
-  }
 
-  if (mode === 'run') runUpdateGateCrossing(getAnkleX(kp));
-  if (mode === 'jump') jumpProcessFrame(kp);
+    if (mode === 'run') runUpdateGateCrossing(getAnkleX(kp));
+    if (mode === 'jump') jumpProcessFrame(kp);
+
+  } catch (error) {
+    logError('drawPose', error, { posesLength: poses?.length });
+    // Don't throw - let the loop continue
+  }
 }
 
 function getAnkleX(kp) {
@@ -704,51 +1030,136 @@ function getAnkleX(kp) {
   return null;
 }
 
+/**
+ * Main detection loop with error handling
+ */
+let consecutiveErrors = 0;
+const MAX_CONSECUTIVE_ERRORS = 10;
+
 async function detectLoop() {
   if (!running) return;
-  if (video.readyState >= 2) {
-    const poses = await detector.estimatePoses(video, { flipHorizontal: false });
-    drawPose(poses);
+  
+  try {
+    if (video.readyState >= 2 && detector) {
+      const poses = await detector.estimatePoses(video, { flipHorizontal: false });
+      drawPose(poses);
+      consecutiveErrors = 0; // Reset on success
+    }
+  } catch (error) {
+    consecutiveErrors++;
+    logError('detectLoop', error, { consecutiveErrors });
+    
+    if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+      running = false;
+      showErrorModal('DETECTION_FAILED', `${error.message}\n\nConsecutive errors: ${consecutiveErrors}`);
+      return;
+    }
   }
+  
   requestAnimationFrame(detectLoop);
 }
 
+/**
+ * Start application with comprehensive error handling
+ */
 async function start() {
-  startOverlay.style.display = 'none';
-  setStatus('در حال فعال‌سازی دوربین...');
-  await setupCamera();
-  resizeCanvas();
+  try {
+    // Check browser compatibility first
+    if (!checkBrowserCompatibility()) {
+      return;
+    }
 
-  window.addEventListener('resize', refreshCanvasForOrientation);
-  window.addEventListener('orientationchange', () => {
-    // videoWidth/videoHeight often update a few hundred ms after the rotation event.
-    setTimeout(refreshCanvasForOrientation, 300);
-    setTimeout(refreshCanvasForOrientation, 800);
-  });
-  if (screen.orientation && screen.orientation.addEventListener) {
-    screen.orientation.addEventListener('change', () => {
+    startOverlay.style.display = 'none';
+    setStatus('در حال فعال‌سازی دوربین...');
+
+    // Setup camera
+    try {
+      await setupCamera();
+    } catch (error) {
+      const errorType = error.type || 'CAMERA_UNKNOWN';
+      showErrorModal(errorType, error.original?.message || 'Unknown camera error');
+      return;
+    }
+
+    resizeCanvas();
+
+    window.addEventListener('resize', refreshCanvasForOrientation);
+    window.addEventListener('orientationchange', () => {
+      // videoWidth/videoHeight often update a few hundred ms after the rotation event.
       setTimeout(refreshCanvasForOrientation, 300);
+      setTimeout(refreshCanvasForOrientation, 800);
     });
+    if (screen.orientation && screen.orientation.addEventListener) {
+      screen.orientation.addEventListener('change', () => {
+        setTimeout(refreshCanvasForOrientation, 300);
+      });
+    }
+
+    setStatus('در حال بارگذاری مدل تشخیص بدن...');
+
+    // Load model
+    try {
+      await loadModel();
+    } catch (error) {
+      const errorType = error.type || 'MODEL_LOAD_FAILED';
+      showErrorModal(errorType, error.original?.message || 'Model loading failed');
+      
+      // Clean up camera stream
+      if (video.srcObject) {
+        video.srcObject.getTracks().forEach(track => track.stop());
+        video.srcObject = null;
+      }
+      return;
+    }
+
+    running = true;
+    consecutiveErrors = 0;
+    modeBar.style.display = 'flex';
+    topActions.style.display = 'flex';
+    applySettings();
+    runEnterCalibrate1();
+    detectLoop();
+
+    console.log('✅ Application started successfully');
+
+  } catch (error) {
+    logError('start', error);
+    showErrorModal('UNKNOWN_ERROR', error.message || 'Unknown error during startup');
   }
-
-  setStatus('در حال بارگذاری مدل تشخیص بدن...');
-  await loadModel();
-
-  running = true;
-  modeBar.style.display = 'flex';
-  topActions.style.display = 'flex';
-  applySettings();
-  runEnterCalibrate1();
-  detectLoop();
 }
 
 startBtn.addEventListener('click', () => {
-  start().catch((err) => {
-    setStatus('خطا: ' + err.message);
-    console.error(err);
-  });
+  start();
 });
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
+  navigator.serviceWorker.register('sw.js')
+    .then(() => console.log('✅ Service Worker registered'))
+    .catch((error) => {
+      console.warn('⚠️ Service Worker registration failed:', error);
+      // Non-critical, don't show error modal
+    });
 }
+
+// ================== GLOBAL ERROR HANDLERS ==================
+// Catch unhandled promise rejections
+window.addEventListener('unhandledrejection', (event) => {
+  logError('Unhandled Promise Rejection', event.reason);
+  console.warn('Unhandled rejection prevented from crashing app');
+  event.preventDefault(); // Prevent default browser behavior
+});
+
+// Catch global errors
+window.addEventListener('error', (event) => {
+  logError('Global Error', event.error, {
+    message: event.message,
+    filename: event.filename,
+    lineno: event.lineno,
+    colno: event.colno
+  });
+});
+
+// Log initial load
+console.log('✅ Motion Tracker loaded successfully');
+console.log('Browser:', navigator.userAgent);
+console.log('Screen:', window.innerWidth + 'x' + window.innerHeight);

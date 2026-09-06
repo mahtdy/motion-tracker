@@ -3358,8 +3358,13 @@ async function start() {
 }
 
 startBtn.addEventListener('click', () => {
+  console.log('🖱️ Start button clicked!');
   start();
 });
+
+// ================== VERSION CHECK ==================
+console.log('%c🚀 Motion Tracker v1.3.10', 'color: #22c55e; font-size: 16px; font-weight: bold');
+console.log('%cIf start button doesn\'t work, press Ctrl+Shift+R to clear cache', 'color: #f59e0b; font-size: 12px');
 
 // ================== SERVICE WORKER & UPDATE MANAGEMENT ==================
 if ('serviceWorker' in navigator) {

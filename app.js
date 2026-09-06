@@ -836,55 +836,199 @@ function clientToCanvasCoords(clientX, clientY) {
 
 // ================== Camera + model setup ==================
 /**
- * Setup camera with comprehensive error handling
+ * Get list of available video devices
+ */
+async function getAvailableCameras() {
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    return devices.filter(device => device.kind === 'videoinput');
+  } catch (error) {
+    logError('getAvailableCameras', error);
+    return [];
+  }
+}
+
+/**
+ * Find the best wide-angle camera
+ * Prefers back camera with ultra-wide or wide-angle
+ */
+async function selectBestCamera() {
+  const cameras = await getAvailableCameras();
+  
+  if (cameras.length === 0) {
+    return null;
+  }
+
+  console.log(`📷 Found ${cameras.length} camera(s):`, cameras.map(c => ({
+    id: c.deviceId,
+    label: c.label || 'Unknown'
+  })));
+
+  // Try to find back camera with wide-angle indicators in label
+  const wideAngleKeywords = ['wide', 'ultra', '0.5', '0.6', '0.7', 'back'];
+  const backCameras = cameras.filter(camera => {
+    const label = (camera.label || '').toLowerCase();
+    return label.includes('back') || label.includes('rear') || label.includes('environment');
+  });
+
+  // Among back cameras, prefer ones with wide-angle keywords
+  const wideBackCamera = backCameras.find(camera => {
+    const label = (camera.label || '').toLowerCase();
+    return wideAngleKeywords.some(keyword => label.includes(keyword));
+  });
+
+  if (wideBackCamera) {
+    console.log('✅ Selected wide-angle back camera:', wideBackCamera.label || wideBackCamera.deviceId);
+    return wideBackCamera.deviceId;
+  }
+
+  // Fall back to any back camera
+  if (backCameras.length > 0) {
+    console.log('✅ Selected back camera:', backCameras[0].label || backCameras[0].deviceId);
+    return backCameras[0].deviceId;
+  }
+
+  // Fall back to first available camera
+  console.log('⚠️ Using first available camera:', cameras[0].label || cameras[0].deviceId);
+  return cameras[0].deviceId;
+}
+
+/**
+ * Setup camera with comprehensive error handling and wide-angle selection
  */
 async function setupCamera() {
   try {
     const isPortrait = window.innerHeight >= window.innerWidth;
+
+    // Try to select the best camera (wide-angle if available)
+    let selectedCameraId = null;
+    try {
+      selectedCameraId = await selectBestCamera();
+    } catch (error) {
+      console.warn('Could not enumerate cameras, using default:', error);
+    }
+
+    // Build constraints with preference for wide-angle
     const constraints = {
       video: {
-        facingMode: { ideal: 'environment' },
-        // Match the requested resolution's orientation to the phone's actual
-        // orientation, so object-fit: cover doesn't have to crop a wide
-        // landscape frame down to a narrow strip (which looks like extreme zoom).
         width: { ideal: isPortrait ? 1080 : 1920 },
         height: { ideal: isPortrait ? 1920 : 1080 },
+        facingMode: { ideal: 'environment' },
+        // Prefer deviceId if we found a specific camera
+        ...(selectedCameraId && { deviceId: { exact: selectedCameraId } })
       },
       audio: false,
     };
 
+    console.log('📷 Requesting camera with constraints:', constraints);
+
     let stream;
-    try {
-      stream = await navigator.mediaDevices.getUserMedia(constraints);
-    } catch (error) {
-      const errorType = classifyCameraError(error);
-      logError('setupCamera - getUserMedia', error, { constraints });
-      throw { type: errorType, original: error };
-    }
+    let attemptCount = 0;
+    const maxAttempts = 3;
 
-    video.srcObject = stream;
-
-    // Some phones (especially multi-lens Android devices) default the back
-    // camera to a non-1x lens or apply digital zoom, which looks "zoomed in"
-    // with no way to undo it from the video element. Where the browser exposes
-    // a zoom capability, explicitly reset it to its minimum (widest) value.
-    const track = stream.getVideoTracks()[0];
-    if (track && track.getCapabilities) {
+    // Try multiple strategies to get the best camera
+    while (!stream && attemptCount < maxAttempts) {
+      attemptCount++;
+      
       try {
-        const caps = track.getCapabilities();
-        if (caps.zoom) {
-          await track.applyConstraints({ advanced: [{ zoom: caps.zoom.min }] });
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        console.log(`✅ Camera acquired on attempt ${attemptCount}`);
+        break;
+      } catch (error) {
+        console.warn(`Attempt ${attemptCount} failed:`, error.message);
+
+        // If exact deviceId failed, try without it
+        if (attemptCount === 1 && selectedCameraId) {
+          delete constraints.video.deviceId;
+          console.log('Retrying without exact deviceId...');
+          continue;
         }
-      } catch (e) {
-        // Not all browsers/devices support programmatic zoom control; safe to ignore.
-        console.warn('Zoom control not available:', e);
+
+        // If that failed, try basic constraints
+        if (attemptCount === 2) {
+          constraints.video = {
+            facingMode: { ideal: 'environment' }
+          };
+          console.log('Retrying with basic constraints...');
+          continue;
+        }
+
+        // Last attempt failed
+        const errorType = classifyCameraError(error);
+        logError('setupCamera - getUserMedia', error, { 
+          constraints,
+          attemptCount,
+          selectedCameraId
+        });
+        throw { type: errorType, original: error };
       }
     }
 
+    if (!stream) {
+      throw { 
+        type: 'CAMERA_UNKNOWN', 
+        original: new Error('Failed to acquire camera after multiple attempts') 
+      };
+    }
+
+    video.srcObject = stream;
+    const track = stream.getVideoTracks()[0];
+
+    // Log camera capabilities
+    if (track && track.getCapabilities) {
+      try {
+        const caps = track.getCapabilities();
+        console.log('📊 Camera capabilities:', {
+          zoom: caps.zoom ? `${caps.zoom.min} - ${caps.zoom.max}` : 'N/A',
+          focusMode: caps.focusMode || 'N/A',
+          width: caps.width ? `${caps.width.min} - ${caps.width.max}` : 'N/A',
+          height: caps.height ? `${caps.height.min} - ${caps.height.max}` : 'N/A'
+        });
+
+        // Apply optimal settings for wide-angle view
+        const constraints = {};
+        
+        // Reset zoom to minimum (widest view)
+        if (caps.zoom) {
+          constraints.zoom = caps.zoom.min;
+          console.log(`🔍 Setting zoom to minimum: ${caps.zoom.min}`);
+        }
+
+        // Set focus mode to continuous if available
+        if (caps.focusMode && caps.focusMode.includes('continuous')) {
+          constraints.focusMode = 'continuous';
+        }
+
+        // Apply constraints if we have any
+        if (Object.keys(constraints).length > 0) {
+          await track.applyConstraints({ advanced: [constraints] });
+          console.log('✅ Applied camera optimizations:', constraints);
+        }
+
+      } catch (e) {
+        // Non-critical - some browsers don't support all capabilities
+        console.warn('⚠️ Could not apply camera optimizations:', e.message);
+      }
+    }
+
+    // Log final track settings
+    const settings = track.getSettings();
+    console.log('📷 Final camera settings:', {
+      deviceId: settings.deviceId,
+      width: settings.width,
+      height: settings.height,
+      facingMode: settings.facingMode,
+      aspectRatio: settings.aspectRatio?.toFixed(2)
+    });
+
     return new Promise((resolve, reject) => {
       video.onloadedmetadata = () => {
+        console.log(`🎥 Video loaded: ${video.videoWidth}x${video.videoHeight}`);
         video.play()
-          .then(() => resolve())
+          .then(() => {
+            console.log('▶️ Video playing');
+            resolve();
+          })
           .catch((err) => {
             logError('setupCamera - video.play', err);
             reject({ type: 'CAMERA_UNKNOWN', original: err });
@@ -893,7 +1037,10 @@ async function setupCamera() {
       
       // Timeout after 10 seconds
       setTimeout(() => {
-        reject({ type: 'CAMERA_UNKNOWN', original: new Error('Camera setup timeout') });
+        reject({ 
+          type: 'CAMERA_UNKNOWN', 
+          original: new Error('Camera setup timeout after 10 seconds') 
+        });
       }, 10000);
     });
 

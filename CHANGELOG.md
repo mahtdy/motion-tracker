@@ -6,6 +6,58 @@
 
 ---
 
+## [1.2.0] - 2024-01-XX
+
+### ✨ Added (اضافه شده)
+
+#### 📷 سیستم انتخاب دوربین هوشمند
+- تابع `getAvailableCameras()` برای دریافت لیست دوربین‌های موجود
+- تابع `selectBestCamera()` برای انتخاب بهترین دوربین wide-angle
+- شناسایی دوربین‌های ultra-wide با کلمات کلیدی (wide, ultra, 0.5, etc.)
+- اولویت‌بندی: ultra-wide > wide > back > first available
+- لاگ جامع برای capabilities و settings دوربین
+
+#### 🔄 Retry Strategy پیشرفته
+- تلاش چندمرحله‌ای برای دسترسی به دوربین (حداکثر 3 بار)
+- Fallback strategy: exact deviceId → without deviceId → basic constraints
+- بازیابی خودکار در صورت شکست constraints
+
+#### 📊 Camera Logging سیستم
+- نمایش تمام دوربین‌های موجود با label
+- لاگ capabilities (zoom range, focus mode, resolution)
+- لاگ final settings (deviceId, width, height, facingMode, aspect ratio)
+- لاگ مراحل video loading و playing
+
+### 🔧 Changed (تغییر یافته)
+
+#### app.js
+- بازنویسی کامل تابع `setupCamera()` با قابلیت‌های جدید
+- اضافه کردن ~200 خط کد برای مدیریت دوربین
+- بهبود error handling با context بیشتر
+
+#### sw.js
+- ارتقا نسخه cache از `v8` به `v9`
+
+### 🐛 Fixed (رفع شده)
+- مشکل zoom in بیش از حد در گوشی‌های multi-lens (Samsung, Huawei, etc.)
+- انتخاب اشتباه دوربین (telephoto به جای wide-angle)
+- عدم دسترسی به دوربین با constraints سفت و سخت
+
+### 📈 Improved (بهبود یافته)
+- کیفیت تصویر با انتخاب بهترین دوربین
+- field of view گسترده‌تر با wide-angle lens
+- سازگاری با انواع گوشی‌ها (Android, iOS)
+- Debugging با لاگ‌های جامع
+
+### 🎯 Technical Details
+- 3 تلاش برای دسترسی به دوربین با strategies مختلف
+- شناسایی 6+ کلمه کلیدی برای تشخیص wide-angle
+- زوم reset به minimum برای بیشترین field of view
+- فوکوس continuous برای بهترین کیفیت
+- Timeout 10 ثانیه با پیام خطای واضح
+
+---
+
 ## [1.1.0] - 2024-01-XX
 
 ### ✨ Added (اضافه شده)

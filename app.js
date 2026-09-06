@@ -2853,13 +2853,119 @@ startBtn.addEventListener('click', () => {
   start();
 });
 
+// ================== SERVICE WORKER & UPDATE MANAGEMENT ==================
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js')
-    .then(() => console.log('✅ Service Worker registered'))
+    .then((registration) => {
+      console.log('✅ Service Worker registered');
+      
+      // Check for updates every 60 seconds
+      setInterval(() => {
+        registration.update();
+      }, 60000);
+      
+      // Listen for updates
+      registration.addEventListener('updatefound', () => {
+        const newWorker = registration.installing;
+        console.log('🔄 Service Worker update found');
+        
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            console.log('✨ New Service Worker installed, showing update notification');
+            showUpdateNotification(newWorker);
+          }
+        });
+      });
+    })
     .catch((error) => {
       console.warn('⚠️ Service Worker registration failed:', error);
       // Non-critical, don't show error modal
     });
+  
+  // Listen for messages from service worker
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'SW_UPDATED') {
+      console.log(`📢 Service Worker updated to version ${event.data.version}`);
+    }
+  });
+}
+
+/**
+ * Show update notification to user
+ */
+function showUpdateNotification(newWorker) {
+  const modal = document.createElement('div');
+  modal.id = 'updateModal';
+  modal.style.cssText = `
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    background: rgba(0, 0, 0, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  `;
+  
+  modal.innerHTML = `
+    <div style="
+      background: #1e293b;
+      border: 2px solid #3b82f6;
+      border-radius: 20px;
+      padding: 24px;
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+      color: #e2e8f0;
+    ">
+      <div style="font-size: 48px; margin-bottom: 16px;">✨</div>
+      <h3 style="color: #3b82f6; margin-bottom: 12px; font-size: 18px;">نسخه جدید موجوده!</h3>
+      <p style="color: #94a3b8; margin-bottom: 20px; line-height: 1.6; font-size: 14px;">
+        یک نسخه جدید از حرکت‌سنج آماده است.<br>
+        برای استفاده از آخرین بهبودها، صفحه رو بارگذاری مجدد کن.
+      </p>
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <button id="updateReloadBtn" style="
+          background: #22c55e;
+          color: #052e16;
+          border: none;
+          padding: 14px 24px;
+          font-size: 16px;
+          font-weight: bold;
+          border-radius: 999px;
+          cursor: pointer;
+          min-height: 44px;
+        ">🔄 بارگذاری مجدد</button>
+        <button id="updateLaterBtn" style="
+          background: transparent;
+          color: #94a3b8;
+          border: 2px solid #475569;
+          padding: 12px 24px;
+          font-size: 14px;
+          font-weight: bold;
+          border-radius: 999px;
+          cursor: pointer;
+          min-height: 44px;
+        ">بعداً</button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  document.getElementById('updateReloadBtn').onclick = () => {
+    // Tell service worker to skip waiting
+    if (newWorker) {
+      newWorker.postMessage({ type: 'SKIP_WAITING' });
+    }
+    
+    // Reload page
+    window.location.reload();
+  };
+  
+  document.getElementById('updateLaterBtn').onclick = () => {
+    modal.remove();
+  };
 }
 
 // ================== GLOBAL ERROR HANDLERS ==================

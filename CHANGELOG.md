@@ -6,6 +6,136 @@
 
 ---
 
+## [1.3.7] - 2024-01-XX
+
+### ✨ Added (اضافه شده)
+
+#### 🔄 Advanced Service Worker System
+- سه استراتژی caching مختلف:
+  - **Cache First**: برای فایل‌های core app
+  - **Stale While Revalidate**: برای CDN resources
+  - **Network First**: برای بقیه requests
+- تابع `cacheFirst()` - cache اولویت دارد
+- تابع `staleWhileRevalidate()` - cache قدیمی + بروزرسانی background
+- تابع `networkFirst()` - network اولویت با fallback به cache
+
+#### 🔔 Update Notification System
+- تشخیص خودکار update های service worker
+- تابع `showUpdateNotification()` - modal اطلاع‌رسانی
+- دکمه "بارگذاری مجدد" برای اعمال update
+- دکمه "بعداً" برای به تعویق انداختن
+- بررسی update هر 60 ثانیه
+- Communication بین SW و client
+
+#### 📦 Smart Cache Management
+- Cache busting با timestamp
+- تابع `getCacheTime()` - دریافت زمان cache
+- تابع `setCacheTime()` - ذخیره زمان cache
+- Expire کردن cache بعد از 7 روز
+- پاک‌سازی خودکار cache های قدیمی
+- سه cache جداگانه: core, CDN, runtime
+
+#### 📡 Offline Fallback Page
+- تابع `getOfflineFallback()` - صفحه آفلاین
+- صفحه زیبای فارسی با:
+  - آیکن 📡
+  - پیام واضح "اتصال اینترنت قطع شده"
+  - دکمه "تلاش مجدد"
+  - طراحی responsive
+- نمایش برای navigation requests
+
+#### 🌐 CDN Resource Optimization
+- Pattern matching برای CDN ها:
+  - cdn.jsdelivr.net
+  - fonts.googleapis.com
+  - fonts.gstatic.com
+- تابع `isCDNResource()` - تشخیص CDN
+- Background update برای CDN resources
+- سرعت load بهتر با stale-while-revalidate
+
+### 🔧 Changed (تغییر یافته)
+
+#### sw.js
+- بازنویسی کامل از 25 خط به ~350 خط
+- اضافه کردن 12 تابع جدید
+- سه cache strategy مختلف
+- Logging کامل برای debugging
+- Meta cache برای timestamps
+- Version constant: 1.3.7
+- Cache names: v17
+
+#### app.js
+- بازنویسی registration handler
+- اضافه کردن update detection
+- اضافه کردن message listener
+- تابع `showUpdateNotification()` - ~80 خط
+- Auto-check update هر 60 ثانیه
+- ~100 خط کد جدید
+
+#### index.html
+- آپدیت نسخه از 1.3.6 به 1.3.7
+
+#### manifest.json
+- آپدیت version از 1.3.6 به 1.3.7
+
+### 🐛 Fixed (رفع شده)
+- Cache invalidation نامناسب
+- عدم اطلاع کاربر از update
+- CDN resources بدون cache
+- عدم offline support
+- Cache های قدیمی پاک نمی‌شدند
+
+### 📈 Improved (بهبود یافته)
+- سرعت load با smart caching
+- User experience با update notification
+- Offline capability با fallback page
+- Performance با CDN caching
+- Cache management با auto-cleanup
+
+### 🎯 Technical Details
+- 12 تابع جدید در sw.js
+- 3 cache strategy پیاده‌سازی شده
+- MAX_CACHE_AGE: 7 days (604800000 ms)
+- Update check interval: 60 seconds
+- 3 cache stores: core, CDN, runtime
+- Meta cache برای timestamps
+- Message passing بین SW و client
+
+### 📊 Cache Strategies
+```javascript
+Cache First (core files):
+- Check cache first
+- Fetch if not cached
+- Expire after 7 days
+
+Stale While Revalidate (CDN):
+- Return cached immediately
+- Update in background
+- Always fresh eventually
+
+Network First (runtime):
+- Try network first
+- Fall back to cache
+- Offline fallback for navigation
+```
+
+### 🎨 Update Modal
+- Modal با border آبی (#3b82f6)
+- آیکن ✨ برای update
+- دو دکمه: بارگذاری مجدد (سبز) و بعداً (خاکستری)
+- پیام فارسی واضح
+- Auto-reload بعد از تایید
+
+### 📡 Offline Page
+- Background تیره (#0f172a)
+- آیکن 📡
+- عنوان سبز (#4ade80)
+- دکمه reload
+- Responsive design
+- Persian text
+
+---
+
 ## [1.3.6] - 2024-01-XX
 
 ### ✨ Added (اضافه شده)

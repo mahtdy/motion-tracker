@@ -368,8 +368,12 @@ function updateGateControls() {
 document.getElementById('stage').addEventListener('click', (e) => {
   if (mode !== 'run') return;
   if (runPhase !== 'calibrate1' && runPhase !== 'calibrate2') return;
-  // Ignore taps that land on the gate-controls panel itself
-  if (e.target.closest && e.target.closest('#gateControls')) return;
+  // Ignore taps that land on the gate-controls bar or the guide banner itself,
+  // so dismissing the guide (or tapping its buttons) never gets misread as
+  // placing an obstacle point.
+  if (e.target.closest && (e.target.closest('#gateControls') || e.target.closest('#guideOverlay'))) return;
+  // A real tap on the video means the person no longer needs the guide banner.
+  guideOverlay.classList.remove('visible');
   const point = clientToCanvasCoords(e.clientX, e.clientY);
   const idx = runPhase === 'calibrate1' ? 0 : 1;
   gatePoints[idx] = point;

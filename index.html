@@ -162,21 +162,51 @@
     margin: 8px 0;
   }
 
-  /* Gate calibration controls (run mode) */
+  /* Gate calibration controls (run mode): a slim bar, not a big sheet,
+     so most of the frame stays visible for precise tapping. */
   #gateControls {
-    padding: 14px 20px;
+    position: absolute;
+    bottom: calc(env(safe-area-inset-bottom, 16px) + 16px);
+    left: 20px;
+    right: 20px;
+    z-index: 6;
+    background: rgba(15, 23, 42, 0.92);
+    border: 2px solid #334155;
+    border-radius: 16px;
+    padding: 12px 16px;
+    display: none;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  }
+  #gateControls.visible { display: flex; }
+  #gateHint {
+    flex: 1;
+    font-size: 13px;
+    color: #94a3b8;
+    text-align: right;
   }
   #gateControls .btnRow {
+    display: flex;
     flex-direction: row;
-    gap: 10px;
+    gap: 8px;
+    margin: 0;
   }
-  #gateControls .btnRow button {
-    margin-top: 0;
-  }
-  #gateHint {
-    margin-bottom: 10px;
+  #gateControls button {
+    width: auto;
+    margin: 0;
+    padding: 10px 16px;
     font-size: 14px;
+    white-space: nowrap;
+  }
+  #gateControls button:disabled {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+  #gateControls button.secondary {
+    background: transparent;
     color: #94a3b8;
+    border: 2px solid #475569;
   }
 
   /* History Panel */
@@ -263,41 +293,59 @@
     color: #4ade80;
   }
 
-  /* Guide overlay */
+  /* Guide banner: a small non-blocking bar, NOT a full-screen overlay,
+     so the video/image stays visible and tappable underneath at all times. */
   #guideOverlay {
     position: absolute;
-    inset: 0;
-    z-index: 15;
-    background: rgba(0, 0, 0, 0.85);
+    top: calc(env(safe-area-inset-top, 16px) + 92px);
+    left: 16px;
+    right: 16px;
+    z-index: 8;
     display: none;
-    align-items: center;
     justify-content: center;
-    flex-direction: column;
-    padding: 24px;
-    text-align: center;
+    pointer-events: none; /* clicks pass through the empty space around the banner */
   }
   #guideOverlay.visible { display: flex; }
   #guideOverlay .guideContent {
-    max-width: 340px;
-    background: rgba(15, 23, 42, 0.95);
-    border-radius: 20px;
-    padding: 24px;
-    border: 2px solid #334155;
+    pointer-events: auto;
+    max-width: 440px;
+    width: 100%;
+    background: rgba(15, 23, 42, 0.94);
+    border-radius: 16px;
+    padding: 12px 14px;
+    border: 1px solid #334155;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-align: right;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
   }
   #guideOverlay .guideIcon {
-    font-size: 64px;
-    margin-bottom: 16px;
+    font-size: 26px;
+    flex-shrink: 0;
+  }
+  #guideOverlay .guideTextWrap {
+    flex: 1;
+    min-width: 0;
   }
   #guideOverlay h3 {
     color: #4ade80;
-    margin-bottom: 12px;
-    font-size: 20px;
+    margin-bottom: 2px;
+    font-size: 13px;
   }
   #guideOverlay p {
     color: #e2e8f0;
-    font-size: 15px;
-    line-height: 1.6;
-    margin-bottom: 16px;
+    font-size: 12px;
+    line-height: 1.4;
+    margin-bottom: 0;
+  }
+  #guideOverlay #guideCloseBtn {
+    flex-shrink: 0;
+    width: auto;
+    margin-top: 0;
+    padding: 8px 14px;
+    font-size: 13px;
+    white-space: nowrap;
   }
 
   /* Landscape optimization */
@@ -358,13 +406,15 @@
     <button id="settingsBtn" style="background: rgba(30, 41, 59, 0.9); color: #94a3b8; border: 1px solid #475569; padding: 8px 12px; border-radius: 8px; font-size: 20px;">⚙️</button>
   </div>
 
-  <!-- Guide overlay -->
+  <!-- Guide banner (small, non-blocking — video stays visible underneath) -->
   <div id="guideOverlay">
     <div class="guideContent">
       <div class="guideIcon" id="guideIcon">👆</div>
-      <h3 id="guideTitle">راهنما</h3>
-      <p id="guideText">راهنمایی اینجا نمایش داده می‌شود</p>
-      <button id="guideCloseBtn" style="background: #22c55e; color: #052e16; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 999px; margin-top: 8px;">فهمیدم</button>
+      <div class="guideTextWrap">
+        <h3 id="guideTitle">راهنما</h3>
+        <p id="guideText">راهنمایی اینجا نمایش داده می‌شود</p>
+      </div>
+      <button id="guideCloseBtn" style="background: #22c55e; color: #052e16; border: none; border-radius: 999px; font-weight: bold;">فهمیدم</button>
     </div>
   </div>
 
@@ -398,7 +448,7 @@
   </div>
 
   <!-- Run mode: gate calibration controls (allows correcting a mis-tapped point) -->
-  <div id="gateControls" class="panel">
+  <div id="gateControls">
     <div id="gateHint">روی تصویر ضربه بزن</div>
     <div class="btnRow">
       <button id="gateBackBtn" class="secondary" style="display:none;">بازگشت</button>

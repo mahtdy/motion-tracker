@@ -1000,6 +1000,8 @@ let cameraSwitcherBtn = null;
  */
 async function initCameraSwitcher() {
   try {
+    console.log('[Camera Switcher] Initializing...');
+    
     // Get list of cameras
     availableCameras = await enumerateDevices();
     
@@ -1010,17 +1012,23 @@ async function initCameraSwitcher() {
       if (availableCameras.length > 1) {
         cameraSwitcherBtn.disabled = false;
         cameraSwitcherBtn.style.opacity = '1';
+        console.log('[Camera Switcher] Button enabled');
       } else {
         cameraSwitcherBtn.disabled = true;
         cameraSwitcherBtn.style.opacity = '0.5';
+        console.log('[Camera Switcher] Button disabled (only 1 camera)');
       }
+    } else {
+      console.warn('[Camera Switcher] Button not found');
     }
     
     // Update camera info display
     updateCameraInfoDisplay();
     
+    console.log('[Camera Switcher] Initialization complete');
+    
   } catch (error) {
-    console.error('Failed to enumerate cameras:', error);
+    console.error('[Camera Switcher] Initialization failed:', error);
   }
 }
 
@@ -3333,14 +3341,15 @@ async function start() {
     modeBar.style.display = 'flex';
     topActions.style.display = 'flex';
     applySettings();
-    
-    // Initialize camera switcher
-    await initCameraSwitcher();
-    
     runEnterCalibrate1();
     detectLoop();
 
     console.log('✅ Application started successfully');
+    
+    // Initialize camera switcher after everything is ready
+    initCameraSwitcher().catch(error => {
+      console.warn('Camera switcher initialization failed:', error);
+    });
 
   } catch (error) {
     logError('start', error);

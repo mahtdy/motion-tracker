@@ -66,6 +66,242 @@ let running = false;
 // mode: 'run' | 'jump'
 let mode = 'run';
 
+// ================== PERFORMANCE MONITORING SYSTEM ==================
+let performanceMode = 'normal'; // 'normal' | 'low-power'
+let fpsHistory = [];
+let lastFrameTime = performance.now();
+let frameCount = 0;
+let currentFPS = 60;
+let lowFPSWarningShown = false;
+
+/**
+ * Calculate current FPS
+ */
+function calculateFPS() {
+  const now = performance.now();
+  const delta = now - lastFrameTime;
+  lastFrameTime = now;
+  
+  if (delta > 0) {
+    const fps = 1000 / delta;
+    fpsHistory.push(fps);
+    
+    // Keep last 30 frames
+    if (fpsHistory.length > 30) {
+      fpsHistory.shift();
+    }
+    
+    // Calculate average FPS
+    if (fpsHistory.length >= 10) {
+      currentFPS = fpsHistory.reduce((a, b) => a + b) / fpsHistory.length;
+    }
+  }
+  
+  frameCount++;
+  
+  // Check FPS every 60 frames (~1 second)
+  if (frameCount % 60 === 0) {
+    checkPerformance();
+  }
+}
+
+/**
+ * Check performance and show warning if needed
+ */
+function checkPerformance() {
+  console.log(`⚡ Current FPS: ${currentFPS.toFixed(1)}`);
+  
+  // Update FPS indicator if exists
+  updateFPSIndicator();
+  
+  // Show warning if FPS is too low
+  if (currentFPS < 15 && !lowFPSWarningShown && performanceMode === 'normal') {
+    lowFPSWarningShown = true;
+    showLowFPSWarning();
+  }
+  
+  // Auto-enable low-power mode if FPS drops below 10
+  if (currentFPS < 10 && performanceMode === 'normal') {
+    console.warn('⚠️ Performance critical! Auto-enabling low-power mode');
+    enableLowPowerMode(true);
+  }
+}
+
+/**
+ * Show low FPS warning
+ */
+function showLowFPSWarning() {
+  const warning = document.createElement('div');
+  warning.id = 'fpsWarning';
+  warning.style.cssText = `
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 9998;
+    background: rgba(15, 23, 42, 0.98);
+    border: 2px solid #f59e0b;
+    border-radius: 20px;
+    padding: 24px;
+    max-width: 90%;
+    width: 360px;
+    text-align: center;
+    color: #e2e8f0;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+  `;
+  
+  warning.innerHTML = `
+    <div style="font-size: 40px; margin-bottom: 12px;">⚡</div>
+    <h3 style="color: #f59e0b; margin-bottom: 12px; font-size: 18px;">عملکرد ضعیف تشخیص داده شد</h3>
+    <p style="color: #94a3b8; margin-bottom: 16px; font-size: 14px; line-height: 1.6;">
+      FPS فعلی: ${currentFPS.toFixed(1)}<br>
+      برای بهبود عملکرد، حالت کم‌مصرف رو فعال کن.
+    </p>
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <button id="enableLowPowerBtn" style="
+        background: #22c55e;
+        color: #052e16;
+        border: none;
+        padding: 12px 20px;
+        font-size: 15px;
+        font-weight: bold;
+        border-radius: 999px;
+        cursor: pointer;
+        min-height: 44px;
+      ">⚡ فعال‌سازی حالت کم‌مصرف</button>
+      <button id="dismissFPSWarningBtn" style="
+        background: transparent;
+        color: #94a3b8;
+        border: 2px solid #475569;
+        padding: 10px 20px;
+        font-size: 14px;
+        font-weight: bold;
+        border-radius: 999px;
+        cursor: pointer;
+        min-height: 44px;
+      ">ادامه با حالت عادی</button>
+    </div>
+  `;
+  
+  document.body.appendChild(warning);
+  
+  document.getElementById('enableLowPowerBtn').onclick = () => {
+    warning.remove();
+    enableLowPowerMode();
+  };
+  
+  document.getElementById('dismissFPSWarningBtn').onclick = () => {
+    warning.remove();
+  };
+}
+
+/**
+ * Enable/disable low-power mode
+ */
+function enableLowPowerMode(auto = false) {
+  performanceMode = 'low-power';
+  console.log('⚡ Low-power mode enabled' + (auto ? ' (auto)' : ''));
+  
+  // Update settings
+  const settings = getSettings();
+  settings.lowPowerMode = true;
+  saveSettings(settings);
+  
+  // Update UI
+  updatePerformanceModeUI();
+  
+  // Show notification
+  if (!auto) {
+    setStatus('حالت کم‌مصرف فعال شد ⚡');
+    setTimeout(() => {
+      if (mode === 'run' && runPhase === 'ready') {
+        setStatus('آماده! از کنار یکی از موانع رد شو تا زمان شروع بشه');
+      } else if (mode === 'jump' && jumpPhase === 'ready') {
+        setStatus('آماده! بپر 🤸');
+      }
+    }, 2000);
+  }
+}
+
+function disableLowPowerMode() {
+  performanceMode = 'normal';
+  console.log('⚡ Low-power mode disabled');
+  
+  // Update settings
+  const settings = getSettings();
+  settings.lowPowerMode = false;
+  saveSettings(settings);
+  
+  // Update UI
+  updatePerformanceModeUI();
+  
+  // Reset warning flag
+  lowFPSWarningShown = false;
+  
+  setStatus('حالت عادی فعال شد');
+  setTimeout(() => {
+    if (mode === 'run' && runPhase === 'ready') {
+      setStatus('آماده! از کنار یکی از موانع رد شو تا زمان شروع بشه');
+    } else if (mode === 'jump' && jumpPhase === 'ready') {
+      setStatus('آماده! بپر 🤸');
+    }
+  }, 2000);
+}
+
+/**
+ * Update performance mode UI elements
+ */
+function updatePerformanceModeUI() {
+  const checkbox = document.getElementById('lowPowerMode');
+  if (checkbox) {
+    checkbox.checked = performanceMode === 'low-power';
+  }
+}
+
+/**
+ * Create/update FPS indicator
+ */
+function updateFPSIndicator() {
+  let indicator = document.getElementById('fpsIndicator');
+  
+  if (!indicator) {
+    indicator = document.createElement('div');
+    indicator.id = 'fpsIndicator';
+    indicator.style.cssText = `
+      position: absolute;
+      top: calc(env(safe-area-inset-top, 16px) + 8px);
+      left: calc(100% - 80px);
+      z-index: 4;
+      background: rgba(15, 23, 42, 0.75);
+      color: #4ade80;
+      padding: 4px 8px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: bold;
+      pointer-events: none;
+    `;
+    document.getElementById('stage').appendChild(indicator);
+  }
+  
+  // Update color based on FPS
+  let color = '#4ade80'; // Green
+  if (currentFPS < 15) {
+    color = '#ef4444'; // Red
+  } else if (currentFPS < 25) {
+    color = '#f59e0b'; // Orange
+  } else if (currentFPS < 40) {
+    color = '#facc15'; // Yellow
+  }
+  
+  indicator.style.color = color;
+  indicator.textContent = `${currentFPS.toFixed(0)} FPS`;
+  
+  // Add performance mode indicator
+  if (performanceMode === 'low-power') {
+    indicator.textContent += ' ⚡';
+  }
+}
+
 // ================== ORIENTATION & RESOLUTION MANAGEMENT ==================
 let currentOrientation = null; // 'portrait' | 'landscape'
 let currentCameraStream = null;
@@ -485,10 +721,16 @@ function getSettings() {
     return data ? JSON.parse(data) : {
       jumpThresholdRatio: 0.12,
       landThresholdRatio: 0.06,
-      calibFrames: 20
+      calibFrames: 20,
+      lowPowerMode: false
     };
   } catch (e) {
-    return { jumpThresholdRatio: 0.12, landThresholdRatio: 0.06, calibFrames: 20 };
+    return { 
+      jumpThresholdRatio: 0.12, 
+      landThresholdRatio: 0.06, 
+      calibFrames: 20,
+      lowPowerMode: false
+    };
   }
 }
 
@@ -508,6 +750,12 @@ function loadSettingsUI() {
   document.getElementById('jumpSensValue').textContent = Math.round(settings.jumpThresholdRatio * 100) + '%';
   document.getElementById('landSensValue').textContent = Math.round(settings.landThresholdRatio * 100) + '%';
   document.getElementById('calibFramesValue').textContent = settings.calibFrames + ' فریم';
+  document.getElementById('lowPowerMode').checked = settings.lowPowerMode || false;
+  
+  // Update performance mode
+  if (settings.lowPowerMode) {
+    performanceMode = 'low-power';
+  }
 }
 
 settingsBtn.addEventListener('click', () => {
@@ -516,12 +764,22 @@ settingsBtn.addEventListener('click', () => {
 });
 
 closeSettingsBtn.addEventListener('click', () => {
+  const lowPowerChecked = document.getElementById('lowPowerMode').checked;
   const settings = {
     jumpThresholdRatio: parseFloat(document.getElementById('jumpSensitivity').value),
     landThresholdRatio: parseFloat(document.getElementById('landSensitivity').value),
-    calibFrames: parseInt(document.getElementById('calibFrames').value)
+    calibFrames: parseInt(document.getElementById('calibFrames').value),
+    lowPowerMode: lowPowerChecked
   };
   saveSettings(settings);
+  
+  // Apply performance mode change
+  if (lowPowerChecked && performanceMode === 'normal') {
+    enableLowPowerMode();
+  } else if (!lowPowerChecked && performanceMode === 'low-power') {
+    disableLowPowerMode();
+  }
+  
   applySettings();
   settingsPanel.classList.remove('visible');
 });
@@ -1295,9 +1553,31 @@ function drawPose(poses) {
     const kp = {};
     for (const point of poses[0].keypoints) kp[point.name] = point;
 
+    // Essential keypoints for performance mode
+    const essentialKeypoints = [
+      'left_hip', 'right_hip',
+      'left_knee', 'right_knee',
+      'left_ankle', 'right_ankle'
+    ];
+    
+    // Essential connections for performance mode
+    const essentialConnections = [
+      ['left_hip', 'right_hip'],
+      ['left_hip', 'left_knee'],
+      ['left_knee', 'left_ankle'],
+      ['right_hip', 'right_knee'],
+      ['right_knee', 'right_ankle']
+    ];
+
+    // Choose connections based on performance mode
+    const connectionsToRender = performanceMode === 'low-power' 
+      ? essentialConnections 
+      : CONNECTIONS;
+
     ctx.strokeStyle = '#38bdf8';
-    ctx.lineWidth = 3;
-    for (const [a, b] of CONNECTIONS) {
+    ctx.lineWidth = performanceMode === 'low-power' ? 2 : 3;
+    
+    for (const [a, b] of connectionsToRender) {
       const pa = kp[a], pb = kp[b];
       if (pa && pb && pa.score > 0.3 && pb.score > 0.3) {
         ctx.beginPath();
@@ -1306,12 +1586,27 @@ function drawPose(poses) {
         ctx.stroke();
       }
     }
+    
     ctx.fillStyle = '#4ade80';
-    for (const point of poses[0].keypoints) {
-      if (point.score > 0.3) {
-        ctx.beginPath();
-        ctx.arc(point.x, point.y, 5, 0, 2 * Math.PI);
-        ctx.fill();
+    
+    // Draw only essential keypoints in low-power mode
+    if (performanceMode === 'low-power') {
+      for (const keypointName of essentialKeypoints) {
+        const point = kp[keypointName];
+        if (point && point.score > 0.3) {
+          ctx.beginPath();
+          ctx.arc(point.x, point.y, 4, 0, 2 * Math.PI);
+          ctx.fill();
+        }
+      }
+    } else {
+      // Draw all keypoints in normal mode
+      for (const point of poses[0].keypoints) {
+        if (point.score > 0.3) {
+          ctx.beginPath();
+          ctx.arc(point.x, point.y, 5, 0, 2 * Math.PI);
+          ctx.fill();
+        }
       }
     }
 
@@ -1345,6 +1640,15 @@ async function detectLoop() {
   
   try {
     if (video.readyState >= 2 && detector) {
+      // Calculate FPS
+      calculateFPS();
+      
+      // Skip frames in low-power mode (process every other frame)
+      if (performanceMode === 'low-power' && frameCount % 2 === 1) {
+        requestAnimationFrame(detectLoop);
+        return;
+      }
+      
       const poses = await detector.estimatePoses(video, { flipHorizontal: false });
       drawPose(poses);
       consecutiveErrors = 0; // Reset on success

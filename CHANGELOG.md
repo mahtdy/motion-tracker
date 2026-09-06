@@ -6,6 +6,86 @@
 
 ---
 
+## [1.3.2] - 2024-01-XX
+
+### ✨ Added (اضافه شده)
+
+#### ⚡ Performance Monitoring System
+- تابع `calculateFPS()` - محاسبه FPS واقعی (میانگین 30 فریم اخیر)
+- تابع `checkPerformance()` - بررسی عملکرد و نمایش هشدار
+- تابع `showLowFPSWarning()` - نمایش هشدار FPS پایین
+- تابع `updateFPSIndicator()` - نمایش FPS در گوشه صفحه
+- نمایشگر FPS با رنگ‌بندی (سبز >40, زرد 25-40, نارنجی 15-25, قرمز <15)
+- هشدار خودکار در FPS زیر 15
+- فعال‌سازی خودکار حالت کم‌مصرف در FPS زیر 10
+
+#### ⚡ Low-Power Mode (حالت کم‌مصرف)
+- گزینه "حالت کم‌مصرف" در Settings Panel
+- تابع `enableLowPowerMode()` و `disableLowPowerMode()`
+- Skip کردن هر فریم دیگر در detectLoop (30 FPS → 15 FPS)
+- کاهش تعداد keypoint های رسم شده (فقط 6 keypoint ضروری)
+- کاهش تعداد connection های رسم شده (5 بجای 12)
+- کوچک‌تر کردن دایره‌های keypoint (5px → 4px)
+- نازک‌تر کردن خطوط skeleton (3px → 2px)
+
+#### 🎯 Essential Keypoints Mode
+- انتخاب هوشمند keypoints (hips, knees, ankles برای jump/run)
+- رسم فقط keypoint های ضروری در low-power mode
+- حفظ دقت اندازه‌گیری با کاهش overhead رسم
+
+#### 🔧 Performance Settings Integration
+- ذخیره lowPowerMode در localStorage
+- آپدیت UI checkbox بر اساس تنظیمات
+- Apply خودکار تنظیمات در startup
+
+### 🔧 Changed (تغییر یافته)
+
+#### app.js
+- اضافه کردن ~300 خط کد برای performance monitoring
+- بازنویسی تابع `detectLoop()` با FPS calculation و frame skipping
+- بازنویسی تابع `drawPose()` با essential keypoints mode
+- بهبود تابع `getSettings()` - اضافه کردن lowPowerMode
+- بهبود تابع `loadSettingsUI()` - load کردن lowPowerMode checkbox
+- بهبود handler `closeSettingsBtn` - apply کردن lowPowerMode
+
+#### index.html
+- اضافه کردن checkbox "حالت کم‌مصرف" در Settings Panel
+- توضیحات فارسی برای حالت کم‌مصرف
+- آپدیت نسخه از 1.3.0 به 1.3.2
+
+#### sw.js
+- ارتقا نسخه cache از `v11` به `v12`
+
+### 🐛 Fixed (رفع شده)
+- کندی در گوشی‌های ضعیف
+- FPS پایین در طول detection
+- استفاده زیاد از CPU/GPU
+- عدم تشخیص مشکلات performance
+
+### 📈 Improved (بهبود یافته)
+- عملکرد در گوشی‌های ضعیف با low-power mode
+- نرخ فریم (FPS) با frame skipping
+- مصرف باتری با کاهش محاسبات رسم
+- Visibility با FPS indicator
+- User experience با هشدار خودکار و راهنمایی
+
+### 🎯 Technical Details
+- 7 متغیر global جدید: `performanceMode`, `fpsHistory`, `lastFrameTime`, etc.
+- 6 تابع جدید برای performance management
+- محاسبه میانگین FPS از 30 فریم اخیر
+- بررسی performance هر 60 فریم (~1 ثانیه)
+- کاهش 58% تعداد keypoint های رسم شده (17 → 6)
+- کاهش 58% تعداد connection های رسم شده (12 → 5)
+- کاهش 50% نرخ detection در low-power mode
+
+### 🎨 Visual Indicators
+- نمایشگر FPS در گوشه بالا-چپ
+- آیکن ⚡ در کنار FPS برای نشان دادن low-power mode
+- Modal هشدار FPS پایین با دکمه فعال‌سازی
+- رنگ‌بندی FPS indicator براساس عملکرد
+
+---
+
 ## [1.3.1] - 2024-01-XX
 
 ### ✨ Added (اضافه شده)

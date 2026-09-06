@@ -247,7 +247,7 @@ function isPoseInFrame(keypoints) {
   };
   
   for (const kp of keypoints) {
-    if (kp.score > FRAME_TRACKING_SETTINGS.minConfidence) {
+    if (kp.score > currentConfidenceThreshold) {
       // Check if keypoint is within frame with margin
       if (kp.x >= margin.left && kp.x <= margin.right &&
           kp.y >= margin.top && kp.y <= margin.bottom) {
@@ -442,6 +442,244 @@ function resetFrameTracking() {
   timingPaused = false;
   pausedElapsedTime = 0;
   lastWarningTime = 0;
+}
+
+// ================== LOW LIGHT DETECTION & QUALITY SYSTEM ==================
+/**
+ * Low light detection settings
+ */
+const LIGHT_DETECTION_SETTINGS = {
+  checkInterval: 3000, // بررسی هر 3 ثانیه
+  lowLightThreshold: 0.35, // اگر میانگین confidence زیر 35% بود
+  normalConfidenceThreshold: 0.3,
+  lowLightConfidenceThreshold: 0.2, // در نور کم relaxed می‌شه
+  warningCooldown: 10000, // 10 ثانیه بین هشدارها
+  qualityGood: 0.5, // بالای 50% = خوب
+  qualityMedium: 0.35, // 35-50% = متوسط
+  // زیر 35% = ضعیف
+};
+
+/**
+ * Light detection state
+ */
+let isLowLight = false;
+let lastLightCheckTime = 0;
+let lastLightWarningTime = 0;
+let confidenceHistory = [];
+let currentConfidenceThreshold = LIGHT_DETECTION_SETTINGS.normalConfidenceThreshold;
+let detectionQuality = 'good'; // 'good' | 'medium' | 'poor'
+let qualityIndicatorElement = null;
+
+/**
+ * Detect ambient light level based on pose confidence
+ */
+function detectLightLevel(poses) {
+  const now = performance.now();
+  
+  // بررسی هر 3 ثانیه
+  if (now - lastLightCheckTime < LIGHT_DETECTION_SETTINGS.checkInterval) {
+    return;
+  }
+  
+  lastLightCheckTime = now;
+  
+  if (!poses || poses.length === 0) {
+    return;
+  }
+  
+  // محاسبه میانگین confidence
+  const keypoints = poses[0].keypoints;
+  const validKeypoints = keypoints.filter(kp => kp.score > 0.1);
+  
+  if (validKeypoints.length === 0) {
+    return;
+  }
+  
+  const avgConfidence = validKeypoints.reduce((sum, kp) => sum + kp.score, 0) / validKeypoints.length;
+  
+  // ذخیره در history (آخرین 10 بررسی)
+  confidenceHistory.push(avgConfidence);
+  if (confidenceHistory.length > 10) {
+    confidenceHistory.shift();
+  }
+  
+  // محاسبه میانگین کلی
+  const overallAvg = confidenceHistory.reduce((a, b) => a + b) / confidenceHistory.length;
+  
+  // تعیین quality
+  if (overallAvg >= LIGHT_DETECTION_SETTINGS.qualityGood) {
+    detectionQuality = 'good';
+  } else if (overallAvg >= LIGHT_DETECTION_SETTINGS.qualityMedium) {
+    detectionQuality = 'medium';
+  } else {
+    detectionQuality = 'poor';
+  }
+  
+  // تشخیص نور کم
+  const wasLowLight = isLowLight;
+  isLowLight = overallAvg < LIGHT_DETECTION_SETTINGS.lowLightThreshold;
+  
+  // آپدیت threshold
+  if (isLowLight) {
+    currentConfidenceThreshold = LIGHT_DETECTION_SETTINGS.lowLightConfidenceThreshold;
+  } else {
+    currentConfidenceThreshold = LIGHT_DETECTION_SETTINGS.normalConfidenceThreshold;
+  }
+  
+  // نمایش هشدار اگر تازه وارد نور کم شدیم
+  if (isLowLight && !wasLowLight) {
+    if (now - lastLightWarningTime > LIGHT_DETECTION_SETTINGS.warningCooldown) {
+      showLowLightWarning(overallAvg);
+      lastLightWarningTime = now;
+    }
+  }
+  
+  // آپدیت quality indicator
+  updateQualityIndicator();
+  
+  console.log(`💡 Light check: avg=${(overallAvg * 100).toFixed(0)}%, lowLight=${isLowLight}, quality=${detectionQuality}, threshold=${currentConfidenceThreshold}`);
+}
+
+/**
+ * Show low light warning
+ */
+function showLowLightWarning(avgConfidence) {
+  // Don't show during calibration or results
+  if (mode === 'run') {
+    if (runPhase === 'calibrate1' || runPhase === 'calibrate2' || 
+        runPhase === 'enterDistance' || runPhase === 'done') {
+      return;
+    }
+  } else if (mode === 'jump') {
+    if (jumpPhase === 'calibrating' || jumpPhase === 'done') {
+      return;
+    }
+  }
+  
+  const modal = document.createElement('div');
+  modal.id = 'lowLightModal';
+  modal.style.cssText = `
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  `;
+  
+  modal.innerHTML = `
+    <div style="
+      background: #1e293b;
+      border: 2px solid #f59e0b;
+      border-radius: 20px;
+      padding: 24px;
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+      color: #e2e8f0;
+    ">
+      <div style="font-size: 48px; margin-bottom: 16px;">💡</div>
+      <h3 style="color: #f59e0b; margin-bottom: 12px; font-size: 18px;">نور محیط کمه!</h3>
+      <p style="color: #94a3b8; margin-bottom: 16px; line-height: 1.6; font-size: 14px;">
+        کیفیت تشخیص: ${(avgConfidence * 100).toFixed(0)}%<br><br>
+        برای دقت بهتر:
+      </p>
+      <ul style="color: #cbd5e1; text-align: right; margin: 0 0 20px 0; padding: 0 20px; line-height: 1.8; font-size: 13px;">
+        <li>چراغ اتاق رو روشن کن</li>
+        <li>به محیط روشن‌تری برو</li>
+        <li>از نور طبیعی استفاده کن</li>
+        <li>مطمئن شو نور از پشت سر میاد</li>
+      </ul>
+      <button id="lowLightOkBtn" style="
+        background: #22c55e;
+        color: #052e16;
+        border: none;
+        padding: 14px 24px;
+        font-size: 16px;
+        font-weight: bold;
+        border-radius: 999px;
+        cursor: pointer;
+        width: 100%;
+        min-height: 44px;
+      ">متوجه شدم</button>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  document.getElementById('lowLightOkBtn').onclick = () => {
+    modal.remove();
+  };
+  
+  // Auto-close after 8 seconds
+  setTimeout(() => {
+    if (document.body.contains(modal)) {
+      modal.remove();
+    }
+  }, 8000);
+}
+
+/**
+ * Create/update quality indicator
+ */
+function updateQualityIndicator() {
+  if (!qualityIndicatorElement) {
+    qualityIndicatorElement = document.createElement('div');
+    qualityIndicatorElement.id = 'qualityIndicator';
+    qualityIndicatorElement.style.cssText = `
+      position: absolute;
+      top: calc(env(safe-area-inset-top, 16px) + 32px);
+      left: calc(100% - 140px);
+      z-index: 4;
+      background: rgba(15, 23, 42, 0.75);
+      padding: 4px 8px;
+      border-radius: 8px;
+      font-size: 10px;
+      font-weight: bold;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    `;
+    document.getElementById('stage').appendChild(qualityIndicatorElement);
+  }
+  
+  let icon, text, color, borderColor;
+  
+  if (detectionQuality === 'good') {
+    icon = '●●●';
+    text = 'کیفیت عالی';
+    color = '#4ade80';
+    borderColor = '#4ade80';
+  } else if (detectionQuality === 'medium') {
+    icon = '●●○';
+    text = 'کیفیت متوسط';
+    color = '#facc15';
+    borderColor = '#facc15';
+  } else {
+    icon = '●○○';
+    text = 'کیفیت ضعیف';
+    color = '#ef4444';
+    borderColor = '#ef4444';
+  }
+  
+  qualityIndicatorElement.style.color = color;
+  qualityIndicatorElement.style.borderLeft = `3px solid ${borderColor}`;
+  qualityIndicatorElement.innerHTML = `${icon} ${text}`;
+}
+
+/**
+ * Reset light detection state
+ */
+function resetLightDetection() {
+  isLowLight = false;
+  confidenceHistory = [];
+  currentConfidenceThreshold = LIGHT_DETECTION_SETTINGS.normalConfidenceThreshold;
+  detectionQuality = 'good';
+  lastLightCheckTime = 0;
+  lastLightWarningTime = 0;
 }
 
 // ================== SKELETON DRAWING SETUP ==================
@@ -1825,8 +2063,8 @@ function jumpFinish() {
 function getHipAnkleY(kp) {
   const lh = kp['left_hip'], rh = kp['right_hip'];
   const la = kp['left_ankle'], ra = kp['right_ankle'];
-  const hips = [lh, rh].filter(p => p && p.score > 0.3);
-  const ankles = [la, ra].filter(p => p && p.score > 0.3);
+  const hips = [lh, rh].filter(p => p && p.score > currentConfidenceThreshold);
+  const ankles = [la, ra].filter(p => p && p.score > currentConfidenceThreshold);
   if (!ankles.length) return null;
   const ankleY = ankles.reduce((s, p) => s + p.y, 0) / ankles.length;
   let hipY = null;
@@ -2395,6 +2633,9 @@ function drawPose(poses) {
 
     // Handle frame tracking
     handleFrameTracking(poses);
+    
+    // Detect light level
+    detectLightLevel(poses);
 
     if (mode === 'run') runDrawGates();
     if (mode === 'jump') jumpDrawOverlay();
@@ -2424,12 +2665,15 @@ function drawPose(poses) {
       ? essentialConnections 
       : CONNECTIONS;
 
+    // Use dynamic confidence threshold based on light level
+    const confidenceThreshold = currentConfidenceThreshold;
+
     ctx.strokeStyle = '#38bdf8';
     ctx.lineWidth = performanceMode === 'low-power' ? 2 : 3;
     
     for (const [a, b] of connectionsToRender) {
       const pa = kp[a], pb = kp[b];
-      if (pa && pb && pa.score > 0.3 && pb.score > 0.3) {
+      if (pa && pb && pa.score > confidenceThreshold && pb.score > confidenceThreshold) {
         ctx.beginPath();
         ctx.moveTo(pa.x, pa.y);
         ctx.lineTo(pb.x, pb.y);
@@ -2443,7 +2687,7 @@ function drawPose(poses) {
     if (performanceMode === 'low-power') {
       for (const keypointName of essentialKeypoints) {
         const point = kp[keypointName];
-        if (point && point.score > 0.3) {
+        if (point && point.score > confidenceThreshold) {
           ctx.beginPath();
           ctx.arc(point.x, point.y, 4, 0, 2 * Math.PI);
           ctx.fill();
@@ -2452,7 +2696,7 @@ function drawPose(poses) {
     } else {
       // Draw all keypoints in normal mode
       for (const point of poses[0].keypoints) {
-        if (point.score > 0.3) {
+        if (point.score > confidenceThreshold) {
           ctx.beginPath();
           ctx.arc(point.x, point.y, 5, 0, 2 * Math.PI);
           ctx.fill();
@@ -2471,8 +2715,8 @@ function drawPose(poses) {
 
 function getAnkleX(kp) {
   const l = kp['left_ankle'], r = kp['right_ankle'];
-  const validL = l && l.score > 0.3;
-  const validR = r && r.score > 0.3;
+  const validL = l && l.score > currentConfidenceThreshold;
+  const validR = r && r.score > currentConfidenceThreshold;
   if (validL && validR) return (l.x + r.x) / 2;
   if (validL) return l.x;
   if (validR) return r.x;

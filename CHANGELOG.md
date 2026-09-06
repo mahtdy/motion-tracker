@@ -6,6 +6,113 @@
 
 ---
 
+## [1.3.6] - 2024-01-XX
+
+### ✨ Added (اضافه شده)
+
+#### 💡 Low Light Detection System
+- تابع `detectLightLevel()` - تشخیص نور محیط از روی confidence
+- محاسبه میانگین confidence از keypoints
+- ذخیره history آخرین 10 بررسی
+- تشخیص خودکار نور کم (میانگین <35%)
+- بررسی هر 3 ثانیه
+
+#### 🎯 Dynamic Confidence Threshold
+- threshold عادی: 0.3 (30%)
+- threshold در نور کم: 0.2 (20%) - relaxed برای دقت بیشتر
+- تغییر خودکار threshold براساس نور
+- اعمال threshold در تمام keypoint checks
+- بهبود تشخیص در شرایط نور ضعیف
+
+#### 📊 Detection Quality Indicator
+- تابع `updateQualityIndicator()` - نمایش کیفیت تشخیص
+- سه سطح: خوب (●●●)، متوسط (●●○)، ضعیف (●○○)
+- رنگ‌بندی: سبز (>50%)، زرد (35-50%)، قرمز (<35%)
+- نمایش در گوشه بالای صفحه
+- Real-time update
+
+#### ⚠️ Low Light Warning System
+- تابع `showLowLightWarning()` - modal هشدار نور کم
+- نمایش کیفیت فعلی به درصد
+- 4 پیشنهاد برای بهبود نور:
+  - روشن کردن چراغ اتاق
+  - رفتن به محیط روشن‌تر
+  - استفاده از نور طبیعی
+  - قرار دادن نور از پشت سر
+- Cooldown 10 ثانیه بین هشدارها
+- Auto-close بعد از 8 ثانیه
+
+#### 🔧 Smart Threshold Application
+- اعمال در `drawPose()` برای رسم skeleton
+- اعمال در `getAnkleX()` برای run mode
+- اعمال در `getHipAnkleY()` برای jump mode
+- اعمال در `isPoseInFrame()` برای frame tracking
+- یکپارچگی کامل در سیستم
+
+### 🔧 Changed (تغییر یافته)
+
+#### app.js
+- بازنویسی تابع `drawPose()` - اضافه کردن light detection و dynamic threshold
+- بهبود تابع `getAnkleX()` - استفاده از currentConfidenceThreshold
+- بهبود تابع `getHipAnkleY()` - استفاده از currentConfidenceThreshold  
+- بهبود تابع `isPoseInFrame()` - استفاده از currentConfidenceThreshold
+- اضافه کردن ~250 خط کد برای low light system
+- 8 تابع جدید برای light detection
+- 7 متغیر global جدید
+
+#### index.html
+- آپدیت نسخه از 1.3.5 به 1.3.6
+
+#### sw.js
+- ارتقا نسخه cache از `v15` به `v16`
+
+#### manifest.json
+- آپدیت version از 1.3.5 به 1.3.6
+
+### 🐛 Fixed (رفع شده)
+- دقت ضعیف در نور کم
+- از دست رفتن keypoints در محیط کم‌نور
+- عدم آگاهی کاربر از مشکل نور
+- threshold ثابت که در همه شرایط یکسان بود
+
+### 📈 Improved (بهبود یافته)
+- دقت تشخیص در نور کم با relaxed threshold
+- User awareness با warning و quality indicator
+- Visual feedback با نمایش real-time quality
+- Adaptability به شرایط مختلف نور
+- کیفیت کلی اندازه‌گیری
+
+### 🎯 Technical Details
+- Object constant: `LIGHT_DETECTION_SETTINGS` با 7 پارامتر
+- 7 متغیر state: isLowLight, confidenceHistory, currentConfidenceThreshold, etc.
+- 8 تابع جدید برای light management
+- Check interval: 3000ms (3 seconds)
+- Warning cooldown: 10000ms (10 seconds)
+- Low light threshold: 35% average confidence
+- Quality levels:
+  - Good: >50% (green, ●●●)
+  - Medium: 35-50% (yellow, ●●○)
+  - Poor: <35% (red, ●○○)
+- Dynamic indicator با inline styling
+
+### 📊 Quality Thresholds
+```javascript
+Normal confidence: 0.3 (30%)
+Low-light confidence: 0.2 (20%)
+Quality good: >0.5 (50%)
+Quality medium: 0.35-0.5 (35-50%)
+Quality poor: <0.35 (35%)
+```
+
+### 🎨 Visual Elements
+- Quality indicator: top-right corner با 3-dot display
+- Low light modal: center با 4 bullet points
+- Color coding: green/yellow/red based on quality
+- Border color matches quality level
+- Auto-dismiss modal after 8 seconds
+
+---
+
 ## [1.3.5] - 2024-01-XX
 
 ### ✨ Added (اضافه شده)

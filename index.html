@@ -348,37 +348,234 @@
     white-space: nowrap;
   }
 
-  /* Landscape optimization */
-  @media (orientation: landscape) and (max-height: 500px) {
+  /* Responsive fixes for small screens */
+  @media (max-width: 360px) {
     #status {
       font-size: 14px;
       padding: 6px 12px;
+      left: 12px;
+      right: 12px;
     }
     #modeBar {
-      top: calc(env(safe-area-inset-top, 8px) + 36px);
+      left: 12px;
+      right: 12px;
+      gap: 8px;
     }
     .modeBtn {
       padding: 8px 16px;
       font-size: 13px;
+      min-width: 70px;
+    }
+    #topActions {
+      left: 12px;
+      gap: 6px;
+    }
+    #topActions button {
+      padding: 6px 10px !important;
+      font-size: 18px !important;
+      min-width: 44px;
+      min-height: 44px;
+    }
+    .panel {
+      left: 12px;
+      right: 12px;
+      bottom: calc(env(safe-area-inset-bottom, 12px) + 12px);
+      padding: 16px;
+      max-height: 70vh;
+    }
+    .panel button {
+      padding: 12px 14px;
+      font-size: 14px;
+      min-height: 44px;
+    }
+    .panel .big {
+      font-size: 28px;
+    }
+    #gateControls {
+      left: 12px;
+      right: 12px;
+      bottom: calc(env(safe-area-inset-bottom, 12px) + 12px);
+      padding: 10px 12px;
+      flex-wrap: wrap;
+    }
+    #gateHint {
+      font-size: 12px;
+      flex-basis: 100%;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    #gateControls .btnRow {
+      flex: 1;
+      justify-content: stretch;
+    }
+    #gateControls button {
+      padding: 10px 14px;
+      font-size: 13px;
+      flex: 1;
+      min-height: 44px;
+    }
+    #guideOverlay {
+      left: 12px;
+      right: 12px;
+    }
+    #guideOverlay .guideContent {
+      padding: 10px 12px;
+      gap: 8px;
+    }
+    #guideOverlay .guideIcon {
+      font-size: 22px;
+    }
+    #guideOverlay h3 {
+      font-size: 12px;
+    }
+    #guideOverlay p {
+      font-size: 11px;
+    }
+    #guideOverlay #guideCloseBtn {
+      padding: 6px 12px;
+      font-size: 12px;
+      min-height: 36px;
+    }
+    #historyPanel, #settingsPanel {
+      width: calc(100% - 24px);
+      padding: 16px;
+    }
+    #startOverlay {
+      padding: 20px;
+    }
+    #startOverlay h2 {
+      font-size: 24px;
+    }
+    #hint {
+      font-size: 12px;
+      max-width: 280px;
+    }
+    #startBtn {
+      padding: 12px 28px;
+      font-size: 16px;
+      min-height: 48px;
+      min-width: 120px;
+    }
+  }
+
+  /* Enhanced landscape optimization */
+  @media (orientation: landscape) and (max-height: 500px) {
+    #status {
+      font-size: 13px;
+      padding: 5px 10px;
+      top: calc(env(safe-area-inset-top, 8px) + 4px);
+    }
+    #modeBar {
+      top: calc(env(safe-area-inset-top, 8px) + 32px);
+      gap: 8px;
+    }
+    .modeBtn {
+      padding: 6px 14px;
+      font-size: 12px;
+      min-width: 65px;
+    }
+    #topActions {
+      top: calc(env(safe-area-inset-top, 8px) + 4px);
+      gap: 6px;
+    }
+    #topActions button {
+      padding: 6px 10px !important;
+      font-size: 16px !important;
+      min-width: 40px;
+      min-height: 40px;
     }
     .panel {
       left: 50%;
       right: auto;
       transform: translateX(-50%);
-      width: 320px;
-      max-height: 80vh;
+      width: min(340px, calc(100vw - 40px));
+      max-height: 85vh;
       bottom: calc(env(safe-area-inset-bottom, 8px) + 8px);
-      padding: 14px;
+      padding: 12px 16px;
     }
     .panel .big {
-      font-size: 26px;
+      font-size: 24px;
+    }
+    .panel button {
+      padding: 10px 14px;
+      font-size: 14px;
+      min-height: 40px;
+    }
+    #gateControls {
+      bottom: calc(env(safe-area-inset-bottom, 8px) + 8px);
+      padding: 8px 12px;
+    }
+    #gateHint {
+      font-size: 12px;
+    }
+    #gateControls button {
+      padding: 8px 12px;
+      font-size: 13px;
+      min-height: 40px;
+    }
+    #guideOverlay {
+      top: calc(env(safe-area-inset-top, 8px) + 72px);
+    }
+    #guideOverlay .guideContent {
+      padding: 8px 12px;
+      max-width: 380px;
+    }
+    #guideOverlay .guideIcon {
+      font-size: 20px;
+    }
+    #guideOverlay h3 {
+      font-size: 11px;
+    }
+    #guideOverlay p {
+      font-size: 10px;
+    }
+    #guideOverlay #guideCloseBtn {
+      padding: 6px 10px;
+      font-size: 11px;
+      min-height: 32px;
+    }
+    #historyPanel, #settingsPanel {
+      width: min(360px, calc(100vw - 40px));
+      max-height: 85vh;
+      padding: 14px;
     }
     #startOverlay {
       padding: 16px;
+      gap: 12px;
     }
     #startOverlay h2 {
-      font-size: 22px;
+      font-size: 20px;
     }
+    #hint {
+      font-size: 11px;
+      max-width: 260px;
+    }
+    #startBtn {
+      padding: 10px 24px;
+      font-size: 16px;
+      min-height: 44px;
+    }
+  }
+
+  /* Touch target optimization - ensure all buttons are at least 44x44px */
+  button {
+    min-width: 44px;
+    min-height: 44px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  /* Prevent text selection on double-tap */
+  * {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  input {
+    -webkit-user-select: text;
+    user-select: text;
   }
 </style>
 </head>
@@ -396,6 +593,7 @@
 
   <div id="startOverlay">
     <h2>حرکت‌سنج</h2>
+    <p style="font-size: 11px; color: #64748b; margin-bottom: 8px;">نسخه 1.3.0</p>
     <p id="hint">برای شروع، اجازهٔ دسترسی به دوربین رو بده. مدل تشخیص بدن کاملاً روی گوشی اجرا می‌شه.</p>
     <button id="startBtn">شروع</button>
   </div>

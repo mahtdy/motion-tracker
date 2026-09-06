@@ -6,6 +6,62 @@
 
 ---
 
+## [1.3.1] - 2024-01-XX
+
+### ✨ Added (اضافه شده)
+
+#### 🏷️ نمایش ورژن
+- اضافه کردن نمایش ورژن (1.3.0) در صفحه شروع
+- کاربر می‌تونه بدونه چه نسخه‌ای رو استفاده می‌کنه
+
+#### 📱 Responsive Design برای گوشی‌های کوچک
+- بهینه‌سازی کامل برای صفحات زیر 360px
+- تمام دکمه‌ها حداقل 44x44px (استاندارد touch target)
+- جلوگیری از overlap دکمه‌ها
+- استفاده بهینه از safe-area-inset برای notch ها
+- بهبود layout در landscape mode برای صفحات کوچک
+
+#### 🎯 Touch Target Optimization
+- تمام button ها حداقل 44x44px
+- جلوگیری از text selection با double-tap
+- حذف tap highlight برای تجربه بهتر
+- touch-action: manipulation برای سرعت بیشتر
+
+### 🔧 Changed (تغییر یافته)
+
+#### index.html
+- اضافه کردن 150+ خط CSS برای responsive
+- Media query برای max-width: 360px
+- بهبود landscape mode (max-height: 500px)
+- کاهش padding/margin در صفحات کوچک
+- کاهش font-size در صفحات کوچک
+
+#### sw.js
+- ارتقا نسخه cache از `v10` به `v11`
+
+### 🐛 Fixed (رفع شده)
+- دکمه‌های تاپ از کادر خارج نمی‌شن
+- gateControls در گوشی‌های کوچک به درستی نمایش داده می‌شه
+- overlap دکمه‌ها در landscape mode
+- دکمه‌های کوچک‌تر از 44px (touch target issue)
+- text selection نامناسب
+
+### 📈 Improved (بهبود یافته)
+- تجربه کاربری در گوشی‌های کوچک (iPhone SE, etc.)
+- خوانایی متن در صفحات کوچک
+- فاصله بهتر بین المان‌ها
+- استفاده بهینه از فضای موجود
+- landscape mode بسیار بهتر
+
+### 🎯 Technical Details
+- 2 media query جدید (360px, landscape)
+- 10+ CSS property برای touch optimization
+- user-select: none برای prevent text selection
+- -webkit-tap-highlight-color: transparent
+- min-width و min-height برای تمام buttons
+
+---
+
 ## [1.3.0] - 2024-01-XX
 
 ### ✨ Added (اضافه شده)

@@ -6,6 +6,140 @@
 
 ---
 
+## [1.3.8] - 2024-01-XX
+
+### ✨ Added (اضافه شده)
+
+#### 📷 Manual Camera Switcher System
+- تابع `initCameraSwitcher()` - راه‌اندازی اولیه
+- تابع `enumerateDevices()` - لیست کردن تمام دوربین‌ها
+- تابع `getCameraInfo()` - دریافت اطلاعات دقیق دوربین
+- تابع `detectCameraType()` - تشخیص نوع (wide/normal/telephoto/front)
+- تابع `formatCameraLabel()` - فارسی کردن نام دوربین‌ها
+- تابع `showCameraSwitcherModal()` - modal انتخاب دوربین
+- تابع `switchCamera()` - تعویض به دوربین جدید
+- تابع `updateCameraInfoDisplay()` - نمایش دوربین فعلی
+- تابع `loadSavedCamera()` - load کردن انتخاب قبلی
+
+#### 🎯 Camera Detection & Labeling
+- تشخیص خودکار نوع دوربین از label:
+  - Wide-angle: 0.5x, 0.6x, ultra, wide
+  - Normal: 1x, standard, main
+  - Telephoto: 2x, 3x, tele, zoom
+  - Front: front, face, user
+- فارسی کردن labels:
+  - "دوربین جلو"
+  - "دوربین عقب واید 0.5x"
+  - "دوربین عقب تله‌فوتو 2x"
+- آیکن‌های مناسب: 📷 جلو، 🌐 واید، 📸 عقب، 🔭 تله‌فوتو
+
+#### 📱 Camera Switcher Modal
+- لیست vertical با card برای هر دوربین
+- برای هر card نمایش:
+  - آیکن مناسب
+  - نام فارسی
+  - Position (جلو/عقب)
+  - Resolution
+  - Zoom ratio
+- دوربین فعلی با border سبز و علامت ✓
+- Hover effect روی cards
+- دکمه "بستن" در پایین
+- Scrollable برای دستگاه‌های با چند دوربین
+
+#### 💾 Persistent Camera Selection
+- ذخیره deviceId در localStorage
+- Load خودکار در startup
+- Fallback به auto-select اگه دوربین نبود
+- Integration با selectBestCamera()
+
+#### 📊 Live Camera Info Display
+- نمایش دوربین فعلی در گوشه پایین-چپ
+- مثال: "🌐 دوربین عقب واید 0.5x"
+- طراحی کوچک و non-intrusive
+- آپدیت خودکار بعد از تعویض
+
+#### 🔄 Smooth Camera Transition
+- Stop کردن stream قبلی
+- Setup با deviceId جدید
+- حفظ calibration با ratio-based system
+- اطلاع‌رسانی اگه calibration از دست رفت
+- جلوگیری از تعویض در حین timing
+
+### 🔧 Changed (تغییر یافته)
+
+#### app.js
+- بازنویسی تابع `setupCamera()` - اضافه کردن preferredDeviceId parameter
+- بازنویسی تابع `selectBestCamera()` - support برای preferred و saved camera
+- اضافه کردن ~400 خط کد برای camera switcher
+- 9 تابع جدید برای camera management
+- 4 متغیر global جدید: availableCameras, currentCameraId, currentCameraInfo, etc.
+- Event listener برای camera switcher button
+- صدا زدن initCameraSwitcher() در start()
+
+#### index.html
+- اضافه کردن دکمه 📷 در topActions
+- آپدیت نسخه از 1.3.7 به 1.3.8
+
+#### sw.js
+- آپدیت VERSION از 1.3.7 به 1.3.8
+- آپدیت CACHE_NAME از v17 به v18
+
+#### manifest.json
+- آپدیت version از 1.3.7 به 1.3.8
+
+### 🐛 Fixed (رفع شده)
+- عدم امکان انتخاب دستی دوربین
+- stuck شدن روی یک دوربین
+- عدم استفاده از دوربین‌های مختلف گوشی
+- کیفیت پایین با دوربین اشتباه
+
+### 📈 Improved (بهبود یافته)
+- کنترل کاربر روی انتخاب دوربین
+- کیفیت تصویر با انتخاب بهترین دوربین
+- User experience با modal زیبا
+- Flexibility برای تست دوربین‌های مختلف
+- Persistence برای راحتی استفاده
+
+### 🎯 Technical Details
+- 9 تابع جدید برای camera management
+- 4 متغیر global state
+- Camera sorting: back > front, then by zoom ratio
+- localStorage key: 'selectedCameraId'
+- Modal با dynamic card generation
+- Capabilities detection برای resolution
+- Test stream برای دریافت settings
+
+### 📊 Camera Card Info
+```javascript
+{
+  icon: '🌐',
+  persianLabel: 'دوربین عقب واید 0.5x',
+  position: 'back',
+  type: 'wide',
+  zoomRatio: 0.5,
+  resolution: '1920x1080',
+  deviceId: 'xxx'
+}
+```
+
+### 🎨 UI Components
+- دکمه 📷 در top-left (topActions)
+- Camera info display در bottom-left
+- Modal با cards برای هر دوربین
+- Active camera با border #22c55e
+- Hover effect: background rgba(51, 65, 85, 0.6)
+- Cards با min-height 44px
+- Scrollable list برای چند دوربین
+
+### 🔐 Edge Cases Handled
+- تعویض در حین timing → جلوگیری با warning
+- دوربین access denied → error modal + fallback
+- تک دوربین → button disabled با opacity 0.5
+- دوربین ذخیره شده موجود نیست → fallback to auto
+- تعویض موفق → حفظ calibration یا اطلاع‌رسانی
+
+---
+
 ## [1.3.7] - 2024-01-XX
 
 ### ✨ Added (اضافه شده)

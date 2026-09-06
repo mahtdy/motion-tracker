@@ -986,6 +986,469 @@ function updateFPSIndicator() {
   }
 }
 
+// ================== CAMERA SWITCHER SYSTEM ==================
+/**
+ * Camera switcher state
+ */
+let availableCameras = [];
+let currentCameraId = null;
+let currentCameraInfo = null;
+let cameraSwitcherBtn = null;
+
+/**
+ * Initialize camera switcher
+ */
+async function initCameraSwitcher() {
+  try {
+    // Get list of cameras
+    availableCameras = await enumerateDevices();
+    
+    console.log(`📷 Found ${availableCameras.length} camera(s)`);
+    
+    // Enable/disable camera switcher button
+    if (cameraSwitcherBtn) {
+      if (availableCameras.length > 1) {
+        cameraSwitcherBtn.disabled = false;
+        cameraSwitcherBtn.style.opacity = '1';
+      } else {
+        cameraSwitcherBtn.disabled = true;
+        cameraSwitcherBtn.style.opacity = '0.5';
+      }
+    }
+    
+    // Update camera info display
+    updateCameraInfoDisplay();
+    
+  } catch (error) {
+    console.error('Failed to enumerate cameras:', error);
+  }
+}
+
+/**
+ * Enumerate all video input devices
+ */
+async function enumerateDevices() {
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videoDevices = devices.filter(device => device.kind === 'videoinput');
+    
+    // Get detailed info for each camera
+    const camerasWithInfo = [];
+    
+    for (const device of videoDevices) {
+      const info = await getCameraInfo(device);
+      camerasWithInfo.push(info);
+    }
+    
+    // Sort: back cameras first, then by zoom (wide > normal > tele)
+    camerasWithInfo.sort((a, b) => {
+      // Back cameras before front
+      if (a.position !== b.position) {
+        return a.position === 'back' ? -1 : 1;
+      }
+      // Wide angle first (lower zoom = wider)
+      return (a.zoomRatio || 1) - (b.zoomRatio || 1);
+    });
+    
+    return camerasWithInfo;
+  } catch (error) {
+    console.error('Failed to enumerate devices:', error);
+    return [];
+  }
+}
+
+/**
+ * Get camera information
+ */
+async function getCameraInfo(device) {
+  const info = {
+    deviceId: device.deviceId,
+    label: device.label || 'دوربین ناشناس',
+    originalLabel: device.label,
+    groupId: device.groupId
+  };
+  
+  // Detect camera type from label
+  const type = detectCameraType(device.label);
+  info.type = type.type;
+  info.position = type.position;
+  info.zoomRatio = type.zoomRatio;
+  info.icon = type.icon;
+  
+  // Format label in Persian
+  info.persianLabel = formatCameraLabel(info);
+  
+  // Try to get capabilities (may require permission)
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { deviceId: { exact: device.deviceId } }
+    });
+    
+    const track = stream.getVideoTracks()[0];
+    const capabilities = track.getCapabilities ? track.getCapabilities() : {};
+    
+    info.capabilities = {
+      width: capabilities.width || {},
+      height: capabilities.height || {},
+      zoom: capabilities.zoom || {},
+      focusMode: capabilities.focusMode || []
+    };
+    
+    // Get current settings
+    const settings = track.getSettings();
+    info.resolution = `${settings.width || '?'}x${settings.height || '?'}`;
+    
+    // Stop the test stream
+    track.stop();
+    stream.getTracks().forEach(t => t.stop());
+    
+  } catch (error) {
+    console.warn('Could not get camera capabilities:', error);
+    info.capabilities = {};
+    info.resolution = 'نامشخص';
+  }
+  
+  return info;
+}
+
+/**
+ * Detect camera type from label
+ */
+function detectCameraType(label) {
+  const lower = label.toLowerCase();
+  
+  let type = 'normal';
+  let position = 'back';
+  let zoomRatio = 1;
+  let icon = '📸';
+  
+  // Detect position
+  if (lower.includes('front') || lower.includes('face') || lower.includes('user')) {
+    position = 'front';
+    icon = '📷';
+  }
+  
+  // Detect zoom/type
+  if (lower.includes('wide') || lower.includes('ultra') || lower.includes('0.5')) {
+    type = 'wide';
+    zoomRatio = 0.5;
+    icon = position === 'front' ? '📷' : '🌐';
+  } else if (lower.includes('tele') || lower.includes('zoom') || lower.includes('2x') || lower.includes('3x')) {
+    type = 'telephoto';
+    zoomRatio = lower.includes('3x') ? 3 : 2;
+    icon = '🔭';
+  }
+  
+  return { type, position, zoomRatio, icon };
+}
+
+/**
+ * Format camera label in Persian
+ */
+function formatCameraLabel(info) {
+  const parts = [];
+  
+  // Position
+  if (info.position === 'front') {
+    parts.push('دوربین جلو');
+  } else {
+    parts.push('دوربین عقب');
+  }
+  
+  // Type
+  if (info.type === 'wide') {
+    parts.push('واید');
+    if (info.zoomRatio) {
+      parts.push(`${info.zoomRatio}x`);
+    }
+  } else if (info.type === 'telephoto') {
+    parts.push('تله‌فوتو');
+    if (info.zoomRatio) {
+      parts.push(`${info.zoomRatio}x`);
+    }
+  } else if (info.zoomRatio && info.zoomRatio !== 1) {
+    parts.push(`${info.zoomRatio}x`);
+  }
+  
+  return parts.join(' ');
+}
+
+/**
+ * Show camera switcher modal
+ */
+function showCameraSwitcherModal() {
+  // Don't allow switching during timing
+  if ((mode === 'run' && runPhase === 'timing') || 
+      (mode === 'jump' && jumpPhase === 'measuring')) {
+    setStatus('⚠️ در حین اندازه‌گیری نمی‌تونی دوربین رو عوض کنی');
+    setTimeout(() => {
+      if (mode === 'run' && runPhase === 'timing') {
+        setStatus('در حال دویدن... ⏱');
+      } else if (mode === 'jump' && jumpPhase === 'measuring') {
+        setStatus('در حال اندازه‌گیری... 📊');
+      }
+    }, 2000);
+    return;
+  }
+  
+  const modal = document.createElement('div');
+  modal.id = 'cameraSwitcherModal';
+  modal.style.cssText = `
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    overflow-y: auto;
+  `;
+  
+  const cameraCards = availableCameras.map((camera, index) => {
+    const isActive = camera.deviceId === currentCameraId;
+    const borderColor = isActive ? '#22c55e' : '#475569';
+    const bgColor = isActive ? 'rgba(34, 197, 94, 0.1)' : 'rgba(30, 41, 59, 0.6)';
+    
+    return `
+      <div class="camera-card" data-device-id="${camera.deviceId}" style="
+        background: ${bgColor};
+        border: 2px solid ${borderColor};
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+      ">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="font-size: 32px;">${camera.icon}</div>
+          <div style="flex: 1;">
+            <div style="color: #e2e8f0; font-weight: bold; font-size: 15px; margin-bottom: 4px;">
+              ${camera.persianLabel}
+              ${isActive ? '<span style="color: #22c55e;">✓</span>' : ''}
+            </div>
+            <div style="color: #94a3b8; font-size: 12px;">
+              ${camera.position === 'front' ? 'جلو' : 'عقب'} • 
+              ${camera.resolution}
+              ${camera.zoomRatio ? ` • ${camera.zoomRatio}x` : ''}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  modal.innerHTML = `
+    <div style="
+      background: #1e293b;
+      border: 2px solid #334155;
+      border-radius: 20px;
+      padding: 20px;
+      max-width: 400px;
+      width: 100%;
+      max-height: 80vh;
+      overflow-y: auto;
+    ">
+      <h3 style="color: #4ade80; margin-bottom: 16px; font-size: 18px; text-align: center;">
+        📷 انتخاب دوربین
+      </h3>
+      <div id="cameraList">
+        ${cameraCards}
+      </div>
+      <button id="closeCameraSwitcher" style="
+        background: transparent;
+        color: #94a3b8;
+        border: 2px solid #475569;
+        padding: 12px 24px;
+        font-size: 14px;
+        font-weight: bold;
+        border-radius: 999px;
+        cursor: pointer;
+        width: 100%;
+        min-height: 44px;
+        margin-top: 12px;
+      ">بستن</button>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  // Add click handlers for camera cards
+  document.querySelectorAll('.camera-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const deviceId = card.getAttribute('data-device-id');
+      switchCamera(deviceId);
+      modal.remove();
+    });
+    
+    // Hover effect
+    card.addEventListener('mouseenter', () => {
+      if (card.getAttribute('data-device-id') !== currentCameraId) {
+        card.style.background = 'rgba(51, 65, 85, 0.6)';
+      }
+    });
+    card.addEventListener('mouseleave', () => {
+      if (card.getAttribute('data-device-id') !== currentCameraId) {
+        card.style.background = 'rgba(30, 41, 59, 0.6)';
+      }
+    });
+  });
+  
+  document.getElementById('closeCameraSwitcher').onclick = () => {
+    modal.remove();
+  };
+}
+
+/**
+ * Switch to a different camera
+ */
+async function switchCamera(deviceId) {
+  const camera = availableCameras.find(c => c.deviceId === deviceId);
+  
+  if (!camera) {
+    console.error('Camera not found:', deviceId);
+    return;
+  }
+  
+  console.log(`📷 Switching to camera: ${camera.persianLabel}`);
+  setStatus('🔄 در حال تعویض دوربین...');
+  
+  try {
+    // Save calibration if exists
+    if ((mode === 'run' && gatePoints[0] && gatePoints[1]) || 
+        (mode === 'jump' && legLengthPx !== null)) {
+      saveCalibrationAsRatio();
+    }
+    
+    // Stop current stream
+    if (video.srcObject) {
+      video.srcObject.getTracks().forEach(track => track.stop());
+      video.srcObject = null;
+    }
+    
+    // Save selected camera
+    currentCameraId = deviceId;
+    currentCameraInfo = camera;
+    localStorage.setItem('selectedCameraId', deviceId);
+    
+    // Setup camera with new deviceId
+    await setupCamera(false, deviceId);
+    
+    // Try to restore calibration
+    if (calibrationData) {
+      const restored = restoreCalibrationFromRatio();
+      if (restored) {
+        setStatus(`✅ دوربین عوض شد - کالیبراسیون حفظ شد`);
+      } else {
+        setStatus(`✅ دوربین عوض شد`);
+        
+        // Reset calibration
+        if (mode === 'run' && runPhase !== 'calibrate1') {
+          setTimeout(() => {
+            showValidationWarning(
+              'کالیبراسیون از دست رفت',
+              'با تعویض دوربین، کالیبراسیون قبلی از دست رفت.\n\nلطفاً دوباره کالیبراسیون کن.',
+              () => {
+                if (mode === 'run') runEnterCalibrate1();
+              },
+              null
+            );
+          }, 1000);
+        } else if (mode === 'jump' && jumpPhase !== 'calibrating') {
+          setTimeout(() => {
+            showValidationWarning(
+              'کالیبراسیون از دست رفت',
+              'با تعویض دوربین، کالیبراسیون قبلی از دست رفت.\n\nلطفاً دوباره کالیبراسیون کن.',
+              () => {
+                if (mode === 'jump') jumpEnterCalibrating();
+              },
+              null
+            );
+          }, 1000);
+        }
+      }
+    } else {
+      setStatus(`✅ دوربین عوض شد: ${camera.persianLabel}`);
+    }
+    
+    // Update camera info display
+    updateCameraInfoDisplay();
+    
+    setTimeout(() => {
+      if (mode === 'run' && runPhase === 'ready') {
+        setStatus('آماده! از کنار یکی از موانع رد شو تا زمان شروع بشه');
+      } else if (mode === 'jump' && jumpPhase === 'ready') {
+        setStatus('آماده! بپر 🤸');
+      }
+    }, 3000);
+    
+  } catch (error) {
+    console.error('Failed to switch camera:', error);
+    logError('switchCamera', error, { deviceId, camera });
+    
+    showErrorModal('CAMERA_UNKNOWN', `Failed to switch to camera: ${camera.persianLabel}\n\n${error.message}`);
+    
+    // Try to restore previous camera
+    if (currentCameraId && currentCameraId !== deviceId) {
+      console.log('Attempting to restore previous camera');
+      try {
+        await setupCamera(false, currentCameraId);
+      } catch (restoreError) {
+        console.error('Failed to restore previous camera:', restoreError);
+      }
+    }
+  }
+}
+
+/**
+ * Update camera info display
+ */
+function updateCameraInfoDisplay() {
+  let displayElement = document.getElementById('cameraInfoDisplay');
+  
+  if (!displayElement) {
+    displayElement = document.createElement('div');
+    displayElement.id = 'cameraInfoDisplay';
+    displayElement.style.cssText = `
+      position: absolute;
+      bottom: calc(env(safe-area-inset-bottom, 16px) + 16px);
+      left: 16px;
+      z-index: 4;
+      background: rgba(15, 23, 42, 0.75);
+      color: #94a3b8;
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: bold;
+      pointer-events: none;
+      border-left: 3px solid #3b82f6;
+    `;
+    document.getElementById('stage').appendChild(displayElement);
+  }
+  
+  if (currentCameraInfo) {
+    displayElement.textContent = `${currentCameraInfo.icon} ${currentCameraInfo.persianLabel}`;
+  } else {
+    displayElement.textContent = '📷 دوربین پیش‌فرض';
+  }
+}
+
+/**
+ * Load saved camera preference
+ */
+function loadSavedCamera() {
+  try {
+    const savedId = localStorage.getItem('selectedCameraId');
+    if (savedId) {
+      console.log('📷 Found saved camera ID:', savedId);
+      return savedId;
+    }
+  } catch (error) {
+    console.warn('Failed to load saved camera:', error);
+  }
+  return null;
+}
+
 // ================== ORIENTATION & CALIBRATION MANAGEMENT ==================
 let currentOrientation = null; // 'portrait' | 'landscape'
 let currentCameraStream = null;
@@ -1673,6 +2136,12 @@ if (orientationLockBtn) {
   orientationLockBtn.addEventListener('click', toggleOrientationLock);
 }
 
+// Camera switcher button
+cameraSwitcherBtn = document.getElementById('cameraSwitcherBtn');
+if (cameraSwitcherBtn) {
+  cameraSwitcherBtn.addEventListener('click', showCameraSwitcherModal);
+}
+
 closeSettingsBtn.addEventListener('click', () => {
   const lowPowerChecked = document.getElementById('lowPowerMode').checked;
   const settings = {
@@ -2199,7 +2668,7 @@ async function getAvailableCameras() {
  * Find the best wide-angle camera
  * Prefers back camera with ultra-wide or wide-angle
  */
-async function selectBestCamera() {
+async function selectBestCamera(preferredDeviceId = null) {
   const cameras = await getAvailableCameras();
   
   if (cameras.length === 0) {
@@ -2210,6 +2679,31 @@ async function selectBestCamera() {
     id: c.deviceId,
     label: c.label || 'Unknown'
   })));
+  
+  // If preferred device ID is provided, try to use it
+  if (preferredDeviceId) {
+    const preferred = cameras.find(c => c.deviceId === preferredDeviceId);
+    if (preferred) {
+      console.log('✅ Using preferred camera:', preferred.label || preferred.deviceId);
+      currentCameraId = preferred.deviceId;
+      return preferred.deviceId;
+    } else {
+      console.warn('⚠️ Preferred camera not found, falling back to auto-select');
+    }
+  }
+  
+  // Check for saved camera preference
+  const savedId = loadSavedCamera();
+  if (savedId) {
+    const saved = cameras.find(c => c.deviceId === savedId);
+    if (saved) {
+      console.log('✅ Using saved camera:', saved.label || saved.deviceId);
+      currentCameraId = saved.deviceId;
+      return saved.deviceId;
+    } else {
+      console.warn('⚠️ Saved camera not found, falling back to auto-select');
+    }
+  }
 
   // Try to find back camera with wide-angle indicators in label
   const wideAngleKeywords = ['wide', 'ultra', '0.5', '0.6', '0.7', 'back'];
@@ -2226,6 +2720,7 @@ async function selectBestCamera() {
 
   if (wideBackCamera) {
     console.log('✅ Selected wide-angle back camera:', wideBackCamera.label || wideBackCamera.deviceId);
+    currentCameraId = wideBackCamera.deviceId;
     return wideBackCamera.deviceId;
   }
 
@@ -2243,7 +2738,7 @@ async function selectBestCamera() {
 /**
  * Setup camera with comprehensive error handling, wide-angle selection, and optimal resolution
  */
-async function setupCamera(forceReconfigure = false) {
+async function setupCamera(forceReconfigure = false, preferredDeviceId = null) {
   try {
     const orientation = getCurrentOrientation();
     console.log(`🔄 setupCamera called: ${orientation}, force: ${forceReconfigure}`);
@@ -2257,7 +2752,7 @@ async function setupCamera(forceReconfigure = false) {
     // Try to select the best camera (wide-angle if available)
     let selectedCameraId = null;
     try {
-      selectedCameraId = await selectBestCamera();
+      selectedCameraId = await selectBestCamera(preferredDeviceId);
     } catch (error) {
       console.warn('Could not enumerate cameras, using default:', error);
     }
@@ -2838,6 +3333,10 @@ async function start() {
     modeBar.style.display = 'flex';
     topActions.style.display = 'flex';
     applySettings();
+    
+    // Initialize camera switcher
+    await initCameraSwitcher();
+    
     runEnterCalibrate1();
     detectLoop();
 

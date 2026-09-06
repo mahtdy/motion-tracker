@@ -1652,8 +1652,6 @@ function toggleOrientationLock() {
 }
 
 // ================== ORIENTATION & RESOLUTION MANAGEMENT ==================
-let currentCameraStream = null;
-let isReconfiguring = false;
 
 /**
  * Detect current orientation
@@ -3363,7 +3361,7 @@ startBtn.addEventListener('click', () => {
 });
 
 // ================== VERSION CHECK ==================
-console.log('%c🚀 Motion Tracker v1.3.10', 'color: #22c55e; font-size: 16px; font-weight: bold');
+console.log('%c🚀 Motion Tracker v1.3.11', 'color: #22c55e; font-size: 16px; font-weight: bold');
 console.log('%cIf start button doesn\'t work, press Ctrl+Shift+R to clear cache', 'color: #f59e0b; font-size: 12px');
 
 // ================== SERVICE WORKER & UPDATE MANAGEMENT ==================

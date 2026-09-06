@@ -6,6 +6,69 @@
 
 ---
 
+## [1.3.0] - 2024-01-XX
+
+### ✨ Added (اضافه شده)
+
+#### 📐 سیستم مدیریت Resolution و Orientation هوشمند
+- تابع `getCurrentOrientation()` - تشخیص orientation فعلی
+- تابع `calculateOptimalResolution()` - محاسبه بهترین resolution براساس صفحه نمایش
+- تابع `getSupportedResolutions()` - دریافت resolution های پشتیبانی شده دوربین
+- پشتیبانی از aspect ratio های مختلف (16:9, 18:9, 19.5:9, 20:9, 21:9)
+- محاسبه دقیق resolution برای portrait و landscape
+
+#### 🔄 Smooth Orientation Reconfiguration
+- تشخیص خودکار تغییر orientation (portrait ↔ landscape)
+- Reconfigure خودکار دوربین با resolution مناسب
+- جلوگیری از multiple rapid reconfiguration با debounce
+- حفظ stream قبلی و stop کردن قبل از شروع جدید
+- Reset خودکار calibration بعد از تغییر orientation
+
+#### 🎯 Aspect Ratio Matching
+- Match کردن aspect ratio دوربین با صفحه نمایش
+- کاهش crop شدن frame
+- بهینه‌سازی برای گوشی‌های ultra-tall (20:9, 21:9)
+- Fallback strategy برای resolution های پشتیبانی نشده
+
+#### 📊 Enhanced Logging
+- لاگ aspect ratio مقایسه (requested vs actual)
+- لاگ کامل orientation changes
+- نمایش ✅ یا ⚠️ برای aspect ratio match
+- Track کردن supported resolutions
+
+### 🔧 Changed (تغییر یافته)
+
+#### app.js
+- بازنویسی تابع `setupCamera()` با پارامتر `forceReconfigure`
+- بازنویسی کامل تابع `refreshCanvasForOrientation()` (async + smooth)
+- اضافه کردن ~150 خط کد برای orientation/resolution management
+- بهبود event listeners با debounce timer
+
+#### sw.js
+- ارتقا نسخه cache از `v9` به `v10`
+
+### 🐛 Fixed (رفع شده)
+- Crop بیش از حد frame در orientation های مختلف
+- Aspect ratio mismatch بین دوربین و صفحه
+- Multiple rapid reconfiguration در تغییر orientation
+- از دست رفتن calibration بدون اطلاع به کاربر
+
+### 📈 Improved (بهبود یافته)
+- Field of view بهتر با aspect ratio matching
+- تجربه smooth در تغییر orientation
+- کیفیت تصویر با resolution بهینه
+- سازگاری با گوشی‌های ultra-wide (20:9, 21:9)
+- استفاده بهتر از صفحه نمایش
+
+### 🎯 Technical Details
+- 3 متغیر global جدید: `currentOrientation`, `currentCameraStream`, `isReconfiguring`
+- پشتیبانی از 5+ aspect ratio مختلف
+- Debounce 300-500ms برای orientation events
+- Relaxed constraints با min resolution در retry
+- Timeout prevention برای concurrent reconfigurations
+
+---
+
 ## [1.2.0] - 2024-01-XX
 
 ### ✨ Added (اضافه شده)

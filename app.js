@@ -66,6 +66,86 @@ let running = false;
 // mode: 'run' | 'jump'
 let mode = 'run';
 
+// ================== ORIENTATION & RESOLUTION MANAGEMENT ==================
+let currentOrientation = null; // 'portrait' | 'landscape'
+let currentCameraStream = null;
+let isReconfiguring = false;
+
+/**
+ * Detect current orientation
+ */
+function getCurrentOrientation() {
+  return window.innerHeight >= window.innerWidth ? 'portrait' : 'landscape';
+}
+
+/**
+ * Calculate optimal resolution based on screen and orientation
+ */
+function calculateOptimalResolution(orientation) {
+  const screenW = window.screen.width;
+  const screenH = window.screen.height;
+  const aspectRatio = Math.min(screenW, screenH) / Math.max(screenW, screenH);
+  
+  console.log(`📐 Screen: ${screenW}x${screenH}, Aspect: ${aspectRatio.toFixed(2)}`);
+
+  let targetWidth, targetHeight;
+
+  if (orientation === 'portrait') {
+    // Portrait: taller than wide
+    // Common ratios: 16:9 (1.78), 18:9 (2.0), 19.5:9 (2.17), 20:9 (2.22)
+    if (aspectRatio >= 0.55) {
+      // Ultra-tall phones (20:9, 21:9)
+      targetWidth = 1080;
+      targetHeight = Math.round(1080 / aspectRatio);
+    } else if (aspectRatio >= 0.50) {
+      // Modern phones (18:9, 19.5:9)
+      targetWidth = 1080;
+      targetHeight = 1920;
+    } else {
+      // Older phones (16:9)
+      targetWidth = 1080;
+      targetHeight = 1920;
+    }
+  } else {
+    // Landscape: wider than tall
+    if (aspectRatio >= 0.55) {
+      targetWidth = 1920;
+      targetHeight = 1080;
+    } else {
+      targetWidth = Math.round(1080 / aspectRatio);
+      targetHeight = 1080;
+    }
+  }
+
+  // Ensure we don't request resolution higher than screen
+  targetWidth = Math.min(targetWidth, Math.max(screenW, screenH));
+  targetHeight = Math.min(targetHeight, Math.max(screenW, screenH));
+
+  console.log(`🎯 Optimal resolution: ${targetWidth}x${targetHeight} (${orientation})`);
+
+  return { width: targetWidth, height: targetHeight };
+}
+
+/**
+ * Get supported camera resolutions (if available)
+ */
+async function getSupportedResolutions(track) {
+  try {
+    if (!track || !track.getCapabilities) return null;
+    
+    const caps = track.getCapabilities();
+    if (!caps.width || !caps.height) return null;
+
+    return {
+      width: { min: caps.width.min, max: caps.width.max },
+      height: { min: caps.height.min, max: caps.height.max }
+    };
+  } catch (error) {
+    console.warn('Could not get camera capabilities:', error);
+    return null;
+  }
+}
+
 // ================== ERROR HANDLING SYSTEM ==================
 /**
  * Error types and their Persian user-friendly messages
@@ -894,11 +974,18 @@ async function selectBestCamera() {
 }
 
 /**
- * Setup camera with comprehensive error handling and wide-angle selection
+ * Setup camera with comprehensive error handling, wide-angle selection, and optimal resolution
  */
-async function setupCamera() {
+async function setupCamera(forceReconfigure = false) {
   try {
-    const isPortrait = window.innerHeight >= window.innerWidth;
+    const orientation = getCurrentOrientation();
+    console.log(`🔄 setupCamera called: ${orientation}, force: ${forceReconfigure}`);
+
+    // If already running with same orientation and not forced, skip
+    if (!forceReconfigure && currentOrientation === orientation && currentCameraStream) {
+      console.log('✅ Camera already configured for this orientation');
+      return;
+    }
 
     // Try to select the best camera (wide-angle if available)
     let selectedCameraId = null;
@@ -908,11 +995,14 @@ async function setupCamera() {
       console.warn('Could not enumerate cameras, using default:', error);
     }
 
-    // Build constraints with preference for wide-angle
+    // Calculate optimal resolution for this orientation
+    const optimalRes = calculateOptimalResolution(orientation);
+
+    // Build constraints with preference for wide-angle and optimal resolution
     const constraints = {
       video: {
-        width: { ideal: isPortrait ? 1080 : 1920 },
-        height: { ideal: isPortrait ? 1920 : 1080 },
+        width: { ideal: optimalRes.width },
+        height: { ideal: optimalRes.height },
         facingMode: { ideal: 'environment' },
         // Prefer deviceId if we found a specific camera
         ...(selectedCameraId && { deviceId: { exact: selectedCameraId } })
@@ -944,12 +1034,14 @@ async function setupCamera() {
           continue;
         }
 
-        // If that failed, try basic constraints
+        // If that failed, try with relaxed resolution
         if (attemptCount === 2) {
           constraints.video = {
+            width: { min: 640, ideal: optimalRes.width },
+            height: { min: 480, ideal: optimalRes.height },
             facingMode: { ideal: 'environment' }
           };
-          console.log('Retrying with basic constraints...');
+          console.log('Retrying with relaxed constraints...');
           continue;
         }
 
@@ -958,7 +1050,8 @@ async function setupCamera() {
         logError('setupCamera - getUserMedia', error, { 
           constraints,
           attemptCount,
-          selectedCameraId
+          selectedCameraId,
+          orientation
         });
         throw { type: errorType, original: error };
       }
@@ -971,8 +1064,22 @@ async function setupCamera() {
       };
     }
 
+    // Stop previous stream if exists
+    if (currentCameraStream) {
+      console.log('🛑 Stopping previous camera stream');
+      currentCameraStream.getTracks().forEach(track => track.stop());
+    }
+
+    currentCameraStream = stream;
+    currentOrientation = orientation;
     video.srcObject = stream;
     const track = stream.getVideoTracks()[0];
+
+    // Check supported resolutions
+    const supportedRes = await getSupportedResolutions(track);
+    if (supportedRes) {
+      console.log('📊 Supported resolutions:', supportedRes);
+    }
 
     // Log camera capabilities
     if (track && track.getCapabilities) {
@@ -986,23 +1093,23 @@ async function setupCamera() {
         });
 
         // Apply optimal settings for wide-angle view
-        const constraints = {};
+        const constraintsToApply = {};
         
         // Reset zoom to minimum (widest view)
         if (caps.zoom) {
-          constraints.zoom = caps.zoom.min;
+          constraintsToApply.zoom = caps.zoom.min;
           console.log(`🔍 Setting zoom to minimum: ${caps.zoom.min}`);
         }
 
         // Set focus mode to continuous if available
         if (caps.focusMode && caps.focusMode.includes('continuous')) {
-          constraints.focusMode = 'continuous';
+          constraintsToApply.focusMode = 'continuous';
         }
 
         // Apply constraints if we have any
-        if (Object.keys(constraints).length > 0) {
-          await track.applyConstraints({ advanced: [constraints] });
-          console.log('✅ Applied camera optimizations:', constraints);
+        if (Object.keys(constraintsToApply).length > 0) {
+          await track.applyConstraints({ advanced: [constraintsToApply] });
+          console.log('✅ Applied camera optimizations:', constraintsToApply);
         }
 
       } catch (e) {
@@ -1013,12 +1120,17 @@ async function setupCamera() {
 
     // Log final track settings
     const settings = track.getSettings();
+    const actualAspectRatio = (settings.width / settings.height).toFixed(2);
+    const requestedAspectRatio = (optimalRes.width / optimalRes.height).toFixed(2);
+    
     console.log('📷 Final camera settings:', {
       deviceId: settings.deviceId,
       width: settings.width,
       height: settings.height,
       facingMode: settings.facingMode,
-      aspectRatio: settings.aspectRatio?.toFixed(2)
+      aspectRatio: actualAspectRatio,
+      requestedAspectRatio: requestedAspectRatio,
+      match: actualAspectRatio === requestedAspectRatio ? '✅' : '⚠️'
     });
 
     return new Promise((resolve, reject) => {
@@ -1054,22 +1166,67 @@ function resizeCanvas() {
   canvas.height = video.videoHeight;
 }
 
-// ---- Detect real orientation/frame-size changes and invalidate stale
-// calibration (gate points / jump baseline) since their pixel coordinates
-// no longer correspond to the new frame layout. ----
-function refreshCanvasForOrientation() {
+// ---- Detect real orientation/frame-size changes and handle smooth reconfiguration ----
+/**
+ * Refresh canvas and reconfigure camera on orientation change
+ */
+async function refreshCanvasForOrientation() {
+  if (isReconfiguring) {
+    console.log('⏳ Already reconfiguring, skipping...');
+    return;
+  }
+
   const prevW = canvas.width;
   const prevH = canvas.height;
+  const newOrientation = getCurrentOrientation();
+
   resizeCanvas();
   const changed = canvas.width !== prevW || canvas.height !== prevH;
-  if (!changed || !running) return;
 
-  if (mode === 'run' && runPhase !== 'calibrate1') {
-    setStatus('چرخش گوشی تشخیص داده شد؛ لطفاً موانع رو دوباره تنظیم کن');
-    runEnterCalibrate1();
-  } else if (mode === 'jump' && jumpPhase !== 'calibrating') {
-    setStatus('چرخش گوشی تشخیص داده شد؛ در حال کالیبراسیون مجدد...');
-    jumpEnterCalibrating();
+  console.log(`🔄 Orientation check: ${currentOrientation} → ${newOrientation}, Canvas: ${prevW}x${prevH} → ${canvas.width}x${canvas.height}, Changed: ${changed}`);
+
+  // If orientation actually changed (not just a small resize)
+  if (newOrientation !== currentOrientation && running) {
+    isReconfiguring = true;
+    
+    console.log(`🔄 Orientation changed: ${currentOrientation} → ${newOrientation}`);
+    setStatus(`در حال تنظیم برای ${newOrientation === 'portrait' ? 'حالت عمودی' : 'حالت افقی'}...`);
+
+    try {
+      // Reconfigure camera for new orientation
+      await setupCamera(true);
+      resizeCanvas();
+
+      // Reset calibration since pixel coordinates changed
+      if (mode === 'run' && runPhase !== 'calibrate1') {
+        console.log('🔄 Resetting run calibration due to orientation change');
+        runEnterCalibrate1();
+      } else if (mode === 'jump' && jumpPhase !== 'calibrating') {
+        console.log('🔄 Resetting jump calibration due to orientation change');
+        jumpEnterCalibrating();
+      }
+
+      console.log('✅ Orientation reconfiguration complete');
+      
+    } catch (error) {
+      console.error('❌ Failed to reconfigure camera:', error);
+      logError('refreshCanvasForOrientation', error);
+      
+      // Show error but don't crash
+      setStatus('خطا در تنظیم دوربین. لطفاً دوباره شروع کنید.');
+    } finally {
+      isReconfiguring = false;
+    }
+  } else if (changed && running) {
+    // Canvas size changed but orientation didn't (minor resize)
+    // Just reset calibration if we're mid-process
+    if (mode === 'run' && runPhase !== 'calibrate1' && runPhase !== 'ready' && runPhase !== 'timing') {
+      console.log('⚠️ Canvas resized, resetting calibration');
+      runEnterCalibrate1();
+    } else if (mode === 'jump' && jumpPhase !== 'calibrating' && jumpPhase !== 'ready') {
+      console.log('⚠️ Canvas resized, resetting calibration');
+      jumpEnterCalibrating();
+    }
   }
 }
 
@@ -1230,15 +1387,34 @@ async function start() {
 
     resizeCanvas();
 
-    window.addEventListener('resize', refreshCanvasForOrientation);
-    window.addEventListener('orientationchange', () => {
-      // videoWidth/videoHeight often update a few hundred ms after the rotation event.
-      setTimeout(refreshCanvasForOrientation, 300);
-      setTimeout(refreshCanvasForOrientation, 800);
+    // Enhanced orientation change listeners
+    let orientationChangeTimer = null;
+
+    window.addEventListener('resize', () => {
+      // Debounce resize events to avoid multiple rapid calls
+      clearTimeout(orientationChangeTimer);
+      orientationChangeTimer = setTimeout(() => {
+        refreshCanvasForOrientation();
+      }, 300);
     });
+
+    window.addEventListener('orientationchange', () => {
+      // Handle orientation change with delays for camera stabilization
+      console.log('🔄 orientationchange event fired');
+      clearTimeout(orientationChangeTimer);
+      orientationChangeTimer = setTimeout(() => {
+        refreshCanvasForOrientation();
+      }, 500);
+    });
+
+    // Modern orientation API (if available)
     if (screen.orientation && screen.orientation.addEventListener) {
       screen.orientation.addEventListener('change', () => {
-        setTimeout(refreshCanvasForOrientation, 300);
+        console.log('🔄 screen.orientation.change event fired');
+        clearTimeout(orientationChangeTimer);
+        orientationChangeTimer = setTimeout(() => {
+          refreshCanvasForOrientation();
+        }, 500);
       });
     }
 

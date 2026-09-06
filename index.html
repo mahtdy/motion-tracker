@@ -146,6 +146,10 @@
     color: #94a3b8;
     border: 2px solid #475569;
   }
+  .panel button:disabled {
+    opacity: 0.4;
+    pointer-events: none;
+  }
   .panel .btnRow {
     display: flex;
     flex-direction: column;
@@ -156,6 +160,23 @@
     font-weight: bold;
     color: #4ade80;
     margin: 8px 0;
+  }
+
+  /* Gate calibration controls (run mode) */
+  #gateControls {
+    padding: 14px 20px;
+  }
+  #gateControls .btnRow {
+    flex-direction: row;
+    gap: 10px;
+  }
+  #gateControls .btnRow button {
+    margin-top: 0;
+  }
+  #gateHint {
+    margin-bottom: 10px;
+    font-size: 14px;
+    color: #94a3b8;
   }
 
   /* History Panel */
@@ -360,20 +381,29 @@
   <!-- Settings Panel -->
   <div id="settingsPanel">
     <h3 style="margin-bottom: 16px; color: #4ade80;">⚙️ تنظیمات</h3>
-    
+
     <label>حساسیت تشخیص پرش</label>
     <input type="range" id="jumpSensitivity" min="0.05" max="0.25" step="0.01" value="0.12">
     <div class="value" id="jumpSensValue">12%</div>
-    
+
     <label>حساسیت تشخیص فرود</label>
     <input type="range" id="landSensitivity" min="0.02" max="0.15" step="0.01" value="0.06">
     <div class="value" id="landSensValue">6%</div>
-    
+
     <label>تعداد فریم‌های کالیبراسیون</label>
     <input type="range" id="calibFrames" min="10" max="40" step="5" value="20">
     <div class="value" id="calibFramesValue">20 فریم</div>
-    
+
     <button id="closeSettingsBtn" style="margin-top: 20px;">ذخیره و بستن</button>
+  </div>
+
+  <!-- Run mode: gate calibration controls (allows correcting a mis-tapped point) -->
+  <div id="gateControls" class="panel">
+    <div id="gateHint">روی تصویر ضربه بزن</div>
+    <div class="btnRow">
+      <button id="gateBackBtn" class="secondary" style="display:none;">بازگشت</button>
+      <button id="gateNextBtn" disabled>ادامه</button>
+    </div>
   </div>
 
   <!-- Run mode panels -->
@@ -383,6 +413,7 @@
       <input id="distInput" type="number" value="5" step="0.1" inputmode="decimal"> متر
     </div>
     <button id="confirmDistBtn">تأیید و شروع اندازه‌گیری</button>
+    <button id="backToGatesBtn" class="secondary">بازگشت و اصلاح موانع</button>
   </div>
 
   <div id="resultPanel" class="panel">

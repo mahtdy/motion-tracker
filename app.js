@@ -28,11 +28,17 @@ const topActions = document.getElementById('topActions');
 const distPanel = document.getElementById('distPanel');
 const distInput = document.getElementById('distInput');
 const confirmDistBtn = document.getElementById('confirmDistBtn');
+const backToGatesBtn = document.getElementById('backToGatesBtn');
 const resultPanel = document.getElementById('resultPanel');
 const timeResultEl = document.getElementById('timeResult');
 const speedResultEl = document.getElementById('speedResult');
 const againBtn = document.getElementById('againBtn');
 const recalibBtn = document.getElementById('recalibBtn');
+
+const gateControls = document.getElementById('gateControls');
+const gateHint = document.getElementById('gateHint');
+const gateBackBtn = document.getElementById('gateBackBtn');
+const gateNextBtn = document.getElementById('gateNextBtn');
 
 const jumpResultPanel = document.getElementById('jumpResultPanel');
 const airTimeResultEl = document.getElementById('airTimeResult');
@@ -96,15 +102,15 @@ function renderHistory() {
     historyList.innerHTML = '<p style="color: #94a3b8; text-align: center;">هنوز اندازه‌گیری‌ای ثبت نشده</p>';
     return;
   }
-  
+
   historyList.innerHTML = history.map(entry => {
     if (entry.type === 'run') {
       return `
         <div class="historyItem">
           <div class="date">🏃 دویدن • ${entry.date}</div>
           <div class="data">
-            زمان: <span>${entry.data.time}s</span> • 
-            سرعت: <span>${entry.data.speed} m/s</span> • 
+            زمان: <span>${entry.data.time}s</span> •
+            سرعت: <span>${entry.data.speed} m/s</span> •
             فاصله: <span>${entry.data.distance}m</span>
           </div>
         </div>
@@ -114,7 +120,7 @@ function renderHistory() {
         <div class="historyItem">
           <div class="date">⤴️ پرش • ${entry.date}</div>
           <div class="data">
-            زمان پرواز: <span>${entry.data.airTime}s</span> • 
+            زمان پرواز: <span>${entry.data.airTime}s</span> •
             ارتفاع: <span>${entry.data.height} cm</span>
           </div>
         </div>
@@ -203,8 +209,12 @@ document.getElementById('calibFrames').addEventListener('input', (e) => {
 
 function applySettings() {
   const settings = getSettings();
-  airThresholdPx = legLengthPx * settings.jumpThresholdRatio;
-  landThresholdPx = legLengthPx * settings.landThresholdRatio;
+  // Only rescale live thresholds if we already know the person's leg length;
+  // otherwise the ratios get applied once calibration finishes (see jumpProcessFrame).
+  if (legLengthPx != null) {
+    airThresholdPx = legLengthPx * settings.jumpThresholdRatio;
+    landThresholdPx = legLengthPx * settings.landThresholdRatio;
+  }
   CALIB_FRAMES_NEEDED = settings.calibFrames;
 }
 
@@ -224,6 +234,7 @@ function hideAllPanels() {
   distPanel.classList.remove('visible');
   resultPanel.classList.remove('visible');
   jumpResultPanel.classList.remove('visible');
+  gateControls.classList.remove('visible');
 }
 
 function setStatus(text) {
@@ -233,7 +244,7 @@ function setStatus(text) {
 // ================== RUN MODE ==================
 // runPhase: 'calibrate1' | 'calibrate2' | 'enterDistance' | 'ready' | 'timing' | 'done'
 let runPhase = 'calibrate1';
-let gatePoints = [];
+let gatePoints = [null, null];
 let distanceMeters = 5;
 let gateCrossed = [false, false];
 let prevSide = [null, null];
@@ -242,22 +253,28 @@ let runEndTime = null;
 
 function runEnterCalibrate1() {
   runPhase = 'calibrate1';
-  gatePoints = [];
+  gatePoints = [null, null];
   gateCrossed = [false, false];
   prevSide = [null, null];
   runStartTime = null;
   runEndTime = null;
   hideAllPanels();
-  showGuide('👆', 'انتخاب مانع اول', 'روی نقطه‌ای از تصویر که مانع اول (روی زمین) قرار داره ضربه بزن. سعی کنید نقطه‌ای رو انتخاب کنید که به وضوح قابل رویت باشه.');
+  showGuide('👆', 'انتخاب مانع اول', 'روی نقطه‌ای از تصویر که مانع اول (روی زمین) قرار داره ضربه بزن. اگه اشتباه زدی، کافیه دوباره ضربه بزنی تا نقطه عوض بشه.');
+  updateGateControls();
 }
 
-function runEnterCalibrate2() {
+function runEnterCalibrate2(showGuideOverlay = true) {
   runPhase = 'calibrate2';
-  showGuide('👆', 'انتخاب مانع دوم', 'حالا روی نقطهٔ مانع دوم ضربه بزن. فاصله بین این دو نقطه رو بعداً وارد خواهید کرد.');
+  hideAllPanels();
+  if (showGuideOverlay) {
+    showGuide('👆', 'انتخاب مانع دوم', 'حالا روی نقطهٔ مانع دوم ضربه بزن. اگه اشتباه زدی دوباره ضربه بزن. فاصله بین این دو نقطه رو بعداً وارد می‌کنی.');
+  }
+  updateGateControls();
 }
 
 function runEnterEnterDistance() {
   runPhase = 'enterDistance';
+  hideAllPanels();
   setStatus('فاصلهٔ واقعی رو وارد کن و تأیید بزن');
   distPanel.classList.add('visible');
 }
@@ -280,7 +297,7 @@ function runFinish() {
   speedResultEl.textContent = speed.toFixed(2);
   resultPanel.classList.add('visible');
   setStatus('تمام شد!');
-  
+
   // Save to history
   saveToHistory('run', {
     time: elapsedSec.toFixed(2),
@@ -295,6 +312,7 @@ function runUpdateGateCrossing(ankleX) {
 
   for (let i = 0; i < 2; i++) {
     if (gateCrossed[i]) continue;
+    if (!gatePoints[i]) continue;
     const gateX = gatePoints[i].x;
     const side = ankleX < gateX ? -1 : 1;
     if (prevSide[i] != null && side !== prevSide[i]) {
@@ -314,6 +332,7 @@ function runUpdateGateCrossing(ankleX) {
 
 function runDrawGates() {
   gatePoints.forEach((pt, i) => {
+    if (!pt) return;
     const done = gateCrossed[i];
     ctx.strokeStyle = done ? '#22c55e' : '#f87171';
     ctx.lineWidth = 3;
@@ -329,16 +348,52 @@ function runDrawGates() {
   });
 }
 
+// ---- Gate calibration controls (allows correcting a mis-tapped point) ----
+function updateGateControls() {
+  if (runPhase !== 'calibrate1' && runPhase !== 'calibrate2') {
+    gateControls.classList.remove('visible');
+    return;
+  }
+  gateControls.classList.add('visible');
+  const idx = runPhase === 'calibrate1' ? 0 : 1;
+  const hasPoint = !!gatePoints[idx];
+  gateNextBtn.disabled = !hasPoint;
+  gateNextBtn.textContent = runPhase === 'calibrate1' ? 'ادامه' : 'ادامه و وارد کردن فاصله';
+  gateBackBtn.style.display = runPhase === 'calibrate2' ? 'block' : 'none';
+  gateHint.textContent = hasPoint
+    ? 'برای اصلاح، دوباره روی تصویر ضربه بزن یا ادامه بده'
+    : 'روی تصویر ضربه بزن تا نقطهٔ مانع ثبت بشه';
+}
+
 document.getElementById('stage').addEventListener('click', (e) => {
   if (mode !== 'run') return;
   if (runPhase !== 'calibrate1' && runPhase !== 'calibrate2') return;
+  // Ignore taps that land on the gate-controls panel itself
+  if (e.target.closest && e.target.closest('#gateControls')) return;
   const point = clientToCanvasCoords(e.clientX, e.clientY);
-  gatePoints.push(point);
+  const idx = runPhase === 'calibrate1' ? 0 : 1;
+  gatePoints[idx] = point;
+  updateGateControls();
+});
+
+gateNextBtn.addEventListener('click', () => {
   if (runPhase === 'calibrate1') {
-    runEnterCalibrate2();
-  } else {
+    // If the second gate point was already set before going back, skip re-showing the guide.
+    runEnterCalibrate2(!gatePoints[1]);
+  } else if (runPhase === 'calibrate2') {
     runEnterEnterDistance();
   }
+});
+
+gateBackBtn.addEventListener('click', () => {
+  runPhase = 'calibrate1';
+  setStatus('برای اصلاح، دوباره روی مانع اول ضربه بزن یا ادامه بده');
+  updateGateControls();
+});
+
+backToGatesBtn.addEventListener('click', () => {
+  // Keep both existing points so the person can just fix the one that's wrong.
+  runEnterCalibrate2(false);
 });
 
 confirmDistBtn.addEventListener('click', () => {
@@ -395,7 +450,7 @@ function jumpFinish() {
   jumpHeightResultEl.textContent = (heightMeters * 100).toFixed(1);
   jumpResultPanel.classList.add('visible');
   setStatus('تمام شد!');
-  
+
   // Save to history
   saveToHistory('jump', {
     airTime: airTimeSec.toFixed(2),
@@ -430,8 +485,10 @@ function jumpProcessFrame(kp) {
       } else {
         legLengthPx = canvas.height * 0.25;
       }
-      airThresholdPx = legLengthPx * 0.12;
-      landThresholdPx = legLengthPx * 0.06;
+      // Use the user's saved sensitivity settings, not hardcoded defaults.
+      const settings = getSettings();
+      airThresholdPx = legLengthPx * settings.jumpThresholdRatio;
+      landThresholdPx = legLengthPx * settings.landThresholdRatio;
       jumpEnterReady();
     }
     return;
@@ -542,6 +599,25 @@ function resizeCanvas() {
   canvas.height = video.videoHeight;
 }
 
+// ---- Detect real orientation/frame-size changes and invalidate stale
+// calibration (gate points / jump baseline) since their pixel coordinates
+// no longer correspond to the new frame layout. ----
+function refreshCanvasForOrientation() {
+  const prevW = canvas.width;
+  const prevH = canvas.height;
+  resizeCanvas();
+  const changed = canvas.width !== prevW || canvas.height !== prevH;
+  if (!changed || !running) return;
+
+  if (mode === 'run' && runPhase !== 'calibrate1') {
+    setStatus('چرخش گوشی تشخیص داده شد؛ لطفاً موانع رو دوباره تنظیم کن');
+    runEnterCalibrate1();
+  } else if (mode === 'jump' && jumpPhase !== 'calibrating') {
+    setStatus('چرخش گوشی تشخیص داده شد؛ در حال کالیبراسیون مجدد...');
+    jumpEnterCalibrating();
+  }
+}
+
 async function loadModel() {
   detector = await poseDetection.createDetector(
     poseDetection.SupportedModels.BlazePose,
@@ -612,7 +688,18 @@ async function start() {
   setStatus('در حال فعال‌سازی دوربین...');
   await setupCamera();
   resizeCanvas();
-  window.addEventListener('resize', resizeCanvas);
+
+  window.addEventListener('resize', refreshCanvasForOrientation);
+  window.addEventListener('orientationchange', () => {
+    // videoWidth/videoHeight often update a few hundred ms after the rotation event.
+    setTimeout(refreshCanvasForOrientation, 300);
+    setTimeout(refreshCanvasForOrientation, 800);
+  });
+  if (screen.orientation && screen.orientation.addEventListener) {
+    screen.orientation.addEventListener('change', () => {
+      setTimeout(refreshCanvasForOrientation, 300);
+    });
+  }
 
   setStatus('در حال بارگذاری مدل تشخیص بدن...');
   await loadModel();

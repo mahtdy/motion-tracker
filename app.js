@@ -585,11 +585,37 @@ function clientToCanvasCoords(clientX, clientY) {
 
 // ================== Camera + model setup ==================
 async function setupCamera() {
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+  const isPortrait = window.innerHeight >= window.innerWidth;
+  const constraints = {
+    video: {
+      facingMode: { ideal: 'environment' },
+      // Match the requested resolution's orientation to the phone's actual
+      // orientation, so object-fit: cover doesn't have to crop a wide
+      // landscape frame down to a narrow strip (which looks like extreme zoom).
+      width: { ideal: isPortrait ? 1080 : 1920 },
+      height: { ideal: isPortrait ? 1920 : 1080 },
+    },
     audio: false,
-  });
+  };
+  const stream = await navigator.mediaDevices.getUserMedia(constraints);
   video.srcObject = stream;
+
+  // Some phones (especially multi-lens Android devices) default the back
+  // camera to a non-1x lens or apply digital zoom, which looks "zoomed in"
+  // with no way to undo it from the video element. Where the browser exposes
+  // a zoom capability, explicitly reset it to its minimum (widest) value.
+  const track = stream.getVideoTracks()[0];
+  if (track && track.getCapabilities) {
+    try {
+      const caps = track.getCapabilities();
+      if (caps.zoom) {
+        await track.applyConstraints({ advanced: [{ zoom: caps.zoom.min }] });
+      }
+    } catch (e) {
+      // Not all browsers/devices support programmatic zoom control; safe to ignore.
+    }
+  }
+
   return new Promise((resolve) => {
     video.onloadedmetadata = () => {
       video.play();

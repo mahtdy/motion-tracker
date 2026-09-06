@@ -203,6 +203,247 @@ function showValidationWarning(title, message, onConfirm, onCancel) {
   }
 }
 
+// ================== OUT-OF-FRAME TRACKING SYSTEM ==================
+/**
+ * Out-of-frame detection settings
+ */
+const FRAME_TRACKING_SETTINGS = {
+  minKeypointsVisible: 3, // حداقل 3 keypoint باید visible باشه
+  minConfidence: 0.3, // حداقل confidence score
+  outOfFrameTimeout: 2000, // 2 ثانیه (ms) قبل از pause کردن timing
+  warningCooldown: 3000, // 3 ثانیه فاصله بین warning ها
+  edgeMargin: 0.05 // 5% margin از لبه‌های صفحه
+};
+
+/**
+ * Frame tracking state
+ */
+let isInFrame = true;
+let lastInFrameTime = performance.now();
+let outOfFrameStartTime = null;
+let timingPaused = false;
+let pausedElapsedTime = 0;
+let lastWarningTime = 0;
+let frameIndicatorElement = null;
+
+/**
+ * Check if pose is in frame
+ */
+function isPoseInFrame(keypoints) {
+  if (!keypoints || keypoints.length === 0) {
+    return false;
+  }
+  
+  // Count visible keypoints
+  let visibleCount = 0;
+  let totalX = 0;
+  let totalY = 0;
+  
+  const margin = {
+    left: canvas.width * FRAME_TRACKING_SETTINGS.edgeMargin,
+    right: canvas.width * (1 - FRAME_TRACKING_SETTINGS.edgeMargin),
+    top: canvas.height * FRAME_TRACKING_SETTINGS.edgeMargin,
+    bottom: canvas.height * (1 - FRAME_TRACKING_SETTINGS.edgeMargin)
+  };
+  
+  for (const kp of keypoints) {
+    if (kp.score > FRAME_TRACKING_SETTINGS.minConfidence) {
+      // Check if keypoint is within frame with margin
+      if (kp.x >= margin.left && kp.x <= margin.right &&
+          kp.y >= margin.top && kp.y <= margin.bottom) {
+        visibleCount++;
+        totalX += kp.x;
+        totalY += kp.y;
+      }
+    }
+  }
+  
+  return visibleCount >= FRAME_TRACKING_SETTINGS.minKeypointsVisible;
+}
+
+/**
+ * Handle out-of-frame detection
+ */
+function handleFrameTracking(poses) {
+  const now = performance.now();
+  const wasInFrame = isInFrame;
+  
+  // Check current frame status
+  if (poses && poses.length > 0) {
+    isInFrame = isPoseInFrame(poses[0].keypoints);
+  } else {
+    isInFrame = false;
+  }
+  
+  // Update indicators
+  updateFrameIndicator(isInFrame);
+  
+  // Handle state changes
+  if (isInFrame && !wasInFrame) {
+    // Just came back into frame
+    lastInFrameTime = now;
+    outOfFrameStartTime = null;
+    
+    // Resume timing if it was paused
+    if (timingPaused) {
+      resumeTiming();
+    }
+  } else if (!isInFrame && wasInFrame) {
+    // Just went out of frame
+    outOfFrameStartTime = now;
+    
+    // Show warning (with cooldown)
+    if (now - lastWarningTime > FRAME_TRACKING_SETTINGS.warningCooldown) {
+      showFrameWarning();
+      lastWarningTime = now;
+    }
+  } else if (!isInFrame && outOfFrameStartTime) {
+    // Still out of frame - check timeout
+    const outOfFrameDuration = now - outOfFrameStartTime;
+    
+    if (outOfFrameDuration > FRAME_TRACKING_SETTINGS.outOfFrameTimeout) {
+      // Been out too long - pause timing if active
+      if ((mode === 'run' && runPhase === 'timing') || 
+          (mode === 'jump' && jumpPhase === 'measuring')) {
+        if (!timingPaused) {
+          pauseTiming();
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Show frame warning
+ */
+function showFrameWarning() {
+  // Don't show during calibration or results
+  if (mode === 'run') {
+    if (runPhase === 'calibrate1' || runPhase === 'calibrate2' || 
+        runPhase === 'enterDistance' || runPhase === 'done') {
+      return;
+    }
+  } else if (mode === 'jump') {
+    if (jumpPhase === 'calibrating' || jumpPhase === 'done') {
+      return;
+    }
+  }
+  
+  setStatus('⚠️ در کادر دوربین بمون!');
+  
+  // Reset status after 2 seconds
+  setTimeout(() => {
+    if (isInFrame) {
+      if (mode === 'run' && runPhase === 'ready') {
+        setStatus('آماده! از کنار یکی از موانع رد شو تا زمان شروع بشه');
+      } else if (mode === 'run' && runPhase === 'timing') {
+        setStatus('در حال دویدن... ⏱');
+      } else if (mode === 'jump' && jumpPhase === 'ready') {
+        setStatus('آماده! بپر 🤸');
+      } else if (mode === 'jump' && jumpPhase === 'measuring') {
+        setStatus('در حال اندازه‌گیری... 📊');
+      }
+    }
+  }, 2000);
+}
+
+/**
+ * Pause timing
+ */
+function pauseTiming() {
+  timingPaused = true;
+  
+  if (mode === 'run' && runPhase === 'timing' && runStartTime) {
+    // Save elapsed time before pause
+    pausedElapsedTime = performance.now() - runStartTime;
+    setStatus('⏸ متوقف شد - در کادر برگرد!');
+  } else if (mode === 'jump' && jumpPhase === 'measuring') {
+    setStatus('⏸ متوقف شد - در کادر برگرد!');
+  }
+  
+  console.warn('⏸ Timing paused - pose out of frame for too long');
+}
+
+/**
+ * Resume timing
+ */
+function resumeTiming() {
+  timingPaused = false;
+  
+  if (mode === 'run' && runPhase === 'timing') {
+    // Adjust start time to account for paused duration
+    runStartTime = performance.now() - pausedElapsedTime;
+    pausedElapsedTime = 0;
+    setStatus('▶️ ادامه... در حال دویدن ⏱');
+    
+    // Reset status after 1 second
+    setTimeout(() => {
+      if (runPhase === 'timing') {
+        setStatus('در حال دویدن... ⏱');
+      }
+    }, 1000);
+  } else if (mode === 'jump' && jumpPhase === 'measuring') {
+    setStatus('▶️ ادامه... در حال اندازه‌گیری 📊');
+    
+    setTimeout(() => {
+      if (jumpPhase === 'measuring') {
+        setStatus('در حال اندازه‌گیری... 📊');
+      }
+    }, 1000);
+  }
+  
+  console.log('▶️ Timing resumed - pose back in frame');
+}
+
+/**
+ * Create/update frame indicator
+ */
+function updateFrameIndicator(inFrame) {
+  if (!frameIndicatorElement) {
+    frameIndicatorElement = document.createElement('div');
+    frameIndicatorElement.id = 'frameIndicator';
+    frameIndicatorElement.style.cssText = `
+      position: absolute;
+      top: calc(env(safe-area-inset-top, 16px) + 8px);
+      left: calc(100% - 120px);
+      z-index: 4;
+      background: rgba(15, 23, 42, 0.75);
+      color: #4ade80;
+      padding: 4px 8px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: bold;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    `;
+    document.getElementById('stage').appendChild(frameIndicatorElement);
+  }
+  
+  if (inFrame) {
+    frameIndicatorElement.style.color = '#4ade80';
+    frameIndicatorElement.style.borderLeft = '3px solid #4ade80';
+    frameIndicatorElement.innerHTML = '✓ در کادر';
+  } else {
+    frameIndicatorElement.style.color = '#ef4444';
+    frameIndicatorElement.style.borderLeft = '3px solid #ef4444';
+    frameIndicatorElement.innerHTML = '✗ خارج از کادر';
+  }
+}
+
+/**
+ * Reset frame tracking state
+ */
+function resetFrameTracking() {
+  isInFrame = true;
+  lastInFrameTime = performance.now();
+  outOfFrameStartTime = null;
+  timingPaused = false;
+  pausedElapsedTime = 0;
+  lastWarningTime = 0;
+}
+
 // ================== SKELETON DRAWING SETUP ==================
 const CONNECTIONS = [
   ['left_shoulder', 'right_shoulder'],
@@ -1107,6 +1348,7 @@ function runEnterReady() {
   runStartTime = null;
   runEndTime = null;
   hideAllPanels();
+  resetFrameTracking(); // Reset frame tracking
   setStatus('آماده! از کنار یکی از موانع رد شو تا زمان شروع بشه');
 }
 
@@ -1318,6 +1560,7 @@ function jumpEnterReady() {
   jumpTakeoffTime = null;
   jumpLandTime = null;
   hideAllPanels();
+  resetFrameTracking(); // Reset frame tracking
   setStatus('آماده! بپر 🤸');
 }
 
@@ -1874,6 +2117,9 @@ async function loadModel() {
 function drawPose(poses) {
   try {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Handle frame tracking
+    handleFrameTracking(poses);
 
     if (mode === 'run') runDrawGates();
     if (mode === 'jump') jumpDrawOverlay();

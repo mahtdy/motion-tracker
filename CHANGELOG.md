@@ -6,6 +6,96 @@
 
 ---
 
+## [1.3.4] - 2024-01-XX
+
+### ✨ Added (اضافه شده)
+
+#### 📡 Out-of-Frame Tracking System
+- تابع `isPoseInFrame()` - تشخیص وضعیت pose در یا خارج از کادر
+- تابع `handleFrameTracking()` - مدیریت تغییرات وضعیت frame
+- تابع `showFrameWarning()` - نمایش هشدار خروج از کادر
+- تابع `pauseTiming()` - متوقف کردن timing در صورت out-of-frame طولانی
+- تابع `resumeTiming()` - ادامه timing بعد از برگشت به کادر
+- تابع `updateFrameIndicator()` - نمایش indicator وضعیت frame
+- تابع `resetFrameTracking()` - reset کردن state در شروع جدید
+
+#### 🎯 Frame Detection Rules
+- حداقل 3 keypoint با confidence >0.3 باید visible باشه
+- 5% margin از لبه‌های صفحه برای تشخیص
+- تشخیص دقیق keypoint های داخل/خارج کادر
+- Real-time tracking بدون تأخیر محسوس
+
+#### ⏸ Timing Pause System
+- بعد از 2 ثانیه out-of-frame، timing متوقف می‌شه
+- ذخیره elapsed time قبل از pause
+- Adjust کردن start time بعد از resume
+- Smooth resume بدون از دست دادن دقت
+- فقط در حالت‌های timing/measuring فعاله
+
+#### 🔔 Warning & Indicator System
+- هشدار "در کادر دوربین بمون!" با 3 ثانیه cooldown
+- Frame indicator در گوشه صفحه:
+  - ✓ در کادر (سبز)
+  - ✗ خارج از کادر (قرمز)
+- پیام‌های واضح فارسی برای pause/resume
+- هشدار فقط در حالت‌های active (نه calibration)
+
+#### 🎨 Visual Feedback
+- Border رنگی در frame indicator (سبز/قرمز)
+- Status messages برای pause: "⏸ متوقف شد - در کادر برگرد!"
+- Status messages برای resume: "▶️ ادامه... در حال دویدن ⏱"
+- Automatic status reset بعد از 1-2 ثانیه
+
+### 🔧 Changed (تغییر یافته)
+
+#### app.js
+- بازنویسی تابع `drawPose()` - اضافه کردن handleFrameTracking()
+- بهبود تابع `runEnterReady()` - reset frame tracking
+- بهبود تابع `jumpEnterReady()` - reset frame tracking
+- اضافه کردن ~250 خط کد برای frame tracking system
+- 7 متغیر global جدید برای state management
+
+#### index.html
+- آپدیت نسخه از 1.3.3 به 1.3.4
+
+#### sw.js
+- ارتقا نسخه cache از `v13` به `v14`
+
+#### manifest.json
+- آپدیت version از 1.3.3 به 1.3.4
+
+### 🐛 Fixed (رفع شده)
+- قطع شدن tracking وقتی کاربر از کادر خارج می‌شه
+- ادامه timing بدون توجه به out-of-frame
+- عدم آگاهی کاربر از خروج از کادر
+- نتایج نادرست به خاطر pose lost
+
+### 📈 Improved (بهبود یافته)
+- دقت اندازه‌گیری با pause در out-of-frame
+- User experience با warning و indicator
+- Fair timing با توقف خودکار
+- Visual feedback واضح برای وضعیت frame
+- Smooth resume بعد از برگشت به کادر
+
+### 🎯 Technical Details
+- Object constant: `FRAME_TRACKING_SETTINGS` با 5 تنظیم
+- 7 متغیر state: isInFrame, lastInFrameTime, outOfFrameStartTime, etc.
+- 7 تابع جدید برای frame tracking
+- Edge margin: 5% از هر لبه صفحه
+- Timeout: 2000ms قبل از pause
+- Warning cooldown: 3000ms بین هشدارها
+- Min keypoints: 3 با confidence >0.3
+- Frame indicator: dynamic element با styling inline
+
+### 🔄 State Management
+- Reset frame tracking در شروع هر measurement جدید
+- Preserve elapsed time در pause
+- Adjust timing بعد از resume
+- Independent tracking برای run و jump modes
+- No interference با calibration phases
+
+---
+
 ## [1.3.3] - 2024-01-XX
 
 ### ✨ Added (اضافه شده)

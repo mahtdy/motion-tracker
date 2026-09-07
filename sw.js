@@ -1,6 +1,6 @@
 // Service Worker with advanced caching strategies
-const VERSION = '1.3.12';
-const CACHE_NAME = `motion-tracker-v23`;
+const VERSION = '1.4.0';
+const CACHE_NAME = `motion-tracker-v24`;
 const CORE_CACHE = `${CACHE_NAME}-core`;
 const CDN_CACHE = `${CACHE_NAME}-cdn`;
 const RUNTIME_CACHE = `${CACHE_NAME}-runtime`;

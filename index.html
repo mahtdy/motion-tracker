@@ -14,66 +14,83 @@
 
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  
   html, body {
-    width: 100%; height: 100%;
+    width: 100%;
+    height: 100%;
     background: #000;
     overflow: hidden;
     font-family: -apple-system, "Segoe UI", Tahoma, sans-serif;
   }
+
+  /* Main container - responsive width */
   #stage {
     position: relative;
-    width: 100vw;
+    width: 100%;
+    max-width: 430px;
     height: 100vh;
+    margin: 0 auto;
+    background: #000;
   }
+
   video, canvas {
     position: absolute;
-    top: 0; left: 0;
+    top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
   }
+
+  /* Status bar - compact */
   #status {
     position: absolute;
-    top: calc(env(safe-area-inset-top, 16px) + 8px);
-    right: 20px;
-    left: 20px;
+    top: calc(env(safe-area-inset-top, 8px) + 6px);
+    right: 12px;
+    left: 12px;
     z-index: 5;
     color: #4ade80;
-    font-size: 16px;
-    font-weight: bold;
-    text-shadow: 0 2px 6px rgba(0,0,0,.9);
+    font-size: 13px;
+    font-weight: 600;
+    text-shadow: 0 2px 4px rgba(0,0,0,.9);
     text-align: center;
-    padding: 8px;
-    background: rgba(15, 23, 42, 0.75);
-    border-radius: 12px;
+    padding: 6px 10px;
+    background: rgba(15, 23, 42, 0.85);
+    border-radius: 10px;
   }
+
+  /* Mode bar - compact buttons */
   #modeBar {
     position: absolute;
-    top: calc(env(safe-area-inset-top, 16px) + 44px);
-    left: 16px;
-    right: 16px;
+    top: calc(env(safe-area-inset-top, 8px) + 36px);
+    left: 12px;
+    right: 12px;
     z-index: 5;
     display: flex;
     justify-content: center;
-    gap: 10px;
+    gap: 8px;
   }
+
   .modeBtn {
     background: rgba(30, 41, 59, 0.95);
     color: #94a3b8;
     border: 2px solid #475569;
-    padding: 10px 24px;
+    padding: 8px 20px;
     border-radius: 999px;
-    font-size: 15px;
-    font-weight: bold;
-    min-width: 80px;
+    font-size: 13px;
+    font-weight: 600;
+    min-width: 70px;
     flex: 1;
-    max-width: 140px;
+    max-width: 120px;
   }
+
   .modeBtn.active {
     background: #22c55e;
     color: #052e16;
     border-color: #22c55e;
   }
+
+  /* Start overlay - compact */
   #startOverlay {
     position: absolute;
     inset: 0;
@@ -83,490 +100,370 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 16px;
+    gap: 14px;
     color: #e2e8f0;
     text-align: center;
-    padding: 24px;
+    padding: 20px;
   }
+
+  #startOverlay h2 {
+    font-size: 22px;
+    margin: 0;
+  }
+
   #startBtn {
     background: #22c55e;
     color: #052e16;
     border: none;
-    padding: 14px 32px;
-    font-size: 18px;
-    font-weight: bold;
+    padding: 12px 28px;
+    font-size: 16px;
+    font-weight: 600;
     border-radius: 999px;
+    min-height: 44px;
   }
-  #hint { font-size: 13px; color: #94a3b8; max-width: 320px; }
 
+  #hint {
+    font-size: 12px;
+    color: #94a3b8;
+    max-width: 300px;
+    line-height: 1.5;
+  }
+
+  /* Panels - compact and responsive */
   .panel {
     position: absolute;
-    bottom: calc(env(safe-area-inset-bottom, 16px) + 16px);
-    left: 20px;
-    right: 20px;
+    bottom: calc(env(safe-area-inset-bottom, 12px) + 12px);
+    left: 12px;
+    right: 12px;
     z-index: 6;
-    background: rgba(15, 23, 42, 0.95);
+    background: rgba(15, 23, 42, 0.97);
     border: 2px solid #334155;
-    border-radius: 20px;
-    padding: 20px;
+    border-radius: 16px;
+    padding: 16px;
     color: #e2e8f0;
     display: none;
     text-align: center;
-    max-height: 65vh;
+    max-height: 60vh;
     overflow-y: auto;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
   }
-  .panel.visible { display: block; }
-  .panel input {
-    width: 100px;
-    font-size: 22px;
+
+  .panel.visible {
+    display: block;
+  }
+
+  .panel input[type="number"] {
+    width: 80px;
+    font-size: 18px;
     text-align: center;
-    padding: 10px;
-    border-radius: 10px;
+    padding: 8px;
+    border-radius: 8px;
     border: 2px solid #475569;
     background: #1e293b;
     color: #fff;
-    margin: 0 8px;
+    margin: 0 6px;
   }
+
   .panel button {
     display: block;
     width: 100%;
     background: #22c55e;
     color: #052e16;
     border: none;
-    padding: 14px 16px;
-    font-size: 16px;
-    font-weight: bold;
+    padding: 12px 14px;
+    font-size: 14px;
+    font-weight: 600;
     border-radius: 999px;
-    margin-top: 12px;
-    box-sizing: border-box;
+    margin-top: 10px;
+    min-height: 44px;
   }
+
   .panel button.secondary {
     background: transparent;
     color: #94a3b8;
     border: 2px solid #475569;
   }
+
   .panel button:disabled {
     opacity: 0.4;
     pointer-events: none;
   }
+
   .panel .btnRow {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-  }
-  .panel .big {
-    font-size: 32px;
-    font-weight: bold;
-    color: #4ade80;
-    margin: 8px 0;
+    gap: 10px;
   }
 
-  /* Gate calibration controls (run mode): a slim bar, not a big sheet,
-     so most of the frame stays visible for precise tapping. */
+  .panel .big {
+    font-size: 28px;
+    font-weight: bold;
+    color: #4ade80;
+    margin: 6px 0;
+  }
+
+  /* Gate controls - slim and compact */
   #gateControls {
     position: absolute;
-    bottom: calc(env(safe-area-inset-bottom, 16px) + 16px);
-    left: 20px;
-    right: 20px;
+    bottom: calc(env(safe-area-inset-bottom, 12px) + 12px);
+    left: 12px;
+    right: 12px;
     z-index: 6;
-    background: rgba(15, 23, 42, 0.92);
+    background: rgba(15, 23, 42, 0.95);
     border: 2px solid #334155;
-    border-radius: 16px;
-    padding: 12px 16px;
+    border-radius: 14px;
+    padding: 10px 12px;
     display: none;
     align-items: center;
-    gap: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    gap: 10px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
   }
-  #gateControls.visible { display: flex; }
+
+  #gateControls.visible {
+    display: flex;
+  }
+
   #gateHint {
     flex: 1;
-    font-size: 13px;
+    font-size: 12px;
     color: #94a3b8;
     text-align: right;
   }
+
   #gateControls .btnRow {
     display: flex;
     flex-direction: row;
     gap: 8px;
     margin: 0;
   }
+
   #gateControls button {
     width: auto;
     margin: 0;
-    padding: 10px 16px;
-    font-size: 14px;
+    padding: 9px 14px;
+    font-size: 13px;
     white-space: nowrap;
+    min-height: 40px;
   }
+
   #gateControls button:disabled {
     opacity: 0.4;
     pointer-events: none;
   }
+
   #gateControls button.secondary {
     background: transparent;
     color: #94a3b8;
     border: 2px solid #475569;
   }
 
-  /* History Panel */
+  /* History Panel - modal style */
   #historyPanel {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: calc(100% - 40px);
-    max-width: 400px;
-    max-height: 70vh;
+    width: calc(100% - 32px);
+    max-width: 380px;
+    max-height: 65vh;
     z-index: 20;
     background: rgba(15, 23, 42, 0.98);
     border: 2px solid #334155;
-    border-radius: 20px;
-    padding: 20px;
+    border-radius: 18px;
+    padding: 18px;
     color: #e2e8f0;
     display: none;
     text-align: center;
     overflow-y: auto;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
-  }
-  #historyPanel.visible { display: block; }
-  #historyList {
-    text-align: right;
-    margin: 12px 0;
-    max-height: 40vh;
-    overflow-y: auto;
-  }
-  .historyItem {
-    background: rgba(30, 41, 59, 0.6);
-    padding: 10px 12px;
-    border-radius: 10px;
-    margin: 8px 0;
-    border: 1px solid #475569;
-  }
-  .historyItem .date {
-    font-size: 12px;
-    color: #94a3b8;
-    margin-bottom: 4px;
-  }
-  .historyItem .data {
-    font-size: 14px;
-    color: #e2e8f0;
-  }
-  .historyItem .data span {
-    color: #4ade80;
-    font-weight: bold;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.7);
   }
 
-  /* Settings Panel */
+  #historyPanel.visible {
+    display: block;
+  }
+
+  #historyPanel h3 {
+    font-size: 16px;
+    margin-bottom: 12px;
+  }
+
+  #historyList {
+    text-align: right;
+    margin: 10px 0;
+    max-height: 35vh;
+    overflow-y: auto;
+  }
+
+  .historyItem {
+    background: rgba(30, 41, 59, 0.6);
+    padding: 9px 11px;
+    border-radius: 9px;
+    margin: 7px 0;
+    border: 1px solid #475569;
+  }
+
+  .historyItem .date {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-bottom: 3px;
+  }
+
+  .historyItem .data {
+    font-size: 13px;
+    color: #e2e8f0;
+  }
+
+  .historyItem .data span {
+    color: #4ade80;
+    font-weight: 600;
+  }
+
+  /* Settings Panel - modal style */
   #settingsPanel {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: calc(100% - 40px);
-    max-width: 400px;
+    width: calc(100% - 32px);
+    max-width: 380px;
+    max-height: 70vh;
     z-index: 20;
     background: rgba(15, 23, 42, 0.98);
     border: 2px solid #334155;
-    border-radius: 20px;
-    padding: 20px;
+    border-radius: 18px;
+    padding: 18px;
     color: #e2e8f0;
     display: none;
     text-align: center;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+    overflow-y: auto;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.7);
   }
-  #settingsPanel.visible { display: block; }
+
+  #settingsPanel.visible {
+    display: block;
+  }
+
+  #settingsPanel h3 {
+    font-size: 16px;
+    margin-bottom: 14px;
+  }
+
   #settingsPanel label {
     display: block;
     text-align: right;
-    margin: 12px 0 6px;
-    font-size: 14px;
+    margin: 10px 0 5px;
+    font-size: 13px;
     color: #94a3b8;
   }
+
   #settingsPanel input[type="range"] {
     width: 100%;
-    margin: 8px 0;
+    margin: 6px 0;
   }
+
   #settingsPanel .value {
-    font-size: 18px;
-    font-weight: bold;
+    font-size: 16px;
+    font-weight: 600;
     color: #4ade80;
   }
 
-  /* Guide banner: a small non-blocking bar, NOT a full-screen overlay,
-     so the video/image stays visible and tappable underneath at all times. */
+  /* Top action buttons - compact */
+  #topActions {
+    position: absolute;
+    top: calc(env(safe-area-inset-top, 8px) + 6px);
+    left: 12px;
+    z-index: 7;
+    display: none;
+    gap: 7px;
+  }
+
+  #topActions button {
+    background: rgba(30, 41, 59, 0.92);
+    color: #94a3b8;
+    border: 1px solid #475569;
+    padding: 7px 11px;
+    border-radius: 8px;
+    font-size: 18px;
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  /* Guide overlay - compact banner */
   #guideOverlay {
     position: absolute;
-    top: calc(env(safe-area-inset-top, 16px) + 92px);
-    left: 16px;
-    right: 16px;
+    top: calc(env(safe-area-inset-top, 8px) + 76px);
+    left: 12px;
+    right: 12px;
     z-index: 8;
     display: none;
     justify-content: center;
-    pointer-events: none; /* clicks pass through the empty space around the banner */
+    pointer-events: none;
   }
-  #guideOverlay.visible { display: flex; }
+
+  #guideOverlay.visible {
+    display: flex;
+  }
+
   #guideOverlay .guideContent {
     pointer-events: auto;
-    max-width: 440px;
+    max-width: 400px;
     width: 100%;
-    background: rgba(15, 23, 42, 0.94);
-    border-radius: 16px;
-    padding: 12px 14px;
+    background: rgba(15, 23, 42, 0.96);
+    border-radius: 14px;
+    padding: 10px 12px;
     border: 1px solid #334155;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 9px;
     text-align: right;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5);
   }
+
   #guideOverlay .guideIcon {
-    font-size: 26px;
+    font-size: 22px;
     flex-shrink: 0;
   }
+
   #guideOverlay .guideTextWrap {
     flex: 1;
     min-width: 0;
   }
+
   #guideOverlay h3 {
     color: #4ade80;
     margin-bottom: 2px;
-    font-size: 13px;
+    font-size: 12px;
+    font-weight: 600;
   }
+
   #guideOverlay p {
     color: #e2e8f0;
-    font-size: 12px;
+    font-size: 11px;
     line-height: 1.4;
     margin-bottom: 0;
   }
+
   #guideOverlay #guideCloseBtn {
     flex-shrink: 0;
     width: auto;
     margin-top: 0;
-    padding: 8px 14px;
-    font-size: 13px;
+    padding: 7px 12px;
+    font-size: 12px;
+    font-weight: 600;
     white-space: nowrap;
+    min-height: 36px;
   }
 
-  /* Responsive fixes for small screens */
-  @media (max-width: 360px) {
-    #status {
-      font-size: 14px;
-      padding: 6px 12px;
-      left: 12px;
-      right: 12px;
-    }
-    #modeBar {
-      left: 12px;
-      right: 12px;
-      gap: 8px;
-    }
-    .modeBtn {
-      padding: 8px 16px;
-      font-size: 13px;
-      min-width: 70px;
-    }
-    #topActions {
-      left: 12px;
-      gap: 6px;
-    }
-    #topActions button {
-      padding: 6px 10px !important;
-      font-size: 18px !important;
-      min-width: 44px;
-      min-height: 44px;
-    }
-    .panel {
-      left: 12px;
-      right: 12px;
-      bottom: calc(env(safe-area-inset-bottom, 12px) + 12px);
-      padding: 16px;
-      max-height: 70vh;
-    }
-    .panel button {
-      padding: 12px 14px;
-      font-size: 14px;
-      min-height: 44px;
-    }
-    .panel .big {
-      font-size: 28px;
-    }
-    #gateControls {
-      left: 12px;
-      right: 12px;
-      bottom: calc(env(safe-area-inset-bottom, 12px) + 12px);
-      padding: 10px 12px;
-      flex-wrap: wrap;
-    }
-    #gateHint {
-      font-size: 12px;
-      flex-basis: 100%;
-      text-align: center;
-      margin-bottom: 8px;
-    }
-    #gateControls .btnRow {
-      flex: 1;
-      justify-content: stretch;
-    }
-    #gateControls button {
-      padding: 10px 14px;
-      font-size: 13px;
-      flex: 1;
-      min-height: 44px;
-    }
-    #guideOverlay {
-      left: 12px;
-      right: 12px;
-    }
-    #guideOverlay .guideContent {
-      padding: 10px 12px;
-      gap: 8px;
-    }
-    #guideOverlay .guideIcon {
-      font-size: 22px;
-    }
-    #guideOverlay h3 {
-      font-size: 12px;
-    }
-    #guideOverlay p {
-      font-size: 11px;
-    }
-    #guideOverlay #guideCloseBtn {
-      padding: 6px 12px;
-      font-size: 12px;
-      min-height: 36px;
-    }
-    #historyPanel, #settingsPanel {
-      width: calc(100% - 24px);
-      padding: 16px;
-    }
-    #startOverlay {
-      padding: 20px;
-    }
-    #startOverlay h2 {
-      font-size: 24px;
-    }
-    #hint {
-      font-size: 12px;
-      max-width: 280px;
-    }
-    #startBtn {
-      padding: 12px 28px;
-      font-size: 16px;
-      min-height: 48px;
-      min-width: 120px;
-    }
-  }
-
-  /* Enhanced landscape optimization */
-  @media (orientation: landscape) and (max-height: 500px) {
-    #status {
-      font-size: 13px;
-      padding: 5px 10px;
-      top: calc(env(safe-area-inset-top, 8px) + 4px);
-    }
-    #modeBar {
-      top: calc(env(safe-area-inset-top, 8px) + 32px);
-      gap: 8px;
-    }
-    .modeBtn {
-      padding: 6px 14px;
-      font-size: 12px;
-      min-width: 65px;
-    }
-    #topActions {
-      top: calc(env(safe-area-inset-top, 8px) + 4px);
-      gap: 6px;
-    }
-    #topActions button {
-      padding: 6px 10px !important;
-      font-size: 16px !important;
-      min-width: 40px;
-      min-height: 40px;
-    }
-    .panel {
-      left: 50%;
-      right: auto;
-      transform: translateX(-50%);
-      width: min(340px, calc(100vw - 40px));
-      max-height: 85vh;
-      bottom: calc(env(safe-area-inset-bottom, 8px) + 8px);
-      padding: 12px 16px;
-    }
-    .panel .big {
-      font-size: 24px;
-    }
-    .panel button {
-      padding: 10px 14px;
-      font-size: 14px;
-      min-height: 40px;
-    }
-    #gateControls {
-      bottom: calc(env(safe-area-inset-bottom, 8px) + 8px);
-      padding: 8px 12px;
-    }
-    #gateHint {
-      font-size: 12px;
-    }
-    #gateControls button {
-      padding: 8px 12px;
-      font-size: 13px;
-      min-height: 40px;
-    }
-    #guideOverlay {
-      top: calc(env(safe-area-inset-top, 8px) + 72px);
-    }
-    #guideOverlay .guideContent {
-      padding: 8px 12px;
-      max-width: 380px;
-    }
-    #guideOverlay .guideIcon {
-      font-size: 20px;
-    }
-    #guideOverlay h3 {
-      font-size: 11px;
-    }
-    #guideOverlay p {
-      font-size: 10px;
-    }
-    #guideOverlay #guideCloseBtn {
-      padding: 6px 10px;
-      font-size: 11px;
-      min-height: 32px;
-    }
-    #historyPanel, #settingsPanel {
-      width: min(360px, calc(100vw - 40px));
-      max-height: 85vh;
-      padding: 14px;
-    }
-    #startOverlay {
-      padding: 16px;
-      gap: 12px;
-    }
-    #startOverlay h2 {
-      font-size: 20px;
-    }
-    #hint {
-      font-size: 11px;
-      max-width: 260px;
-    }
-    #startBtn {
-      padding: 10px 24px;
-      font-size: 16px;
-      min-height: 44px;
-    }
-  }
-
-  /* Touch target optimization - ensure all buttons are at least 44x44px */
+  /* Touch optimization */
   button {
-    min-width: 44px;
-    min-height: 44px;
+    min-width: 40px;
+    min-height: 40px;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
   }
 
-  /* Prevent text selection on double-tap */
+  /* Prevent text selection */
   * {
     -webkit-user-select: none;
     user-select: none;
@@ -576,6 +473,176 @@
   input {
     -webkit-user-select: text;
     user-select: text;
+  }
+
+  /* Desktop/tablet - center the app */
+  @media (min-width: 431px) {
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #1e293b;
+    }
+
+    #stage {
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      border-radius: 0;
+    }
+  }
+
+  /* Very small screens - even more compact */
+  @media (max-width: 360px) {
+    #status {
+      font-size: 12px;
+      padding: 5px 8px;
+    }
+
+    .modeBtn {
+      padding: 7px 16px;
+      font-size: 12px;
+      min-width: 65px;
+    }
+
+    #topActions button {
+      padding: 6px 9px;
+      font-size: 16px;
+      min-width: 38px;
+      min-height: 38px;
+    }
+
+    .panel {
+      padding: 14px;
+      max-height: 65vh;
+    }
+
+    .panel button {
+      padding: 11px 12px;
+      font-size: 13px;
+    }
+
+    .panel .big {
+      font-size: 24px;
+    }
+
+    #gateControls {
+      padding: 9px 10px;
+    }
+
+    #gateHint {
+      font-size: 11px;
+    }
+
+    #gateControls button {
+      padding: 8px 12px;
+      font-size: 12px;
+    }
+
+    #guideOverlay .guideContent {
+      padding: 9px 10px;
+    }
+
+    #guideOverlay .guideIcon {
+      font-size: 20px;
+    }
+
+    #guideOverlay h3 {
+      font-size: 11px;
+    }
+
+    #guideOverlay p {
+      font-size: 10px;
+    }
+
+    #startBtn {
+      padding: 11px 24px;
+      font-size: 15px;
+    }
+  }
+
+  /* Landscape mode - optimize for limited height */
+  @media (orientation: landscape) and (max-height: 500px) {
+    #status {
+      font-size: 11px;
+      padding: 4px 8px;
+      top: calc(env(safe-area-inset-top, 6px) + 4px);
+    }
+
+    #modeBar {
+      top: calc(env(safe-area-inset-top, 6px) + 28px);
+      gap: 6px;
+    }
+
+    .modeBtn {
+      padding: 6px 12px;
+      font-size: 11px;
+      min-width: 60px;
+    }
+
+    #topActions {
+      top: calc(env(safe-area-inset-top, 6px) + 4px);
+      gap: 5px;
+    }
+
+    #topActions button {
+      padding: 5px 9px;
+      font-size: 15px;
+      min-width: 36px;
+      min-height: 36px;
+    }
+
+    .panel {
+      max-height: 80vh;
+      bottom: calc(env(safe-area-inset-bottom, 8px) + 8px);
+      padding: 10px 14px;
+    }
+
+    .panel .big {
+      font-size: 22px;
+    }
+
+    .panel button {
+      padding: 9px 12px;
+      font-size: 13px;
+      min-height: 38px;
+    }
+
+    #gateControls {
+      bottom: calc(env(safe-area-inset-bottom, 8px) + 8px);
+      padding: 7px 10px;
+    }
+
+    #gateHint {
+      font-size: 11px;
+    }
+
+    #gateControls button {
+      padding: 7px 10px;
+      font-size: 12px;
+      min-height: 36px;
+    }
+
+    #guideOverlay {
+      top: calc(env(safe-area-inset-top, 6px) + 60px);
+    }
+
+    #guideOverlay .guideContent {
+      padding: 7px 10px;
+      max-width: 360px;
+    }
+
+    #startOverlay {
+      padding: 14px;
+      gap: 10px;
+    }
+
+    #startOverlay h2 {
+      font-size: 18px;
+    }
+
+    #hint {
+      font-size: 11px;
+      max-width: 260px;
+    }
   }
 </style>
 </head>
@@ -593,7 +660,7 @@
 
   <div id="startOverlay">
     <h2>حرکت‌سنج</h2>
-    <p style="font-size: 11px; color: #64748b; margin-bottom: 8px;">نسخه 1.3.12</p>
+    <p style="font-size: 11px; color: #64748b; margin-bottom: 8px;">نسخه 1.4.0</p>
     <p id="hint">برای شروع، اجازهٔ دسترسی به دوربین رو بده. مدل تشخیص بدن کاملاً روی گوشی اجرا می‌شه.</p>
     <button id="startBtn">شروع</button>
   </div>
@@ -702,6 +769,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
 
-<script src="app.js?v=1.3.11"></script>
+<script src="app.js?v=1.4.0"></script>
 </body>
 </html>

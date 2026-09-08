@@ -46,30 +46,35 @@
     object-fit: cover;
   }
 
-  /* Status bar - compact */
+  /* Status bar - top center, above everything */
   #status {
     position: absolute;
-    top: calc(env(safe-area-inset-top, 8px) + 6px);
-    right: 12px;
-    left: 12px;
-    z-index: 5;
+    top: 8px;
+    right: 50%;
+    transform: translateX(50%);
+    width: auto;
+    max-width: calc(100% - 100px);
+    z-index: 10;
     color: #4ade80;
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 600;
     text-shadow: 0 2px 4px rgba(0,0,0,.9);
     text-align: center;
-    padding: 6px 10px;
-    background: rgba(15, 23, 42, 0.85);
-    border-radius: 10px;
+    padding: 5px 12px;
+    background: rgba(15, 23, 42, 0.92);
+    border-radius: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  /* Mode bar - compact buttons */
+  /* Mode bar - below status, centered */
   #modeBar {
     position: absolute;
-    top: calc(env(safe-area-inset-top, 8px) + 36px);
-    left: 12px;
-    right: 12px;
-    z-index: 5;
+    top: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9;
     display: flex;
     justify-content: center;
     gap: 8px;
@@ -79,13 +84,12 @@
     background: rgba(30, 41, 59, 0.95);
     color: #94a3b8;
     border: 2px solid #475569;
-    padding: 8px 20px;
+    padding: 6px 16px;
     border-radius: 999px;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
-    min-width: 70px;
-    flex: 1;
-    max-width: 120px;
+    min-width: 60px;
+    white-space: nowrap;
   }
 
   .modeBtn.active {
@@ -414,15 +418,15 @@
     color: #4ade80;
   }
 
-  /* Top action buttons - single row, compact icons */
+  /* Top action buttons - left side, below mode bar */
   #topActions {
     position: absolute;
-    top: calc(env(safe-area-inset-top, 8px) + 6px);
+    top: 62px;
     left: 12px;
-    z-index: 7;
+    z-index: 8;
     display: none;
     flex-direction: row;
-    gap: 6px;
+    gap: 8px;
     flex-wrap: nowrap;
   }
 
@@ -430,21 +434,21 @@
     background: rgba(30, 41, 59, 0.92);
     color: #94a3b8;
     border: 1px solid #475569;
-    padding: 6px 8px;
+    padding: 7px 9px;
     border-radius: 8px;
     font-size: 16px;
-    min-width: 36px;
-    min-height: 36px;
+    min-width: 38px;
+    min-height: 38px;
     flex-shrink: 0;
   }
 
-  /* Guide overlay - compact banner */
+  /* Guide overlay - below action buttons */
   #guideOverlay {
     position: absolute;
-    top: calc(env(safe-area-inset-top, 8px) + 76px);
+    top: 108px;
     left: 12px;
     right: 12px;
-    z-index: 8;
+    z-index: 7;
     display: none;
     justify-content: center;
     pointer-events: none;

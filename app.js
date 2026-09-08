@@ -953,16 +953,18 @@ function updateFPSIndicator() {
     indicator.id = 'fpsIndicator';
     indicator.style.cssText = `
       position: absolute;
-      top: calc(env(safe-area-inset-top, 16px) + 8px);
-      left: calc(100% - 80px);
-      z-index: 4;
-      background: rgba(15, 23, 42, 0.75);
+      top: 8px;
+      right: 12px;
+      z-index: 11;
+      background: rgba(15, 23, 42, 0.95);
       color: #4ade80;
-      padding: 4px 8px;
+      padding: 5px 10px;
       border-radius: 8px;
       font-size: 11px;
-      font-weight: bold;
+      font-weight: 600;
       pointer-events: none;
+      border: 1px solid rgba(74, 222, 128, 0.3);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
     `;
     document.getElementById('stage').appendChild(indicator);
   }

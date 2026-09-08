@@ -1,7 +1,7 @@
 {
   "name": "حرکت‌سنج",
   "short_name": "حرکت‌سنج",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0f172a",

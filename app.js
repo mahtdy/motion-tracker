@@ -3361,8 +3361,8 @@ startBtn.addEventListener('click', () => {
 });
 
 // ================== VERSION CHECK ==================
-console.log('%c🚀 Motion Tracker v1.4.3', 'color: #22c55e; font-size: 16px; font-weight: bold');
-console.log('%cHeight: FIXED 700px (no more overflow!)', 'color: #3b82f6; font-size: 12px');
+console.log('%c🚀 Motion Tracker v1.4.4', 'color: #22c55e; font-size: 16px; font-weight: bold');
+console.log('%cHeight: 100dvh (dynamic viewport) with fallback', 'color: #3b82f6; font-size: 12px');
 
 // ================== SERVICE WORKER & UPDATE MANAGEMENT ==================
 if ('serviceWorker' in navigator) {

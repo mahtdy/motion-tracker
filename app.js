@@ -3357,8 +3357,8 @@ startBtn.addEventListener('click', () => {
 });
 
 // ================== VERSION CHECK ==================
-console.log('%c🚀 Motion Tracker v1.4.5', 'color: #22c55e; font-size: 16px; font-weight: bold');
-console.log('%cUI: Professional layered layout with proper z-index', 'color: #3b82f6; font-size: 12px');
+console.log('%c🚀 Motion Tracker v1.5.0', 'color: #22c55e; font-size: 16px; font-weight: bold');
+console.log('%c✨ NEW: Card-based header layout!', 'color: #3b82f6; font-size: 12px');
 
 // ================== SERVICE WORKER & UPDATE MANAGEMENT ==================
 if ('serviceWorker' in navigator) {

@@ -707,7 +707,8 @@ const modeRunBtn = document.getElementById('modeRunBtn');
 const modeJumpBtn = document.getElementById('modeJumpBtn');
 const startOverlay = document.getElementById('startOverlay');
 const startBtn = document.getElementById('startBtn');
-const topActions = document.getElementById('topActions');
+const headerContainer = document.getElementById('headerContainer');
+const actionBar = document.getElementById('actionBar');
 
 const distPanel = document.getElementById('distPanel');
 const distInput = document.getElementById('distInput');
@@ -946,45 +947,38 @@ function updatePerformanceModeUI() {
  * Create/update FPS indicator
  */
 function updateFPSIndicator() {
-  let indicator = document.getElementById('fpsIndicator');
+  // Update new FPS display in action bar
+  const fpsDisplay = document.getElementById('fpsDisplay');
   
-  if (!indicator) {
-    indicator = document.createElement('div');
-    indicator.id = 'fpsIndicator';
-    indicator.style.cssText = `
-      position: absolute;
-      top: 8px;
-      right: 12px;
-      z-index: 11;
-      background: rgba(15, 23, 42, 0.95);
-      color: #4ade80;
-      padding: 5px 10px;
-      border-radius: 8px;
-      font-size: 11px;
-      font-weight: 600;
-      pointer-events: none;
-      border: 1px solid rgba(74, 222, 128, 0.3);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-    `;
-    document.getElementById('stage').appendChild(indicator);
-  }
-  
-  // Update color based on FPS
-  let color = '#4ade80'; // Green
-  if (currentFPS < 15) {
-    color = '#ef4444'; // Red
-  } else if (currentFPS < 25) {
-    color = '#f59e0b'; // Orange
-  } else if (currentFPS < 40) {
-    color = '#facc15'; // Yellow
-  }
-  
-  indicator.style.color = color;
-  indicator.textContent = `${currentFPS.toFixed(0)} FPS`;
-  
-  // Add performance mode indicator
-  if (performanceMode === 'low-power') {
-    indicator.textContent += ' ⚡';
+  if (fpsDisplay) {
+    // Update color based on FPS
+    let color = '#4ade80'; // Green
+    let bgColor = 'rgba(74, 222, 128, 0.1)';
+    let borderColor = 'rgba(74, 222, 128, 0.3)';
+    
+    if (currentFPS < 15) {
+      color = '#ef4444'; // Red
+      bgColor = 'rgba(239, 68, 68, 0.1)';
+      borderColor = 'rgba(239, 68, 68, 0.3)';
+    } else if (currentFPS < 25) {
+      color = '#f59e0b'; // Orange
+      bgColor = 'rgba(245, 158, 11, 0.1)';
+      borderColor = 'rgba(245, 158, 11, 0.3)';
+    } else if (currentFPS < 40) {
+      color = '#facc15'; // Yellow
+      bgColor = 'rgba(250, 204, 21, 0.1)';
+      borderColor = 'rgba(250, 204, 21, 0.3)';
+    }
+    
+    fpsDisplay.style.color = color;
+    fpsDisplay.style.background = bgColor;
+    fpsDisplay.style.borderColor = borderColor;
+    fpsDisplay.textContent = `FPS ${currentFPS.toFixed(0)}`;
+    
+    // Add performance mode indicator
+    if (performanceMode === 'low-power') {
+      fpsDisplay.textContent += ' ⚡';
+    }
   }
 }
 
@@ -3339,7 +3333,7 @@ async function start() {
     running = true;
     consecutiveErrors = 0;
     modeBar.style.display = 'flex';
-    topActions.style.display = 'flex';
+    // headerContainer is always visible, no need to show
     applySettings();
     runEnterCalibrate1();
     detectLoop();

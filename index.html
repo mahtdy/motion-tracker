@@ -46,49 +46,110 @@
     object-fit: cover;
   }
 
-  /* Status bar - top center, above everything */
-  #status {
+  /* Header container - holds all top UI */
+  #headerContainer {
     position: absolute;
     top: 8px;
-    right: 50%;
-    transform: translateX(50%);
-    width: auto;
-    max-width: calc(100% - 100px);
+    left: 12px;
+    right: 12px;
     z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* Action bar card - icons + FPS */
+  #actionBar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  #actionButtons {
+    display: flex;
+    gap: 8px;
+    flex: 1;
+  }
+
+  #actionButtons button {
+    background: rgba(30, 41, 59, 0.8);
+    color: #94a3b8;
+    border: 1px solid #475569;
+    padding: 7px 9px;
+    border-radius: 8px;
+    font-size: 16px;
+    min-width: 38px;
+    min-height: 38px;
+    flex-shrink: 0;
+  }
+
+  #fpsDisplay {
+    background: rgba(74, 222, 128, 0.1);
+    border: 1px solid rgba(74, 222, 128, 0.3);
+    color: #4ade80;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  /* Status bar - compact */
+  #status {
+    position: relative;
+    top: 0;
+    right: 0;
+    left: 0;
+    transform: none;
+    width: 100%;
+    max-width: none;
+    z-index: auto;
     color: #4ade80;
     font-size: 11px;
     font-weight: 600;
     text-shadow: 0 2px 4px rgba(0,0,0,.9);
     text-align: center;
-    padding: 5px 12px;
-    background: rgba(15, 23, 42, 0.92);
-    border-radius: 8px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    padding: 8px 12px;
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid #334155;
+    border-radius: 12px;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
   }
 
-  /* Mode bar - below status, centered */
+  /* Mode bar - compact buttons */
   #modeBar {
-    position: absolute;
-    top: 30px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 9;
+    position: relative;
+    top: 0;
+    left: 0;
+    transform: none;
+    z-index: auto;
     display: flex;
     justify-content: center;
     gap: 8px;
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 8px;
   }
 
   .modeBtn {
-    background: rgba(30, 41, 59, 0.95);
+    background: rgba(30, 41, 59, 0.8);
     color: #94a3b8;
     border: 2px solid #475569;
-    padding: 6px 16px;
+    padding: 8px 20px;
     border-radius: 999px;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
-    min-width: 60px;
+    min-width: 80px;
+    flex: 1;
+    max-width: 150px;
     white-space: nowrap;
   }
 
@@ -418,37 +479,15 @@
     color: #4ade80;
   }
 
-  /* Top action buttons - left side, below mode bar */
-  #topActions {
-    position: absolute;
-    top: 62px;
-    left: 12px;
-    z-index: 8;
-    display: none;
-    flex-direction: row;
-    gap: 8px;
-    flex-wrap: nowrap;
-  }
+  /* Top action buttons - REMOVED, now in actionBar */
 
-  #topActions button {
-    background: rgba(30, 41, 59, 0.92);
-    color: #94a3b8;
-    border: 1px solid #475569;
-    padding: 7px 9px;
-    border-radius: 8px;
-    font-size: 16px;
-    min-width: 38px;
-    min-height: 38px;
-    flex-shrink: 0;
-  }
-
-  /* Guide overlay - below action buttons */
+  /* Guide overlay - below header */
   #guideOverlay {
     position: absolute;
-    top: 108px;
+    top: 120px;
     left: 12px;
     right: 12px;
-    z-index: 7;
+    z-index: 8;
     display: none;
     justify-content: center;
     pointer-events: none;
@@ -705,26 +744,35 @@
 <div id="stage">
   <video id="video" playsinline autoplay muted></video>
   <canvas id="overlay"></canvas>
-  <div id="status">در حال آماده‌سازی مدل...</div>
 
-  <div id="modeBar" style="display:none;">
-    <button id="modeRunBtn" class="modeBtn active">🏃 دو</button>
-    <button id="modeJumpBtn" class="modeBtn">⤴️ پرش</button>
+  <!-- Header Container: Action bar + Status + Mode bar -->
+  <div id="headerContainer">
+    <!-- Action bar: icons + FPS -->
+    <div id="actionBar">
+      <div id="actionButtons">
+        <button id="historyBtn">📊</button>
+        <button id="settingsBtn">⚙️</button>
+        <button id="orientationLockBtn">🔓</button>
+        <button id="cameraSwitcherBtn">📷</button>
+      </div>
+      <div id="fpsDisplay">FPS: --</div>
+    </div>
+
+    <!-- Status message -->
+    <div id="status">در حال آماده‌سازی مدل...</div>
+
+    <!-- Mode selection -->
+    <div id="modeBar" style="display:none;">
+      <button id="modeRunBtn" class="modeBtn active">🏃 دو</button>
+      <button id="modeJumpBtn" class="modeBtn">⤴️ پرش</button>
+    </div>
   </div>
 
   <div id="startOverlay">
     <h2>حرکت‌سنج</h2>
-    <p class="version">نسخه 1.4.5</p>
+    <p class="version">نسخه 1.5.0</p>
     <p id="hint">برای شروع، اجازهٔ دسترسی به دوربین رو بده. مدل تشخیص بدن کاملاً روی گوشی اجرا می‌شه.</p>
     <button id="startBtn">شروع</button>
-  </div>
-
-  <!-- Top action buttons -->
-  <div id="topActions">
-    <button id="historyBtn">📊</button>
-    <button id="settingsBtn">⚙️</button>
-    <button id="orientationLockBtn">🔓</button>
-    <button id="cameraSwitcherBtn">📷</button>
   </div>
 
   <!-- Guide banner (small, non-blocking — video stays visible underneath) -->

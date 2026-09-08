@@ -46,7 +46,7 @@
     object-fit: cover;
   }
 
-  /* Header container - holds all top UI */
+  /* Header container - compact at top */
   #headerContainer {
     position: absolute;
     top: 8px;
@@ -55,36 +55,36 @@
     z-index: 10;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
   }
 
-  /* Action bar card - icons + FPS */
+  /* Action bar card - compact single row */
   #actionBar {
     display: flex;
     align-items: center;
     justify-content: space-between;
     background: rgba(15, 23, 42, 0.95);
     border: 1px solid #334155;
-    border-radius: 12px;
-    padding: 8px 10px;
-    gap: 8px;
+    border-radius: 10px;
+    padding: 6px 8px;
+    gap: 6px;
   }
 
   #actionButtons {
     display: flex;
-    gap: 8px;
-    flex: 1;
+    gap: 6px;
+    flex: 0;
   }
 
   #actionButtons button {
     background: rgba(30, 41, 59, 0.8);
     color: #94a3b8;
     border: 1px solid #475569;
-    padding: 7px 9px;
-    border-radius: 8px;
+    padding: 6px 8px;
+    border-radius: 7px;
     font-size: 16px;
-    min-width: 38px;
-    min-height: 38px;
+    min-width: 36px;
+    min-height: 36px;
     flex-shrink: 0;
   }
 
@@ -92,11 +92,12 @@
     background: rgba(74, 222, 128, 0.1);
     border: 1px solid rgba(74, 222, 128, 0.3);
     color: #4ade80;
-    padding: 6px 12px;
-    border-radius: 8px;
+    padding: 5px 10px;
+    border-radius: 7px;
     font-size: 11px;
     font-weight: 600;
     white-space: nowrap;
+    flex-shrink: 0;
   }
 
   /* Status bar - compact */
@@ -114,10 +115,10 @@
     font-weight: 600;
     text-shadow: 0 2px 4px rgba(0,0,0,.9);
     text-align: center;
-    padding: 8px 12px;
+    padding: 6px 10px;
     background: rgba(15, 23, 42, 0.95);
     border: 1px solid #334155;
-    border-radius: 12px;
+    border-radius: 10px;
     white-space: normal;
     overflow: visible;
     text-overflow: clip;
@@ -135,8 +136,8 @@
     gap: 8px;
     background: rgba(15, 23, 42, 0.95);
     border: 1px solid #334155;
-    border-radius: 12px;
-    padding: 8px;
+    border-radius: 10px;
+    padding: 6px;
   }
 
   .modeBtn {

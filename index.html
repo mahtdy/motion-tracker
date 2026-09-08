@@ -207,6 +207,10 @@
     margin-bottom: 6px;
   }
 
+  .panel .input-row {
+    margin-top: 8px;
+  }
+
   /* Gate controls - slim and compact */
   #gateControls {
     position: absolute;
@@ -263,6 +267,12 @@
   }
 
   /* History Panel - modal style */
+  #historyPanel h3, #settingsPanel h3 {
+    font-size: 16px;
+    margin-bottom: 12px;
+    color: #4ade80;
+  }
+
   #historyPanel {
     position: absolute;
     top: 50%;
@@ -359,6 +369,34 @@
     margin: 10px 0 5px;
     font-size: 13px;
     color: #94a3b8;
+  }
+
+  #settingsPanel label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    text-align: right;
+    margin: 12px 0;
+    font-size: 13px;
+    color: #94a3b8;
+  }
+
+  #settingsPanel label.toggle-label {
+    margin: 14px 0;
+  }
+
+  #settingsPanel .hint-text {
+    font-size: 11px;
+    color: #64748b;
+    text-align: right;
+    margin: -6px 0 10px;
+    line-height: 1.4;
+  }
+
+  #settingsPanel input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+    transform: scale(1.5);
   }
 
   #settingsPanel input[type="range"] {
@@ -668,7 +706,7 @@
 
   <div id="startOverlay">
     <h2>حرکت‌سنج</h2>
-    <p style="font-size: 11px; color: #64748b; margin-bottom: 8px;">نسخه 1.4.1</p>
+    <p class="version">نسخه 1.4.2</p>
     <p id="hint">برای شروع، اجازهٔ دسترسی به دوربین رو بده. مدل تشخیص بدن کاملاً روی گوشی اجرا می‌شه.</p>
     <button id="startBtn">شروع</button>
   </div>
@@ -689,13 +727,13 @@
         <h3 id="guideTitle">راهنما</h3>
         <p id="guideText">راهنمایی اینجا نمایش داده می‌شود</p>
       </div>
-      <button id="guideCloseBtn" style="background: #22c55e; color: #052e16; border: none; border-radius: 999px; font-weight: bold;">فهمیدم</button>
+      <button id="guideCloseBtn">فهمیدم</button>
     </div>
   </div>
 
   <!-- History Panel -->
   <div id="historyPanel">
-    <h3 style="margin-bottom: 12px; color: #4ade80;">📋 تاریخچه اندازه‌گیری‌ها</h3>
+    <h3>📋 تاریخچه اندازه‌گیری‌ها</h3>
     <div id="historyList"></div>
     <div class="btnRow">
       <button id="clearHistoryBtn" class="secondary">پاک کردن همه</button>
@@ -705,13 +743,13 @@
 
   <!-- Settings Panel -->
   <div id="settingsPanel">
-    <h3 style="margin-bottom: 16px; color: #4ade80;">⚙️ تنظیمات</h3>
+    <h3>⚙️ تنظیمات</h3>
 
-    <label style="display: flex; align-items: center; justify-content: space-between; margin: 16px 0;">
+    <label class="toggle-label">
       <span>حالت کم‌مصرف ⚡</span>
-      <input type="checkbox" id="lowPowerMode" style="width: auto; margin: 0; transform: scale(1.5);">
+      <input type="checkbox" id="lowPowerMode">
     </label>
-    <p style="font-size: 11px; color: #64748b; text-align: right; margin: -8px 0 12px; line-height: 1.4;">
+    <p class="hint-text">
       در صورت کندی، کیفیت رسم را کاهش می‌دهد تا سرعت بهتر شود.
     </p>
 
@@ -727,7 +765,7 @@
     <input type="range" id="calibFrames" min="10" max="40" step="5" value="20">
     <div class="value" id="calibFramesValue">20 فریم</div>
 
-    <button id="closeSettingsBtn" style="margin-top: 20px;">ذخیره و بستن</button>
+    <button id="closeSettingsBtn">ذخیره و بستن</button>
   </div>
 
   <!-- Run mode: gate calibration controls (allows correcting a mis-tapped point) -->
@@ -742,7 +780,7 @@
   <!-- Run mode panels -->
   <div id="distPanel" class="panel">
     <div>فاصلهٔ واقعی بین دو مانع رو وارد کن:</div>
-    <div style="margin-top:10px;">
+    <div class="input-row">
       <input id="distInput" type="number" value="5" step="0.1" inputmode="decimal"> متر
     </div>
     <button id="confirmDistBtn">تأیید و شروع اندازه‌گیری</button>
@@ -777,6 +815,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
 
-<script src="app.js?v=1.4.1"></script>
+<script src="app.js?v=1.4.2&t=20260906"></script>
 </body>
 </html>

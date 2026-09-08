@@ -3361,7 +3361,7 @@ startBtn.addEventListener('click', () => {
 });
 
 // ================== VERSION CHECK ==================
-console.log('%c🚀 Motion Tracker v1.4.1', 'color: #22c55e; font-size: 16px; font-weight: bold');
+console.log('%c🚀 Motion Tracker v1.4.2', 'color: #22c55e; font-size: 16px; font-weight: bold');
 console.log('%cIf start button doesn\'t work, press Ctrl+Shift+R to clear cache', 'color: #f59e0b; font-size: 12px');
 
 // ================== SERVICE WORKER & UPDATE MANAGEMENT ==================

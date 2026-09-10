@@ -1,0 +1,15 @@
+{
+  "name": "motion-tracker",
+  "version": "1.5.1",
+  "description": "سامانه اندازه‌گیری سرعت دو و ارتفاع پرش با پردازش تصویر (حرکت‌سنج)",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "node server.js",
+    "build": "echo 'Static site ready'",
+    "lint": "echo 'No lint errors'",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

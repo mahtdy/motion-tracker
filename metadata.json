@@ -1,0 +1,10 @@
+{
+  "name": "حرکت‌سنج",
+  "description": "سامانه اندازه‌گیری سرعت دو و ارتفاع پرش با پردازش تصویر و تشخیص ژست بدنی",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

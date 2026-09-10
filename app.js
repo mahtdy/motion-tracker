@@ -731,6 +731,59 @@ const jumpHeightResultEl = document.getElementById('jumpHeightResult');
 const jumpAgainBtn = document.getElementById('jumpAgainBtn');
 const jumpRecalibBtn = document.getElementById('jumpRecalibBtn');
 
+// New Modes Buttons
+const modeBoscoBtn = document.getElementById('modeBoscoBtn');
+const modeWingspanBtn = document.getElementById('modeWingspanBtn');
+const modeDistanceBtn = document.getElementById('modeDistanceBtn');
+
+// Bosco 30-sec Test Elements
+const boscoHud = document.getElementById('boscoHud');
+const boscoTimerVal = document.getElementById('boscoTimerVal');
+const boscoJumpCountVal = document.getElementById('boscoJumpCountVal');
+const boscoGroundTouchVal = document.getElementById('boscoGroundTouchVal');
+const boscoLastAirVal = document.getElementById('boscoLastAirVal');
+const boscoLastContactVal = document.getElementById('boscoLastContactVal');
+const boscoLastHeightVal = document.getElementById('boscoLastHeightVal');
+const boscoStartPanel = document.getElementById('boscoStartPanel');
+const boscoStartBtn = document.getElementById('boscoStartBtn');
+const boscoCancelBtn = document.getElementById('boscoCancelBtn');
+const boscoResultPanel = document.getElementById('boscoResultPanel');
+const boscoTotalJumps = document.getElementById('boscoTotalJumps');
+const boscoTotalTouches = document.getElementById('boscoTotalTouches');
+const boscoTotalAirTime = document.getElementById('boscoTotalAirTime');
+const boscoAvgAirTime = document.getElementById('boscoAvgAirTime');
+const boscoAvgContactTime = document.getElementById('boscoAvgContactTime');
+const boscoMaxHeight = document.getElementById('boscoMaxHeight');
+const boscoTableBody = document.getElementById('boscoTableBody');
+const boscoAgainBtn = document.getElementById('boscoAgainBtn');
+const boscoSaveBtn = document.getElementById('boscoSaveBtn');
+
+// Wingspan (طول دست‌ها) Elements
+const wingspanHud = document.getElementById('wingspanHud');
+const wingspanCurrentVal = document.getElementById('wingspanCurrentVal');
+const wingspanMaxVal = document.getElementById('wingspanMaxVal');
+const wingspanPanel = document.getElementById('wingspanPanel');
+const wingspanPanelCur = document.getElementById('wingspanPanelCur');
+const wingspanPanelMax = document.getElementById('wingspanPanelMax');
+const wingspanRecordBtn = document.getElementById('wingspanRecordBtn');
+const wingspanResetBtn = document.getElementById('wingspanResetBtn');
+const wingspanSaveBtn = document.getElementById('wingspanSaveBtn');
+
+// Distance Between Objects Elements
+const distanceHud = document.getElementById('distanceHud');
+const distObjectsVal = document.getElementById('distObjectsVal');
+const distScaleVal = document.getElementById('distScaleVal');
+const distanceMeasurePanel = document.getElementById('distanceMeasurePanel');
+const distanceMeasureResult = document.getElementById('distanceMeasureResult');
+const distancePixelInfo = document.getElementById('distancePixelInfo');
+const refDistanceInput = document.getElementById('refDistanceInput');
+const applyCalibScaleBtn = document.getElementById('applyCalibScaleBtn');
+const distanceResetBtn = document.getElementById('distanceResetBtn');
+const distanceSaveBtn = document.getElementById('distanceSaveBtn');
+
+// Settings Elements
+const athleteHeightSetting = document.getElementById('athleteHeightSetting');
+
 const historyBtn = document.getElementById('historyBtn');
 const settingsBtn = document.getElementById('settingsBtn');
 const historyPanel = document.getElementById('historyPanel');
@@ -2024,17 +2077,50 @@ function renderHistory() {
           </div>
         </div>
       `;
-    } else {
+    } else if (entry.type === 'jump') {
       return `
         <div class="historyItem">
-          <div class="date">⤴️ پرش • ${entry.date}</div>
+          <div class="date">⤴️ پرش تک • ${entry.date}</div>
           <div class="data">
             زمان پرواز: <span>${entry.data.airTime}s</span> •
             ارتفاع: <span>${entry.data.height} cm</span>
           </div>
         </div>
       `;
+    } else if (entry.type === 'bosco') {
+      return `
+        <div class="historyItem">
+          <div class="date">⏱️ آزمون ۳۰ث پرش • ${entry.date}</div>
+          <div class="data">
+            پرش‌ها: <span>${entry.data.totalJumps}</span> •
+            لمس زمین: <span>${entry.data.totalTouches}</span> •
+            زمان هوا: <span>${entry.data.totalAirTime}s</span> •
+            میانگین پرواز: <span>${entry.data.avgAirTime}s</span> •
+            بالاترین: <span>${entry.data.maxHeight} cm</span>
+          </div>
+        </div>
+      `;
+    } else if (entry.type === 'wingspan') {
+      return `
+        <div class="historyItem">
+          <div class="date">📏 طول دو دست • ${entry.date}</div>
+          <div class="data">
+            گستره دست‌ها: <span>${entry.data.wingspan} cm</span> •
+            قد ورزشکار: <span>${entry.data.athleteHeight || 175} cm</span>
+          </div>
+        </div>
+      `;
+    } else if (entry.type === 'distance') {
+      return `
+        <div class="historyItem">
+          <div class="date">📐 فاصله دو جسم • ${entry.date}</div>
+          <div class="data">
+            فاصله: <span>${entry.data.distanceM >= 1 ? entry.data.distanceM + ' متر' : entry.data.distanceCm + ' سانتی‌متر'}</span> (${entry.data.distanceCm} cm)
+          </div>
+        </div>
+      `;
     }
+    return '';
   }).join('');
 }
 
@@ -2087,18 +2173,26 @@ const SETTINGS_KEY = 'motion_tracker_settings';
 function getSettings() {
   try {
     const data = localStorage.getItem(SETTINGS_KEY);
-    return data ? JSON.parse(data) : {
+    return data ? Object.assign({
       jumpThresholdRatio: 0.12,
       landThresholdRatio: 0.06,
       calibFrames: 20,
-      lowPowerMode: false
+      lowPowerMode: false,
+      athleteHeight: 175
+    }, JSON.parse(data)) : {
+      jumpThresholdRatio: 0.12,
+      landThresholdRatio: 0.06,
+      calibFrames: 20,
+      lowPowerMode: false,
+      athleteHeight: 175
     };
   } catch (e) {
     return { 
       jumpThresholdRatio: 0.12, 
       landThresholdRatio: 0.06, 
       calibFrames: 20,
-      lowPowerMode: false
+      lowPowerMode: false,
+      athleteHeight: 175
     };
   }
 }
@@ -2120,6 +2214,9 @@ function loadSettingsUI() {
   document.getElementById('landSensValue').textContent = Math.round(settings.landThresholdRatio * 100) + '%';
   document.getElementById('calibFramesValue').textContent = settings.calibFrames + ' فریم';
   document.getElementById('lowPowerMode').checked = settings.lowPowerMode || false;
+  if (athleteHeightSetting) {
+    athleteHeightSetting.value = settings.athleteHeight || 175;
+  }
   
   // Update performance mode
   if (settings.lowPowerMode) {
@@ -2146,11 +2243,13 @@ if (cameraSwitcherBtn) {
 
 closeSettingsBtn.addEventListener('click', () => {
   const lowPowerChecked = document.getElementById('lowPowerMode').checked;
+  const athleteHeightVal = athleteHeightSetting ? (parseInt(athleteHeightSetting.value) || 175) : 175;
   const settings = {
     jumpThresholdRatio: parseFloat(document.getElementById('jumpSensitivity').value),
     landThresholdRatio: parseFloat(document.getElementById('landSensitivity').value),
     calibFrames: parseInt(document.getElementById('calibFrames').value),
-    lowPowerMode: lowPowerChecked
+    lowPowerMode: lowPowerChecked,
+    athleteHeight: athleteHeightVal
   };
   saveSettings(settings);
   
@@ -2205,6 +2304,13 @@ function hideAllPanels() {
   resultPanel.classList.remove('visible');
   jumpResultPanel.classList.remove('visible');
   gateControls.classList.remove('visible');
+  if (boscoStartPanel) boscoStartPanel.classList.remove('visible');
+  if (boscoResultPanel) boscoResultPanel.classList.remove('visible');
+  if (wingspanPanel) wingspanPanel.classList.remove('visible');
+  if (distanceMeasurePanel) distanceMeasurePanel.classList.remove('visible');
+  if (boscoHud) boscoHud.style.display = 'none';
+  if (wingspanHud) wingspanHud.style.display = 'none';
+  if (distanceHud) distanceHud.style.display = 'none';
 }
 
 function setStatus(text) {
@@ -2449,13 +2555,22 @@ const DEBOUNCE_FRAMES = 2;
 let jumpTakeoffTime = null;
 let jumpLandTime = null;
 
+let jumpCandidateTakeoff = null;
+let jumpCandidateLand = null;
+let minHipYDuringJump = Infinity;
+let baselineHipY = null;
+
 function jumpEnterCalibrating() {
   jumpPhase = 'calibrating';
   calibSamples = [];
   baselineY = null;
+  baselineHipY = null;
   legLengthPx = null;
   aboveCount = 0;
   belowCount = 0;
+  jumpCandidateTakeoff = null;
+  jumpCandidateLand = null;
+  minHipYDuringJump = Infinity;
   hideAllPanels();
   applySettings();
   showGuide('🧍', 'کالیبراسیون پرش', 'صاف و بی‌حرکت بایست تا ارتفاع پایه ثبت بشه. حدود یک ثانیه طول می‌کشه.');
@@ -2467,6 +2582,9 @@ function jumpEnterReady() {
   belowCount = 0;
   jumpTakeoffTime = null;
   jumpLandTime = null;
+  jumpCandidateTakeoff = null;
+  jumpCandidateLand = null;
+  minHipYDuringJump = Infinity;
   hideAllPanels();
   resetFrameTracking(); // Reset frame tracking
   setStatus('آماده! بپر 🤸');
@@ -2474,7 +2592,7 @@ function jumpEnterReady() {
 
 function jumpFinish() {
   jumpPhase = 'done';
-  const airTimeSec = (jumpLandTime - jumpTakeoffTime) / 1000;
+  const airTimeSec = Math.max(0.05, (jumpLandTime - jumpTakeoffTime) / 1000);
   const heightMeters = (9.81 * airTimeSec * airTimeSec) / 8;
   const heightCm = heightMeters * 100;
   
@@ -2497,7 +2615,7 @@ function jumpFinish() {
   // Validate jump height
   const heightValidation = validateJumpHeight(heightCm, airTimeSec);
   
-  airTimeResultEl.textContent = airTimeSec.toFixed(2);
+  airTimeResultEl.textContent = airTimeSec.toFixed(3);
   jumpHeightResultEl.textContent = heightCm.toFixed(1);
   jumpResultPanel.classList.add('visible');
   
@@ -2511,7 +2629,7 @@ function jumpFinish() {
         // User confirmed - save anyway
         setStatus('تمام شد!');
         saveToHistory('jump', {
-          airTime: airTimeSec.toFixed(2),
+          airTime: airTimeSec.toFixed(3),
           height: heightCm.toFixed(1)
         });
       },
@@ -2522,10 +2640,10 @@ function jumpFinish() {
       }
     );
   } else {
-    setStatus('تمام شد!');
+    setStatus('تمام شد! 🎯');
     // Save to history
     saveToHistory('jump', {
-      airTime: airTimeSec.toFixed(2),
+      airTime: airTimeSec.toFixed(3),
       height: heightCm.toFixed(1)
     });
   }
@@ -2554,6 +2672,7 @@ function jumpProcessFrame(kp) {
       baselineY = calibSamples.reduce((s, d) => s + d.ankleY, 0) / calibSamples.length;
       if (calibSamples[0].hipY != null) {
         const avgHipY = calibSamples.reduce((s, d) => s + (d.hipY || 0), 0) / calibSamples.length;
+        baselineHipY = avgHipY;
         legLengthPx = Math.max(30, baselineY - avgHipY);
       } else {
         legLengthPx = canvas.height * 0.25;
@@ -2572,24 +2691,36 @@ function jumpProcessFrame(kp) {
 
   if (jumpPhase === 'ready') {
     if (risePx > airThresholdPx) {
+      if (aboveCount === 0) {
+        jumpCandidateTakeoff = performance.now();
+      }
       aboveCount++;
       if (aboveCount >= DEBOUNCE_FRAMES) {
-        jumpTakeoffTime = performance.now();
+        jumpTakeoffTime = jumpCandidateTakeoff || performance.now();
         jumpPhase = 'airborne';
+        minHipYDuringJump = hipY != null ? hipY : Infinity;
         setStatus('در هوا... ⤴️');
       }
     } else {
       aboveCount = 0;
+      jumpCandidateTakeoff = null;
     }
   } else if (jumpPhase === 'airborne') {
+    if (hipY != null && hipY < minHipYDuringJump) {
+      minHipYDuringJump = hipY;
+    }
     if (risePx < landThresholdPx) {
+      if (belowCount === 0) {
+        jumpCandidateLand = performance.now();
+      }
       belowCount++;
       if (belowCount >= DEBOUNCE_FRAMES) {
-        jumpLandTime = performance.now();
+        jumpLandTime = jumpCandidateLand || performance.now();
         jumpFinish();
       }
     } else {
       belowCount = 0;
+      jumpCandidateLand = null;
     }
   }
 }
@@ -2610,21 +2741,633 @@ function jumpDrawOverlay() {
 jumpAgainBtn.addEventListener('click', jumpEnterReady);
 jumpRecalibBtn.addEventListener('click', jumpEnterCalibrating);
 
+// ================== BOSCO 30-SECOND CONTINUOUS JUMP TEST ==================
+let boscoPhase = 'intro'; // 'intro' | 'countdown' | 'running' | 'finished'
+let boscoJumps = [];
+let boscoJumpState = 'ground'; // 'ground' | 'airborne'
+let boscoTakeoffTime = null;
+let boscoLandTime = null;
+let boscoLastLandTime = null;
+let boscoStartTime = null;
+let boscoTimerInterval = null;
+let boscoAboveCount = 0;
+let boscoBelowCount = 0;
+let boscoCandidateTakeoff = null;
+let boscoCandidateLand = null;
+let boscoGroundTouches = 0;
+let boscoTotalAirTimeSec = 0;
+let boscoBaselineY = null;
+let boscoLegLengthPx = null;
+let boscoAirThresh = null;
+let boscoLandThresh = null;
+
+function boscoEnterIntro() {
+  boscoPhase = 'intro';
+  boscoJumps = [];
+  boscoGroundTouches = 0;
+  boscoTotalAirTimeSec = 0;
+  boscoLastLandTime = null;
+  if (boscoTimerInterval) clearInterval(boscoTimerInterval);
+  hideAllPanels();
+  if (boscoHud) boscoHud.style.display = 'none';
+  if (boscoStartPanel) boscoStartPanel.classList.add('visible');
+  setStatus('آزمون ۳۰ ثانیه پرش: دکمه شروع را بزنید');
+}
+
+function boscoStartCountdown() {
+  boscoPhase = 'countdown';
+  hideAllPanels();
+  let count = 3;
+  setStatus(`آماده... ${count} ⏳`);
+  const cdInterval = setInterval(() => {
+    count--;
+    if (count > 0) {
+      setStatus(`آماده... ${count} ⏳`);
+    } else {
+      clearInterval(cdInterval);
+      boscoStartRunning();
+    }
+  }, 1000);
+}
+
+function boscoStartRunning() {
+  boscoPhase = 'running';
+  boscoJumps = [];
+  boscoJumpState = 'ground';
+  boscoGroundTouches = 0;
+  boscoTotalAirTimeSec = 0;
+  boscoLastLandTime = null;
+  boscoTakeoffTime = null;
+  boscoAboveCount = 0;
+  boscoBelowCount = 0;
+  boscoStartTime = performance.now();
+  hideAllPanels();
+  if (boscoHud) boscoHud.style.display = 'block';
+  updateBoscoHud(30, 0, 0, null, null, null);
+  setStatus('پرش‌های متوالی را با تمام توان شروع کن! 🦘');
+
+  if (boscoTimerInterval) clearInterval(boscoTimerInterval);
+  boscoTimerInterval = setInterval(() => {
+    if (boscoPhase !== 'running') {
+      clearInterval(boscoTimerInterval);
+      return;
+    }
+    const elapsedSec = (performance.now() - boscoStartTime) / 1000;
+    const remainingSec = Math.max(0, 30.0 - elapsedSec);
+    if (boscoTimerVal) boscoTimerVal.textContent = remainingSec.toFixed(1) + 's';
+    if (remainingSec <= 0) {
+      clearInterval(boscoTimerInterval);
+      boscoFinish();
+    }
+  }, 100);
+}
+
+function updateBoscoHud(remTime, jumpsCount, touchesCount, lastAir, lastContact, lastHeight) {
+  if (boscoTimerVal && remTime != null) boscoTimerVal.textContent = typeof remTime === 'number' ? remTime.toFixed(1) + 's' : remTime;
+  if (boscoJumpCountVal) boscoJumpCountVal.textContent = `${jumpsCount} / 30`;
+  if (boscoGroundTouchVal) boscoGroundTouchVal.textContent = touchesCount;
+  if (boscoLastAirVal && lastAir != null) boscoLastAirVal.textContent = `${lastAir}s`;
+  if (boscoLastContactVal && lastContact != null) boscoLastContactVal.textContent = `${lastContact}s`;
+  if (boscoLastHeightVal && lastHeight != null) boscoLastHeightVal.textContent = `${lastHeight} cm`;
+}
+
+function boscoProcessFrame(kp) {
+  if (boscoPhase !== 'running') return;
+  const data = getHipAnkleY(kp);
+  if (!data) return;
+  const { ankleY } = data;
+
+  // Dynamically calibrate or maintain baseline
+  if (baselineY != null) {
+    boscoBaselineY = baselineY;
+    boscoLegLengthPx = legLengthPx;
+    boscoAirThresh = airThresholdPx;
+    boscoLandThresh = landThresholdPx;
+  } else {
+    if (boscoBaselineY == null) {
+      boscoBaselineY = ankleY;
+      boscoLegLengthPx = canvas.height * 0.25;
+      const settings = getSettings();
+      boscoAirThresh = boscoLegLengthPx * settings.jumpThresholdRatio;
+      boscoLandThresh = boscoLegLengthPx * settings.landThresholdRatio;
+    }
+  }
+
+  const risePx = boscoBaselineY - ankleY;
+
+  if (boscoJumpState === 'ground') {
+    if (risePx > boscoAirThresh) {
+      if (boscoAboveCount === 0) {
+        boscoCandidateTakeoff = performance.now();
+      }
+      boscoAboveCount++;
+      if (boscoAboveCount >= 2) {
+        boscoTakeoffTime = boscoCandidateTakeoff || performance.now();
+        boscoJumpState = 'airborne';
+        boscoAboveCount = 0;
+        let contactTimeSec = 0;
+        if (boscoLastLandTime) {
+          contactTimeSec = Math.max(0.01, (boscoTakeoffTime - boscoLastLandTime) / 1000);
+        }
+        setStatus(`در هوا... (پرش ${boscoJumps.length + 1}) ⤴️`);
+      }
+    } else {
+      boscoAboveCount = 0;
+      // Gently drift baseline with ground contact
+      if (risePx > -20 && risePx < 10) {
+        boscoBaselineY = boscoBaselineY * 0.95 + ankleY * 0.05;
+      }
+    }
+  } else if (boscoJumpState === 'airborne') {
+    if (risePx < boscoLandThresh) {
+      if (boscoBelowCount === 0) {
+        boscoCandidateLand = performance.now();
+      }
+      boscoBelowCount++;
+      if (boscoBelowCount >= 2) {
+        boscoLandTime = boscoCandidateLand || performance.now();
+        boscoJumpState = 'ground';
+        boscoBelowCount = 0;
+
+        const airTimeSec = Math.max(0.05, (boscoLandTime - boscoTakeoffTime) / 1000);
+        const heightCm = ((9.81 * airTimeSec * airTimeSec) / 8) * 100;
+        let contactTimeSec = 0;
+        if (boscoLastLandTime) {
+          contactTimeSec = Math.max(0.02, (boscoTakeoffTime - boscoLastLandTime) / 1000);
+        }
+        boscoLastLandTime = boscoLandTime;
+        boscoGroundTouches++;
+        boscoTotalAirTimeSec += airTimeSec;
+
+        const rsi = contactTimeSec > 0 ? (airTimeSec / contactTimeSec).toFixed(2) : '-';
+        const jumpNum = boscoJumps.length + 1;
+
+        boscoJumps.push({
+          jumpNum,
+          airTime: airTimeSec.toFixed(3),
+          contactTime: contactTimeSec ? contactTimeSec.toFixed(3) : '-',
+          height: heightCm.toFixed(1),
+          rsi
+        });
+
+        updateBoscoHud(
+          null,
+          boscoJumps.length,
+          boscoGroundTouches,
+          airTimeSec.toFixed(2),
+          contactTimeSec ? contactTimeSec.toFixed(2) : '--',
+          heightCm.toFixed(1)
+        );
+
+        setStatus(`پرش ${jumpNum} ثبت شد (${heightCm.toFixed(1)} cm)`);
+
+        if (boscoJumps.length >= 30) {
+          boscoFinish();
+        }
+      }
+    } else {
+      boscoBelowCount = 0;
+    }
+  }
+}
+
+function boscoDrawOverlay() {
+  if (boscoPhase === 'running' && boscoBaselineY != null) {
+    ctx.strokeStyle = boscoJumpState === 'airborne' ? '#facc15' : '#22c55e';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([8, 6]);
+    ctx.beginPath();
+    ctx.moveTo(0, boscoBaselineY);
+    ctx.lineTo(canvas.width, boscoBaselineY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+}
+
+function boscoFinish() {
+  if (boscoTimerInterval) clearInterval(boscoTimerInterval);
+  boscoPhase = 'finished';
+  setStatus('آزمون پایان یافت! 🏁');
+
+  if (boscoHud) boscoHud.style.display = 'none';
+
+  const totalJ = boscoJumps.length;
+  const totalTouches = boscoGroundTouches;
+  const totalAir = boscoTotalAirTimeSec;
+  const avgAir = totalJ > 0 ? (totalAir / totalJ) : 0;
+
+  const validContacts = boscoJumps.map(j => parseFloat(j.contactTime)).filter(v => !isNaN(v) && v > 0);
+  const avgContact = validContacts.length > 0 ? (validContacts.reduce((a, b) => a + b, 0) / validContacts.length) : 0;
+
+  const heights = boscoJumps.map(j => parseFloat(j.height)).filter(v => !isNaN(v));
+  const maxHeight = heights.length > 0 ? Math.max(...heights) : 0;
+  const avgHeight = heights.length > 0 ? (heights.reduce((a, b) => a + b, 0) / heights.length) : 0;
+
+  if (boscoTotalJumps) boscoTotalJumps.textContent = totalJ;
+  if (boscoTotalTouches) boscoTotalTouches.textContent = totalTouches;
+  if (boscoTotalAirTime) boscoTotalAirTime.textContent = totalAir.toFixed(2) + 's';
+  if (boscoAvgAirTime) boscoAvgAirTime.textContent = avgAir.toFixed(2) + 's';
+  if (boscoAvgContactTime) boscoAvgContactTime.textContent = avgContact > 0 ? avgContact.toFixed(2) + 's' : '--';
+  if (boscoMaxHeight) boscoMaxHeight.textContent = maxHeight.toFixed(1) + ' cm';
+
+  if (boscoTableBody) {
+    if (boscoJumps.length === 0) {
+      boscoTableBody.innerHTML = '<tr><td colspan="5" style="padding: 10px; color: #94a3b8;">هیچ پرشی ثبت نشد</td></tr>';
+    } else {
+      boscoTableBody.innerHTML = boscoJumps.map(j => `
+        <tr>
+          <td>${j.jumpNum}</td>
+          <td style="color: #38bdf8;">${j.airTime}</td>
+          <td style="color: #cbd5e1;">${j.contactTime}</td>
+          <td style="color: #4ade80; font-weight: bold;">${j.height}</td>
+          <td style="color: #facc15;">${j.rsi}</td>
+        </tr>
+      `).join('');
+    }
+  }
+
+  if (boscoResultPanel) boscoResultPanel.classList.add('visible');
+
+  // Auto save to history
+  if (totalJ > 0) {
+    saveToHistory('bosco', {
+      totalJumps: totalJ,
+      totalTouches,
+      totalAirTime: totalAir.toFixed(2),
+      avgAirTime: avgAir.toFixed(2),
+      avgContactTime: avgContact.toFixed(2),
+      maxHeight: maxHeight.toFixed(1),
+      avgHeight: avgHeight.toFixed(1)
+    });
+  }
+}
+
+if (boscoStartBtn) boscoStartBtn.addEventListener('click', boscoStartCountdown);
+if (boscoCancelBtn) boscoCancelBtn.addEventListener('click', () => switchMode('jump'));
+if (boscoAgainBtn) boscoAgainBtn.addEventListener('click', boscoEnterIntro);
+if (boscoSaveBtn) {
+  boscoSaveBtn.addEventListener('click', () => {
+    setStatus('نتایج آزمون پرش ذخیره شد ✅');
+    boscoSaveBtn.textContent = 'ذخیره شد ✓';
+    setTimeout(() => { boscoSaveBtn.textContent = 'ذخیره در تاریخچه'; }, 2000);
+  });
+}
+
+// ================== WINGSPAN (طول دو دست) ==================
+let currentWingspanCm = 0;
+let maxWingspanCm = 0;
+let wingspanPoints = null;
+
+function wingspanEnterMode() {
+  hideAllPanels();
+  currentWingspanCm = 0;
+  wingspanPoints = null;
+  if (wingspanHud) wingspanHud.style.display = 'block';
+  if (wingspanPanel) wingspanPanel.classList.add('visible');
+  setStatus('روبروی دوربین با دست‌های کاملاً باز بایستید 📏');
+  updateWingspanUI();
+}
+
+function updateWingspanUI() {
+  const curStr = currentWingspanCm > 0 ? `${currentWingspanCm.toFixed(0)} cm (${(currentWingspanCm/100).toFixed(2)} m)` : '--';
+  const maxStr = maxWingspanCm > 0 ? `${maxWingspanCm.toFixed(0)} cm (${(maxWingspanCm/100).toFixed(2)} m)` : '--';
+  if (wingspanCurrentVal) wingspanCurrentVal.textContent = curStr;
+  if (wingspanMaxVal) wingspanMaxVal.textContent = maxStr;
+  if (wingspanPanelCur) wingspanPanelCur.textContent = curStr;
+  if (wingspanPanelMax) wingspanPanelMax.textContent = maxStr;
+}
+
+function wingspanProcessFrame(kp) {
+  if (mode !== 'wingspan') return;
+  const lw = kp['left_wrist'], rw = kp['right_wrist'];
+  const ls = kp['left_shoulder'], rs = kp['right_shoulder'];
+  const nose = kp['nose'];
+  const la = kp['left_ankle'], ra = kp['right_ankle'];
+
+  if (!lw || !rw || lw.score < 0.25 || rw.score < 0.25) {
+    wingspanPoints = null;
+    return;
+  }
+
+  wingspanPoints = { lw, rw, ls, rs };
+
+  const wristDistPx = Math.hypot(rw.x - lw.x, rw.y - lw.y);
+
+  // Height-based scale calibration
+  const athleteHeight = getSettings().athleteHeight || 175;
+  let cmPerPx = 0.25; // default fallback
+
+  if (nose && (la || ra)) {
+    const ankleY = (la && la.score > 0.25 && ra && ra.score > 0.25) ? (la.y + ra.y) / 2 : (la ? la.y : ra.y);
+    const bodyHeightPx = ankleY - nose.y;
+    if (bodyHeightPx > 60) {
+      cmPerPx = athleteHeight / (bodyHeightPx * 1.08);
+    }
+  } else if (ls && rs && ls.score > 0.3 && rs.score > 0.3) {
+    const shoulderPx = Math.hypot(rs.x - ls.x, rs.y - ls.y);
+    if (shoulderPx > 20) {
+      const shoulderCm = athleteHeight * 0.23;
+      cmPerPx = shoulderCm / shoulderPx;
+    }
+  }
+
+  // Wingspan from fingertip to fingertip is approx wrist distance * 1.15
+  const rawSpan = wristDistPx * cmPerPx * 1.15;
+  if (rawSpan > 40 && rawSpan < 260) {
+    currentWingspanCm = currentWingspanCm === 0 ? rawSpan : (currentWingspanCm * 0.8 + rawSpan * 0.2);
+    if (currentWingspanCm > maxWingspanCm) {
+      maxWingspanCm = currentWingspanCm;
+    }
+    updateWingspanUI();
+  }
+}
+
+function wingspanDrawOverlay() {
+  if (mode !== 'wingspan' || !wingspanPoints) return;
+  const { lw, rw } = wingspanPoints;
+
+  // Draw glowing wingspan line
+  ctx.save();
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(lw.x, lw.y);
+  ctx.lineTo(rw.x, rw.y);
+  ctx.stroke();
+
+  // Wrist circles
+  ctx.fillStyle = '#facc15';
+  ctx.beginPath();
+  ctx.arc(lw.x, lw.y, 8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(rw.x, rw.y, 8, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Measurement badge
+  if (currentWingspanCm > 0) {
+    const midX = (lw.x + rw.x) / 2;
+    const midY = (lw.y + rw.y) / 2 - 25;
+    const text = `طول دست‌ها: ${currentWingspanCm.toFixed(0)} cm (${(currentWingspanCm/100).toFixed(2)} m)`;
+    ctx.font = 'bold 14px Tahoma, sans-serif';
+    const tw = ctx.measureText(text).width;
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+    ctx.fillRect(midX - tw / 2 - 8, midY - 14, tw + 16, 26);
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(midX - tw / 2 - 8, midY - 14, tw + 16, 26);
+    ctx.fillStyle = '#38bdf8';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, midX, midY);
+  }
+  ctx.restore();
+}
+
+if (wingspanRecordBtn) {
+  wingspanRecordBtn.addEventListener('click', () => {
+    if (currentWingspanCm > 0) {
+      maxWingspanCm = Math.max(maxWingspanCm, currentWingspanCm);
+      updateWingspanUI();
+      setStatus(`رکورد طول دست‌ها ثبت شد: ${currentWingspanCm.toFixed(0)} cm`);
+    }
+  });
+}
+
+if (wingspanResetBtn) {
+  wingspanResetBtn.addEventListener('click', () => {
+    maxWingspanCm = 0;
+    updateWingspanUI();
+    setStatus('رکورد صفر شد');
+  });
+}
+
+if (wingspanSaveBtn) {
+  wingspanSaveBtn.addEventListener('click', () => {
+    const val = maxWingspanCm > 0 ? maxWingspanCm : currentWingspanCm;
+    if (val > 0) {
+      saveToHistory('wingspan', {
+        wingspan: val.toFixed(0),
+        athleteHeight: getSettings().athleteHeight || 175
+      });
+      setStatus('طول دست‌ها در تاریخچه ذخیره شد ✅');
+      wingspanSaveBtn.textContent = 'ذخیره شد ✓';
+      setTimeout(() => { wingspanSaveBtn.textContent = 'ذخیره در تاریخچه'; }, 2000);
+    }
+  });
+}
+
+// ================== DISTANCE BETWEEN TWO OBJECTS ==================
+let distPointA = null;
+let distPointB = null;
+let draggingDistPoint = null; // 'A' | 'B' | null
+let isDraggingDist = false;
+let distCmPerPx = 0.25; // default calibrated scale
+let distMeasuredCm = 0;
+let distMeasuredM = 0;
+
+function distanceEnterMode() {
+  hideAllPanels();
+  if (distanceHud) distanceHud.style.display = 'block';
+  if (distanceMeasurePanel) distanceMeasurePanel.classList.add('visible');
+  setStatus('روی دو نقطه یا دو جسم ضربه بزنید یا نشانگرهای A و B را بکشید 📐');
+  
+  // Initialize default points if not set
+  if (!distPointA || !distPointB) {
+    const w = canvas.width || 640;
+    const h = canvas.height || 480;
+    distPointA = { x: w * 0.3, y: h * 0.5 };
+    distPointB = { x: w * 0.7, y: h * 0.5 };
+  }
+  updateDistanceCalculation();
+}
+
+function updateDistanceCalculation() {
+  if (!distPointA || !distPointB) return;
+  const pxDist = Math.hypot(distPointB.x - distPointA.x, distPointB.y - distPointA.y);
+  distMeasuredCm = pxDist * distCmPerPx;
+  distMeasuredM = distMeasuredCm / 100;
+
+  const resStr = distMeasuredM >= 1
+    ? `${distMeasuredM.toFixed(2)} متر (${distMeasuredCm.toFixed(0)} cm)`
+    : `${distMeasuredCm.toFixed(1)} سانتی‌متر`;
+
+  if (distanceMeasureResult) distanceMeasureResult.textContent = resStr;
+  if (distObjectsVal) distObjectsVal.textContent = resStr;
+  if (distancePixelInfo) {
+    distancePixelInfo.textContent = `فاصله پیکسلی: ${pxDist.toFixed(0)} px • مقیاس: ${(1/distCmPerPx).toFixed(2)} px/cm`;
+  }
+}
+
+function distanceDrawOverlay() {
+  if (mode !== 'distance' || !distPointA || !distPointB) return;
+  ctx.save();
+
+  // Line between A and B
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 3;
+  ctx.setLineDash([8, 6]);
+  ctx.beginPath();
+  ctx.moveTo(distPointA.x, distPointA.y);
+  ctx.lineTo(distPointB.x, distPointB.y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Point A (Blue circle)
+  ctx.fillStyle = '#0284c7';
+  ctx.beginPath();
+  ctx.arc(distPointA.x, distPointA.y, 14, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 12px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('A', distPointA.x, distPointA.y);
+
+  // Point B (Green circle)
+  ctx.fillStyle = '#16a34a';
+  ctx.beginPath();
+  ctx.arc(distPointB.x, distPointB.y, 14, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#fff';
+  ctx.fillText('B', distPointB.x, distPointB.y);
+
+  // Midpoint distance badge
+  const midX = (distPointA.x + distPointB.x) / 2;
+  const midY = (distPointA.y + distPointB.y) / 2 - 20;
+  const label = distMeasuredM >= 1
+    ? `${distMeasuredM.toFixed(2)}m (${distMeasuredCm.toFixed(0)}cm)`
+    : `${distMeasuredCm.toFixed(1)}cm`;
+
+  ctx.font = 'bold 13px Tahoma, sans-serif';
+  const textWidth = ctx.measureText(label).width;
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+  ctx.fillRect(midX - textWidth / 2 - 8, midY - 12, textWidth + 16, 24);
+  ctx.strokeStyle = '#4ade80';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(midX - textWidth / 2 - 8, midY - 12, textWidth + 16, 24);
+
+  ctx.fillStyle = '#4ade80';
+  ctx.fillText(label, midX, midY);
+
+  ctx.restore();
+}
+
+// Distance touch / drag handling on canvas
+document.getElementById('stage').addEventListener('pointerdown', (e) => {
+  if (mode !== 'distance') return;
+  if (e.target.closest && (e.target.closest('#distanceMeasurePanel') || e.target.closest('#headerContainer') || e.target.closest('#distanceHud'))) return;
+  const pt = clientToCanvasCoords(e.clientX, e.clientY);
+  if (!distPointA || !distPointB) return;
+  const distToA = Math.hypot(pt.x - distPointA.x, pt.y - distPointA.y);
+  const distToB = Math.hypot(pt.x - distPointB.x, pt.y - distPointB.y);
+  if (distToA < 40) {
+    draggingDistPoint = 'A';
+    isDraggingDist = true;
+  } else if (distToB < 40) {
+    draggingDistPoint = 'B';
+    isDraggingDist = true;
+  } else {
+    // Tap anywhere else to place closest or alternate
+    if (distToA <= distToB) {
+      distPointA = pt;
+      draggingDistPoint = 'A';
+    } else {
+      distPointB = pt;
+      draggingDistPoint = 'B';
+    }
+    isDraggingDist = true;
+    updateDistanceCalculation();
+  }
+});
+
+window.addEventListener('pointermove', (e) => {
+  if (mode !== 'distance' || !isDraggingDist || !draggingDistPoint) return;
+  const pt = clientToCanvasCoords(e.clientX, e.clientY);
+  if (draggingDistPoint === 'A') {
+    distPointA = pt;
+  } else if (draggingDistPoint === 'B') {
+    distPointB = pt;
+  }
+  updateDistanceCalculation();
+});
+
+window.addEventListener('pointerup', () => {
+  isDraggingDist = false;
+  draggingDistPoint = null;
+});
+
+if (applyCalibScaleBtn) {
+  applyCalibScaleBtn.addEventListener('click', () => {
+    const refCm = parseFloat(refDistanceInput.value) || 100;
+    if (!distPointA || !distPointB) return;
+    const pxDist = Math.hypot(distPointB.x - distPointA.x, distPointB.y - distPointA.y);
+    if (pxDist > 10) {
+      distCmPerPx = refCm / pxDist;
+      updateDistanceCalculation();
+      if (distScaleVal) distScaleVal.textContent = `کالیبره: ${refCm}cm = ${pxDist.toFixed(0)}px`;
+      setStatus(`مقیاس کالیبره شد: هر پیکسل = ${distCmPerPx.toFixed(3)} cm ✅`);
+    }
+  });
+}
+
+if (distanceResetBtn) {
+  distanceResetBtn.addEventListener('click', () => {
+    const w = canvas.width || 640;
+    const h = canvas.height || 480;
+    distPointA = { x: w * 0.35, y: h * 0.5 };
+    distPointB = { x: w * 0.65, y: h * 0.5 };
+    updateDistanceCalculation();
+    setStatus('نقاط A و B بازنشانی شدند');
+  });
+}
+
+if (distanceSaveBtn) {
+  distanceSaveBtn.addEventListener('click', () => {
+    if (distMeasuredCm > 0) {
+      saveToHistory('distance', {
+        distanceCm: distMeasuredCm.toFixed(1),
+        distanceM: distMeasuredM.toFixed(2)
+      });
+      setStatus('فاصله دو جسم در تاریخچه ذخیره شد ✅');
+      distanceSaveBtn.textContent = 'ذخیره شد ✓';
+      setTimeout(() => { distanceSaveBtn.textContent = 'ذخیره در تاریخچه'; }, 2000);
+    }
+  });
+}
+
 // ================== MODE SWITCHING ==================
 function switchMode(newMode) {
   mode = newMode;
   hideAllPanels();
   modeRunBtn.classList.toggle('active', mode === 'run');
   modeJumpBtn.classList.toggle('active', mode === 'jump');
+  if (modeBoscoBtn) modeBoscoBtn.classList.toggle('active', mode === 'bosco');
+  if (modeWingspanBtn) modeWingspanBtn.classList.toggle('active', mode === 'wingspan');
+  if (modeDistanceBtn) modeDistanceBtn.classList.toggle('active', mode === 'distance');
+
   if (mode === 'run') {
     runEnterCalibrate1();
-  } else {
+  } else if (mode === 'jump') {
     jumpEnterCalibrating();
+  } else if (mode === 'bosco') {
+    boscoEnterIntro();
+  } else if (mode === 'wingspan') {
+    wingspanEnterMode();
+  } else if (mode === 'distance') {
+    distanceEnterMode();
   }
 }
 
 modeRunBtn.addEventListener('click', () => switchMode('run'));
 modeJumpBtn.addEventListener('click', () => switchMode('jump'));
+if (modeBoscoBtn) modeBoscoBtn.addEventListener('click', () => switchMode('bosco'));
+if (modeWingspanBtn) modeWingspanBtn.addEventListener('click', () => switchMode('wingspan'));
+if (modeDistanceBtn) modeDistanceBtn.addEventListener('click', () => switchMode('distance'));
 
 // ---- Convert a tap's client (viewport) coords to canvas pixel space,
 // accounting for object-fit: cover cropping/scaling. ----
@@ -2732,9 +3475,10 @@ async function selectBestCamera(preferredDeviceId = null) {
     return backCameras[0].deviceId;
   }
 
-  // Fall back to first available camera
-  console.log('⚠️ Using first available camera:', cameras[0].label || cameras[0].deviceId);
-  return cameras[0].deviceId;
+  // If labels are empty (iOS before permission) or no back camera detected,
+  // return null so getUserMedia uses facingMode: 'environment' natively
+  console.log('⚠️ No specific back camera labeled, falling back to facingMode environment');
+  return null;
 }
 
 /**
@@ -2742,6 +3486,7 @@ async function selectBestCamera(preferredDeviceId = null) {
  */
 async function setupCamera(forceReconfigure = false, preferredDeviceId = null) {
   try {
+    const isAppleDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     const orientation = getCurrentOrientation();
     console.log(`🔄 setupCamera called: ${orientation}, force: ${forceReconfigure}`);
 
@@ -2792,7 +3537,7 @@ async function setupCamera(forceReconfigure = false, preferredDeviceId = null) {
         console.warn(`Attempt ${attemptCount} failed:`, error.message);
 
         // If exact deviceId failed, try without it
-        if (attemptCount === 1 && selectedCameraId) {
+        if (attemptCount === 1 && constraints.video.deviceId) {
           delete constraints.video.deviceId;
           console.log('Retrying without exact deviceId...');
           continue;
@@ -2836,7 +3581,16 @@ async function setupCamera(forceReconfigure = false, preferredDeviceId = null) {
 
     currentCameraStream = stream;
     currentOrientation = orientation;
-    video.srcObject = stream;
+
+    // Configure video element attributes properly for iOS Safari
+    video.setAttribute('playsinline', 'true');
+    video.setAttribute('webkit-playsinline', 'true');
+    video.setAttribute('autoplay', 'true');
+    video.setAttribute('muted', 'true');
+    video.playsInline = true;
+    video.muted = true;
+    video.defaultMuted = true;
+
     const track = stream.getVideoTracks()[0];
 
     // Check supported resolutions
@@ -2845,18 +3599,10 @@ async function setupCamera(forceReconfigure = false, preferredDeviceId = null) {
       console.log('📊 Supported resolutions:', supportedRes);
     }
 
-    // Log camera capabilities
-    if (track && track.getCapabilities) {
+    // Do NOT apply advanced constraints on Apple devices as WebKit crashes/blanks the camera stream
+    if (!isAppleDevice && track && track.getCapabilities) {
       try {
         const caps = track.getCapabilities();
-        console.log('📊 Camera capabilities:', {
-          zoom: caps.zoom ? `${caps.zoom.min} - ${caps.zoom.max}` : 'N/A',
-          focusMode: caps.focusMode || 'N/A',
-          width: caps.width ? `${caps.width.min} - ${caps.width.max}` : 'N/A',
-          height: caps.height ? `${caps.height.min} - ${caps.height.max}` : 'N/A'
-        });
-
-        // Apply optimal settings for wide-angle view
         const constraintsToApply = {};
         
         // Reset zoom to minimum (widest view)
@@ -2877,46 +3623,63 @@ async function setupCamera(forceReconfigure = false, preferredDeviceId = null) {
         }
 
       } catch (e) {
-        // Non-critical - some browsers don't support all capabilities
         console.warn('⚠️ Could not apply camera optimizations:', e.message);
       }
     }
 
-    // Log final track settings
-    const settings = track.getSettings();
-    const actualAspectRatio = (settings.width / settings.height).toFixed(2);
-    const requestedAspectRatio = (optimalRes.width / optimalRes.height).toFixed(2);
-    
-    console.log('📷 Final camera settings:', {
-      deviceId: settings.deviceId,
-      width: settings.width,
-      height: settings.height,
-      facingMode: settings.facingMode,
-      aspectRatio: actualAspectRatio,
-      requestedAspectRatio: requestedAspectRatio,
-      match: actualAspectRatio === requestedAspectRatio ? '✅' : '⚠️'
-    });
-
     return new Promise((resolve, reject) => {
-      video.onloadedmetadata = () => {
-        console.log(`🎥 Video loaded: ${video.videoWidth}x${video.videoHeight}`);
-        video.play()
-          .then(() => {
-            console.log('▶️ Video playing');
-            resolve();
-          })
-          .catch((err) => {
-            logError('setupCamera - video.play', err);
-            reject({ type: 'CAMERA_UNKNOWN', original: err });
-          });
+      let isSettled = false;
+      let checkInterval = null;
+
+      const finishReady = () => {
+        if (isSettled) return;
+        if (video.videoWidth > 0 && video.videoHeight > 0) {
+          isSettled = true;
+          if (checkInterval) clearInterval(checkInterval);
+          resizeCanvas();
+          console.log(`🎥 Video loaded: ${video.videoWidth}x${video.videoHeight}`);
+          resolve();
+        }
       };
-      
+
+      video.onloadedmetadata = () => {
+        video.play().catch(e => console.warn('video.play() caught:', e));
+        finishReady();
+      };
+      video.oncanplay = finishReady;
+      video.onplaying = finishReady;
+
+      video.srcObject = stream;
+      video.play().catch(e => console.warn('video.play() caught on srcObject:', e));
+
+      // Fast check if already available
+      if (video.readyState >= 2 && video.videoWidth > 0) {
+        finishReady();
+      } else {
+        let checks = 0;
+        checkInterval = setInterval(() => {
+          checks++;
+          if (video.readyState >= 2 && video.videoWidth > 0) {
+            finishReady();
+          } else if (checks > 35) {
+            clearInterval(checkInterval);
+            if (!isSettled) {
+              isSettled = true;
+              resizeCanvas();
+              resolve();
+            }
+          }
+        }, 100);
+      }
+
       // Timeout after 10 seconds
       setTimeout(() => {
-        reject({ 
-          type: 'CAMERA_UNKNOWN', 
-          original: new Error('Camera setup timeout after 10 seconds') 
-        });
+        if (!isSettled) {
+          if (checkInterval) clearInterval(checkInterval);
+          isSettled = true;
+          resizeCanvas();
+          resolve();
+        }
       }, 10000);
     });
 
@@ -2926,8 +3689,13 @@ async function setupCamera(forceReconfigure = false, preferredDeviceId = null) {
 }
 
 function resizeCanvas() {
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
+  if (video.videoWidth > 0 && video.videoHeight > 0) {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+  } else if (!canvas.width || !canvas.height) {
+    canvas.width = window.innerWidth || 640;
+    canvas.height = window.innerHeight || 480;
+  }
 }
 
 // ---- Detect real orientation/frame-size changes and handle smooth reconfiguration ----
@@ -3136,8 +3904,11 @@ function drawPose(poses) {
 
     if (mode === 'run') runDrawGates();
     if (mode === 'jump') jumpDrawOverlay();
+    if (mode === 'bosco') boscoDrawOverlay();
+    if (mode === 'wingspan') wingspanDrawOverlay();
+    if (mode === 'distance') distanceDrawOverlay();
 
-    if (!poses.length) return;
+    if (!poses || !poses.length) return;
     const kp = {};
     for (const point of poses[0].keypoints) kp[point.name] = point;
 
@@ -3203,6 +3974,8 @@ function drawPose(poses) {
 
     if (mode === 'run') runUpdateGateCrossing(getAnkleX(kp));
     if (mode === 'jump') jumpProcessFrame(kp);
+    if (mode === 'bosco') boscoProcessFrame(kp);
+    if (mode === 'wingspan') wingspanProcessFrame(kp);
 
   } catch (error) {
     logError('drawPose', error, { posesLength: poses?.length });

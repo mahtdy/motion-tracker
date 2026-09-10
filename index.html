@@ -127,7 +127,7 @@
     text-overflow: clip;
   }
 
-  /* Mode bar - compact buttons */
+  /* Mode bar - horizontal scrollable pill buttons */
   #modeBar {
     position: relative;
     top: 0;
@@ -135,32 +135,112 @@
     transform: none;
     z-index: auto;
     display: flex;
-    justify-content: center;
-    gap: 8px;
+    justify-content: flex-start;
+    gap: 6px;
     background: rgba(15, 23, 42, 0.95);
     border: 1px solid #334155;
     border-radius: 10px;
     padding: 6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
   }
+  #modeBar::-webkit-scrollbar { display: none; }
 
   .modeBtn {
     background: rgba(30, 41, 59, 0.8);
     color: #94a3b8;
-    border: 2px solid #475569;
-    padding: 8px 20px;
+    border: 1.5px solid #475569;
+    padding: 6px 12px;
     border-radius: 999px;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
-    min-width: 80px;
-    flex: 1;
-    max-width: 150px;
+    flex-shrink: 0;
     white-space: nowrap;
+    cursor: pointer;
   }
 
   .modeBtn.active {
     background: #22c55e;
     color: #052e16;
     border-color: #22c55e;
+  }
+
+  /* Live HUDs for real-time measurements */
+  .liveHud {
+    position: absolute;
+    top: 135px;
+    left: 12px;
+    right: 12px;
+    z-index: 8;
+    background: rgba(15, 23, 42, 0.92);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1.5px solid #334155;
+    border-radius: 12px;
+    padding: 8px 12px;
+    color: #f8fafc;
+    display: none;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+  }
+
+  .hudRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .hudRow:last-child { margin-bottom: 0; }
+
+  .hudMetric {
+    flex: 1;
+    background: rgba(30, 41, 59, 0.7);
+    border: 1px solid #475569;
+    border-radius: 8px;
+    padding: 4px 6px;
+    text-align: center;
+  }
+  .hudLabel {
+    font-size: 10px;
+    color: #94a3b8;
+    display: block;
+    margin-bottom: 2px;
+  }
+  .hudVal {
+    font-size: 14px;
+    font-weight: bold;
+    color: #38bdf8;
+  }
+  .hudVal.accent { color: #4ade80; }
+  .hudVal.warn { color: #facc15; }
+
+  /* Bosco results table */
+  .boscoTableWrap {
+    max-height: 140px;
+    overflow-y: auto;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    margin: 8px 0;
+  }
+  .boscoTable {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+  }
+  .boscoTable th, .boscoTable td {
+    padding: 5px 4px;
+    border-bottom: 1px solid #334155;
+    text-align: center;
+  }
+  .boscoTable th {
+    color: #94a3b8;
+    background: #1e293b;
+    position: sticky;
+    top: 0;
+  }
+  .boscoTable tr:nth-child(even) {
+    background: rgba(30, 41, 59, 0.4);
   }
 
   /* Start overlay - compact */
@@ -746,18 +826,79 @@
 <body>
 
 <div id="stage">
-  <video id="video" playsinline autoplay muted></video>
+  <video id="video" playsinline webkit-playsinline autoplay muted></video>
   <canvas id="overlay"></canvas>
+
+  <!-- Live HUDs -->
+  <!-- Bosco Continuous Jump HUD -->
+  <div id="boscoHud" class="liveHud">
+    <div class="hudRow">
+      <div class="hudMetric">
+        <span class="hudLabel">⏱️ زمان باقیمانده</span>
+        <span class="hudVal warn" id="boscoTimerVal">30.0s</span>
+      </div>
+      <div class="hudMetric">
+        <span class="hudLabel">🦘 پرش‌ها</span>
+        <span class="hudVal accent" id="boscoJumpCountVal">0 / 30</span>
+      </div>
+      <div class="hudMetric">
+        <span class="hudLabel">👟 لمس زمین</span>
+        <span class="hudVal" id="boscoGroundTouchVal">0</span>
+      </div>
+    </div>
+    <div class="hudRow">
+      <div class="hudMetric">
+        <span class="hudLabel">✈️ آخرین زمان هوا</span>
+        <span class="hudVal" id="boscoLastAirVal">--</span>
+      </div>
+      <div class="hudMetric">
+        <span class="hudLabel">⏳ تماس زمین</span>
+        <span class="hudVal" id="boscoLastContactVal">--</span>
+      </div>
+      <div class="hudMetric">
+        <span class="hudLabel">📈 ارتفاع پرش</span>
+        <span class="hudVal accent" id="boscoLastHeightVal">--</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Wingspan HUD -->
+  <div id="wingspanHud" class="liveHud">
+    <div class="hudRow">
+      <div class="hudMetric">
+        <span class="hudLabel">📏 طول دو دست (فعلی)</span>
+        <span class="hudVal accent" id="wingspanCurrentVal">--</span>
+      </div>
+      <div class="hudMetric">
+        <span class="hudLabel">🏆 بیشترین گستره ثبت‌شده</span>
+        <span class="hudVal warn" id="wingspanMaxVal">--</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Distance Measurement HUD -->
+  <div id="distanceHud" class="liveHud">
+    <div class="hudRow">
+      <div class="hudMetric">
+        <span class="hudLabel">📐 فاصله بین دو نقطه A و B</span>
+        <span class="hudVal accent" id="distObjectsVal">--</span>
+      </div>
+      <div class="hudMetric">
+        <span class="hudLabel">🔍 وضعیت مقیاس</span>
+        <span class="hudVal" id="distScaleVal">کالیبره پیش‌فرض</span>
+      </div>
+    </div>
+  </div>
 
   <!-- Header Container: Action bar + Status + Mode bar -->
   <div id="headerContainer">
     <!-- Action bar: icons + FPS -->
     <div id="actionBar">
       <div id="actionButtons">
-        <button id="historyBtn">📊</button>
-        <button id="settingsBtn">⚙️</button>
-        <button id="orientationLockBtn">🔓</button>
-        <button id="cameraSwitcherBtn">📷</button>
+        <button id="historyBtn" title="تاریخچه">📊</button>
+        <button id="settingsBtn" title="تنظیمات">⚙️</button>
+        <button id="orientationLockBtn" title="قفل جهت">🔓</button>
+        <button id="cameraSwitcherBtn" title="تغییر دوربین">📷</button>
       </div>
       <div id="fpsDisplay">FPS: --</div>
     </div>
@@ -765,10 +906,13 @@
     <!-- Status message -->
     <div id="status">در حال آماده‌سازی مدل...</div>
 
-    <!-- Mode selection -->
+    <!-- Mode selection (scrollable pill bar) -->
     <div id="modeBar" style="display:none;">
       <button id="modeRunBtn" class="modeBtn active">🏃 دو</button>
-      <button id="modeJumpBtn" class="modeBtn">⤴️ پرش</button>
+      <button id="modeJumpBtn" class="modeBtn">⤴️ پرش تک</button>
+      <button id="modeBoscoBtn" class="modeBtn">⏱️ پرش ۳۰ ثانیه</button>
+      <button id="modeWingspanBtn" class="modeBtn">📏 طول دست‌ها</button>
+      <button id="modeDistanceBtn" class="modeBtn">📐 فاصله اجسام</button>
     </div>
   </div>
 
@@ -825,6 +969,11 @@
     <input type="range" id="calibFrames" min="10" max="40" step="5" value="20">
     <div class="value" id="calibFramesValue">20 فریم</div>
 
+    <label>قد ورزشکار (جهت کالیبراسیون دقیق پرش و طول دست‌ها)</label>
+    <div class="input-row" style="margin: 4px 0 8px 0;">
+      <input type="number" id="athleteHeightSetting" min="100" max="230" step="1" value="175" style="width: 80px; padding: 6px; text-align: center; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: #fff;"> سانتی‌متر
+    </div>
+
     <button id="closeSettingsBtn">ذخیره و بستن</button>
   </div>
 
@@ -865,6 +1014,110 @@
     <div class="btnRow">
       <button id="jumpAgainBtn">دوباره</button>
       <button id="jumpRecalibBtn" class="secondary">کالیبراسیون جدید</button>
+    </div>
+  </div>
+
+  <!-- Bosco continuous jump panels -->
+  <div id="boscoStartPanel" class="panel">
+    <div style="font-weight: bold; font-size: 15px; color: #38bdf8;">⏱️ آزمون ۳۰ ثانیه پرش مداوم (بوسکو)</div>
+    <p style="font-size: 11px; color: #94a3b8; margin: 6px 0; line-height: 1.6;">
+      در این آزمون، بازیکن ۳۰ ثانیه پرش‌های عمودی متوالی انجام می‌دهد (حداکثر ۳۰ پرش). زمان در هوا بودن، زمان لمس زمین، و توان ثبت می‌شود.
+    </p>
+    <button id="boscoStartBtn">شروع آزمون (با شمارش معکوس)</button>
+    <button id="boscoCancelBtn" class="secondary">انصراف</button>
+  </div>
+
+  <div id="boscoResultPanel" class="panel" style="max-height: 65vh;">
+    <div style="font-weight: bold; font-size: 16px; color: #4ade80;">🏆 نتایج آزمون ۳۰ ثانیه پرش</div>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 8px 0; text-align: center; font-size: 11px;">
+      <div style="background: rgba(30,41,59,0.7); padding: 6px; border-radius: 8px; border: 1px solid #334155;">
+        <span style="color: #94a3b8; display: block;">تعداد کل پرش‌ها:</span>
+        <strong id="boscoTotalJumps" style="color: #38bdf8; font-size: 16px;">0</strong>
+      </div>
+      <div style="background: rgba(30,41,59,0.7); padding: 6px; border-radius: 8px; border: 1px solid #334155;">
+        <span style="color: #94a3b8; display: block;">تعداد لمس‌های زمین:</span>
+        <strong id="boscoTotalTouches" style="color: #facc15; font-size: 16px;">0</strong>
+      </div>
+      <div style="background: rgba(30,41,59,0.7); padding: 6px; border-radius: 8px; border: 1px solid #334155;">
+        <span style="color: #94a3b8; display: block;">مجموع زمان در هوا:</span>
+        <strong id="boscoTotalAirTime" style="color: #4ade80; font-size: 15px;">0.00s</strong>
+      </div>
+      <div style="background: rgba(30,41,59,0.7); padding: 6px; border-radius: 8px; border: 1px solid #334155;">
+        <span style="color: #94a3b8; display: block;">میانگین زمان هوا:</span>
+        <strong id="boscoAvgAirTime" style="color: #38bdf8; font-size: 15px;">0.00s</strong>
+      </div>
+      <div style="background: rgba(30,41,59,0.7); padding: 6px; border-radius: 8px; border: 1px solid #334155;">
+        <span style="color: #94a3b8; display: block;">میانگین تماس زمین:</span>
+        <strong id="boscoAvgContactTime" style="color: #cbd5e1; font-size: 15px;">0.00s</strong>
+      </div>
+      <div style="background: rgba(30,41,59,0.7); padding: 6px; border-radius: 8px; border: 1px solid #334155;">
+        <span style="color: #94a3b8; display: block;">بالاترین پرش:</span>
+        <strong id="boscoMaxHeight" style="color: #22c55e; font-size: 15px;">0 cm</strong>
+      </div>
+    </div>
+
+    <div style="font-size: 11px; color: #94a3b8; text-align: right; margin-top: 4px;">جزئیات تک‌تک پرش‌ها:</div>
+    <div class="boscoTableWrap">
+      <table class="boscoTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>زمان هوا (s)</th>
+            <th>تماس زمین (s)</th>
+            <th>ارتفاع (cm)</th>
+            <th>شاخص RSI</th>
+          </tr>
+        </thead>
+        <tbody id="boscoTableBody"></tbody>
+      </table>
+    </div>
+
+    <div class="btnRow">
+      <button id="boscoAgainBtn">آزمون مجدد</button>
+      <button id="boscoSaveBtn" class="secondary">ذخیره در تاریخچه</button>
+    </div>
+  </div>
+
+  <!-- Wingspan measurement panel -->
+  <div id="wingspanPanel" class="panel">
+    <div style="font-weight: bold; font-size: 15px; color: #38bdf8;">📏 گستره و طول دو دست (Wingspan)</div>
+    <p style="font-size: 11px; color: #94a3b8; margin: 6px 0; line-height: 1.5;">
+      روبروی دوربین با دست‌های کاملاً باز به طرفین بایست. فاصله بین مچ‌ها و گستره کل دست‌ها محاسبه می‌شود.
+    </p>
+    <div class="big"><span id="wingspanPanelCur">--</span></div>
+    <div style="font-size: 12px; color: #94a3b8; margin: 4px 0;">
+      بیشترین رکورد: <strong id="wingspanPanelMax" style="color: #facc15;">--</strong>
+    </div>
+    <div class="btnRow">
+      <button id="wingspanRecordBtn">ثبت این رکورد</button>
+      <button id="wingspanResetBtn" class="secondary">صفر کردن رکورد</button>
+      <button id="wingspanSaveBtn" class="secondary">ذخیره در تاریخچه</button>
+    </div>
+  </div>
+
+  <!-- Distance between two objects panel -->
+  <div id="distanceMeasurePanel" class="panel">
+    <div style="font-weight: bold; font-size: 15px; color: #38bdf8;">📐 فاصله بین دو جسم / دو نقطه</div>
+    <p id="distMeasureHint" style="font-size: 11px; color: #94a3b8; margin: 4px 0; line-height: 1.5;">
+      روی دو جسم یا دو نقطه از تصویر ضربه بزن یا نشانگرهای A و B را بکش.
+    </p>
+    <div class="big"><span id="distanceMeasureResult">--</span></div>
+    <div style="font-size: 11px; color: #cbd5e1; margin-bottom: 6px;" id="distancePixelInfo">
+      فاصله پیکسلی: -- px
+    </div>
+    
+    <div class="input-row" style="margin-bottom: 6px; background: rgba(30,41,59,0.5); padding: 6px; border-radius: 8px;">
+      <span style="font-size: 11px; color: #94a3b8;">کالیبراسیون مقیاس (سانتی‌متر مرجع):</span>
+      <div style="display: flex; gap: 4px; align-items: center; justify-content: center; margin-top: 4px;">
+        <input id="refDistanceInput" type="number" value="100" step="1" inputmode="numeric" style="width: 65px;">
+        <button id="applyCalibScaleBtn" style="padding: 4px 10px; font-size: 11px; min-height: 32px; width: auto; margin: 0;">اعمال مقیاس</button>
+      </div>
+    </div>
+
+    <div class="btnRow">
+      <button id="distanceResetBtn" class="secondary">تعیین مجدد نقاط A و B</button>
+      <button id="distanceSaveBtn">ذخیره در تاریخچه</button>
     </div>
   </div>
 </div>

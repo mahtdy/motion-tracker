@@ -821,6 +821,12 @@ let running = false;
 // mode: 'run' | 'jump'
 let mode = 'run';
 
+// Jump mode calculation thresholds (declared early for settings initialization)
+let legLengthPx = null;
+let CALIB_FRAMES_NEEDED = 20; // ~0.5-1s of standing still
+let airThresholdPx = 20;
+let landThresholdPx = 10;
+
 // ================== PERFORMANCE MONITORING SYSTEM ==================
 let performanceMode = 'normal'; // 'normal' | 'low-power'
 let fpsHistory = [];
@@ -1948,7 +1954,7 @@ function classifyCameraError(error) {
   if (errorName === 'NotAllowedError' || errorName === 'PermissionDeniedError') {
     return 'CAMERA_PERMISSION_DENIED';
   }
-  if (errorName === 'NotFoundError' || errorName === 'DevicesNotFoundError') {
+  if (errorName === 'NotFoundError' || errorName === 'DevicesNotFoundError' || errorMessage.includes('not found') || errorName === 'OverconstrainedError') {
     return 'CAMERA_NOT_FOUND';
   }
   if (errorName === 'NotReadableError' || errorName === 'TrackStartError' || errorMessage.includes('in use')) {
@@ -3484,11 +3490,11 @@ recalibBtn.addEventListener('click', runEnterCalibrate1);
 // jumpPhase: 'calibrating' | 'ready' | 'airborne' | 'done'
 let jumpPhase = 'calibrating';
 let baselineY = null;
-let legLengthPx = null;
+legLengthPx = null;
 let calibSamples = [];
-let CALIB_FRAMES_NEEDED = 20; // ~0.5-1s of standing still
-let airThresholdPx = 20;
-let landThresholdPx = 10;
+CALIB_FRAMES_NEEDED = 20; // ~0.5-1s of standing still
+airThresholdPx = 20;
+landThresholdPx = 10;
 let aboveCount = 0;
 let belowCount = 0;
 const DEBOUNCE_FRAMES = 2;
@@ -4622,72 +4628,90 @@ async function setupCamera(forceReconfigure = false, preferredDeviceId = null) {
     const optimalRes = calculateOptimalResolution(orientation);
 
     let stream = null;
-    let attemptCount = 0;
-    const maxAttempts = 3;
+    let lastError = null;
 
-    while (!stream && attemptCount < maxAttempts) {
-      attemptCount++;
+    // Build progressive candidate constraints in prioritized order
+    const candidates = [];
+
+    // 1. If a specific camera ID is selected
+    if (selectedCameraId) {
+      candidates.push({
+        deviceId: { ideal: selectedCameraId },
+        width: { ideal: optimalRes.width },
+        height: { ideal: optimalRes.height }
+      });
+      candidates.push({
+        deviceId: { ideal: selectedCameraId }
+      });
+    }
+
+    if (isFrontCamera) {
+      // 2. Front camera prioritized
+      candidates.push({
+        facingMode: { ideal: 'user' },
+        width: { ideal: optimalRes.width },
+        height: { ideal: optimalRes.height }
+      });
+      candidates.push({
+        facingMode: { ideal: 'user' }
+      });
+      candidates.push({
+        facingMode: { ideal: 'environment' }
+      });
+    } else {
+      // 3. Back camera prioritized (typical for mobile sports measurement)
+      candidates.push({
+        facingMode: { ideal: 'environment' },
+        width: { ideal: optimalRes.width },
+        height: { ideal: optimalRes.height }
+      });
+      candidates.push({
+        facingMode: { ideal: 'environment' }
+      });
+      // 4. Laptop / desktop / single webcam fallback: front/user camera
+      candidates.push({
+        facingMode: { ideal: 'user' },
+        width: { ideal: optimalRes.width },
+        height: { ideal: optimalRes.height }
+      });
+      candidates.push({
+        facingMode: { ideal: 'user' }
+      });
+    }
+
+    // 5. Generic standard resolution
+    candidates.push({
+      width: { ideal: 1280 },
+      height: { ideal: 720 }
+    });
+
+    // 6. Ultimate universal fallback: true (any camera device present on the system)
+    candidates.push(true);
+
+    for (let i = 0; i < candidates.length; i++) {
+      const candidate = candidates[i];
       try {
-        let videoConstraints;
-
-        if (attemptCount === 1) {
-          if (selectedCameraId) {
-            videoConstraints = {
-              deviceId: { ideal: selectedCameraId },
-              width: { ideal: optimalRes.width },
-              height: { ideal: optimalRes.height }
-            };
-            if (isFrontCamera) {
-              videoConstraints.facingMode = { ideal: 'user' };
-            }
-          } else {
-            videoConstraints = {
-              facingMode: { ideal: 'environment' },
-              width: { ideal: optimalRes.width },
-              height: { ideal: optimalRes.height }
-            };
-          }
-        } else if (attemptCount === 2) {
-          if (selectedCameraId) {
-            // Try with exact deviceId or without resolution constraints
-            videoConstraints = {
-              deviceId: { exact: selectedCameraId }
-            };
-          } else {
-            videoConstraints = {
-              facingMode: { ideal: 'environment' },
-              width: { min: 640, ideal: optimalRes.width },
-              height: { min: 480, ideal: optimalRes.height }
-            };
-          }
-        } else {
-          // Attempt 3: General fallback
-          videoConstraints = isFrontCamera ? { facingMode: 'user' } : { facingMode: 'environment' };
-        }
-
-        console.log(`📷 getUserMedia attempt ${attemptCount}:`, videoConstraints);
-        stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: false });
-        console.log(`✅ Camera acquired on attempt ${attemptCount}`);
+        console.log(`📷 getUserMedia attempt ${i + 1}/${candidates.length}:`, candidate);
+        stream = await navigator.mediaDevices.getUserMedia({ video: candidate, audio: false });
+        console.log(`✅ Camera acquired on attempt ${i + 1}`);
         break;
       } catch (error) {
-        console.warn(`Attempt ${attemptCount} failed:`, error.message);
-        if (attemptCount >= maxAttempts) {
-          const errorType = classifyCameraError(error);
-          logError('setupCamera - getUserMedia', error, {
-            attemptCount,
-            selectedCameraId,
-            orientation
-          });
-          throw { type: errorType, original: error };
+        lastError = error;
+        console.warn(`Attempt ${i + 1} failed (${error.name}):`, error.message);
+        // If permission was explicitly denied, do not continue trying
+        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+          break;
         }
       }
     }
 
     if (!stream) {
-      throw { 
-        type: 'CAMERA_UNKNOWN', 
-        original: new Error('Failed to acquire camera after multiple attempts') 
-      };
+      const errorType = classifyCameraError(lastError);
+      logError('setupCamera - getUserMedia', lastError, {
+        selectedCameraId,
+        orientation
+      });
+      throw { type: errorType, original: lastError };
     }
 
     // Stop previous stream tracks cleanly AFTER new stream is acquired

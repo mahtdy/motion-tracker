@@ -1078,6 +1078,7 @@
   <!-- Run mode: gate calibration controls (allows correcting a mis-tapped point) -->
   <div id="gateControls">
     <div id="gateHint">روی تصویر ضربه بزن</div>
+    <button id="gateSpeakBtn" style="display:none; background: #0284c7; color: #ffffff; border: none; border-radius: 8px; padding: 6px 10px; font-size: 12px; cursor: pointer; flex-shrink: 0;" title="خواندن صوتی فاصله">🔊 بگو</button>
     <div class="btnRow">
       <button id="gateBackBtn" class="secondary" style="display:none;">بازگشت</button>
       <button id="gateNextBtn" disabled>ادامه</button>
@@ -1086,9 +1087,15 @@
 
   <!-- Run mode panels -->
   <div id="distPanel" class="panel">
-    <div>فاصلهٔ واقعی بین دو مانع رو وارد کن:</div>
+    <div style="font-weight: bold; font-size: 15px; color: #38bdf8;">📐 فاصله بین دو مانع</div>
+    <div id="autoDistBox" style="background: rgba(14, 116, 144, 0.25); border: 1px solid #0284c7; border-radius: 12px; padding: 8px 12px; margin: 8px 0; text-align: center;">
+      <div style="font-size: 11px; color: #38bdf8;">فاصله تخمینی خودکار بین دو مانع:</div>
+      <div style="font-size: 16px; font-weight: bold; color: #4ade80; margin: 4px 0;" id="autoDistText">-- متر و -- سانتی‌متر</div>
+      <button id="distPanelSpeakBtn" type="button" style="background: #0284c7; color: #fff; border: none; padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; width: auto; margin: 2px auto 0 auto;">🔊 خواندن صوتی فاصله</button>
+    </div>
+    <div style="font-size: 11px; color: #94a3b8; margin: 6px 0 2px 0;">فاصلهٔ نهایی جهت زمان‌گیری (قابل ویرایش):</div>
     <div class="input-row">
-      <input id="distInput" type="number" value="5" step="0.1" inputmode="decimal"> متر
+      <input id="distInput" type="number" value="5" step="0.01" inputmode="decimal"> متر
     </div>
     <button id="confirmDistBtn">تأیید و شروع اندازه‌گیری</button>
     <button id="backToGatesBtn" class="secondary">بازگشت و اصلاح موانع</button>
@@ -1200,7 +1207,10 @@
     <p id="distMeasureHint" style="font-size: 11px; color: #94a3b8; margin: 4px 0; line-height: 1.5;">
       روی دو جسم یا دو نقطه از تصویر ضربه بزن یا نشانگرهای A و B را بکش.
     </p>
-    <div class="big"><span id="distanceMeasureResult">--</span></div>
+    <div class="big" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+      <span id="distanceMeasureResult">--</span>
+      <button id="distObjSpeakBtn" type="button" style="background: #0284c7; color: #fff; border: none; border-radius: 8px; padding: 4px 8px; font-size: 14px; cursor: pointer; width: auto;" title="خواندن صوتی فاصله">🔊</button>
+    </div>
     <div style="font-size: 11px; color: #cbd5e1; margin-bottom: 6px;" id="distancePixelInfo">
       فاصله پیکسلی: -- px
     </div>

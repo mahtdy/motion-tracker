@@ -784,6 +784,11 @@ const distanceSaveBtn = document.getElementById('distanceSaveBtn');
 
 // Settings Elements
 const athleteHeightSetting = document.getElementById('athleteHeightSetting');
+const gateSpeakBtn = document.getElementById('gateSpeakBtn');
+const autoDistBox = document.getElementById('autoDistBox');
+const autoDistText = document.getElementById('autoDistText');
+const distPanelSpeakBtn = document.getElementById('distPanelSpeakBtn');
+const distObjSpeakBtn = document.getElementById('distObjSpeakBtn');
 
 const historyBtn = document.getElementById('historyBtn');
 const settingsBtn = document.getElementById('settingsBtn');
@@ -2471,6 +2476,194 @@ function setStatus(text) {
   statusEl.textContent = text;
 }
 
+// ================== AUDIO & SPEECH SYNTHESIS HELPER ==================
+let audioCtx = null;
+
+function playChime(freq = 660, type = 'sine', duration = 0.15) {
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    if (!audioCtx) audioCtx = new AudioContextClass();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+  } catch (e) {}
+}
+
+function speakText(textFa, textEn) {
+  playChime(660, 'sine', 0.08);
+  if (!('speechSynthesis' in window)) return;
+  try {
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance();
+    const voices = window.speechSynthesis.getVoices() || [];
+    const faVoice = voices.find(v => v.lang && (v.lang.toLowerCase().includes('fa') || v.lang.toLowerCase().includes('per')));
+    
+    if (faVoice) {
+      utter.voice = faVoice;
+      utter.lang = 'fa-IR';
+      utter.text = textFa;
+    } else {
+      utter.lang = 'fa-IR';
+      utter.text = textFa;
+      utter.onerror = () => {
+        if (textEn) {
+          try {
+            const fallbackUtter = new SpeechSynthesisUtterance(textEn);
+            fallbackUtter.lang = 'en-US';
+            fallbackUtter.rate = 1.0;
+            window.speechSynthesis.speak(fallbackUtter);
+          } catch (e) {}
+        }
+      };
+    }
+    utter.rate = 0.95;
+    window.speechSynthesis.speak(utter);
+  } catch (err) {
+    console.warn('Speech error:', err);
+  }
+}
+
+if ('speechSynthesis' in window) {
+  window.speechSynthesis.onvoiceschanged = () => {
+    try { window.speechSynthesis.getVoices(); } catch (e) {}
+  };
+}
+
+// ================== SCENE SCALE & POSE-BASED CALIBRATION ==================
+let currentEstimatedScaleCmPerPx = null;
+
+function updateEstimatedScaleFromPose(kp) {
+  if (!kp) return;
+  const athleteH = (getSettings().athleteHeight || 175); // in cm
+  const candidates = [];
+
+  const nose = kp['nose'];
+  const ls = kp['left_shoulder'], rs = kp['right_shoulder'];
+  const lh = kp['left_hip'], rh = kp['right_hip'];
+  const la = kp['left_ankle'], ra = kp['right_ankle'];
+
+  const ankle = (la && la.score > 0.35 && ra && ra.score > 0.35) 
+    ? { x: (la.x + ra.x) / 2, y: (la.y + ra.y) / 2 } 
+    : (la && la.score > 0.35 ? la : (ra && ra.score > 0.35 ? ra : null));
+
+  const hip = (lh && lh.score > 0.35 && rh && rh.score > 0.35) 
+    ? { x: (lh.x + rh.x) / 2, y: (lh.y + rh.y) / 2 } 
+    : (lh && lh.score > 0.35 ? lh : (rh && rh.score > 0.35 ? rh : null));
+
+  const shoulder = (ls && ls.score > 0.35 && rs && rs.score > 0.35) 
+    ? { x: (ls.x + rs.x) / 2, y: (ls.y + rs.y) / 2 } 
+    : (ls && ls.score > 0.35 ? ls : (rs && rs.score > 0.35 ? rs : null));
+
+  // 1. Nose to Ankle (full body)
+  if (nose && nose.score > 0.35 && ankle) {
+    const dy = ankle.y - nose.y;
+    if (dy > 80) {
+      candidates.push({ scale: (athleteH * 0.92) / dy, weight: 3.0 });
+    }
+  }
+
+  // 2. Shoulder to Ankle
+  if (shoulder && ankle) {
+    const dy = ankle.y - shoulder.y;
+    if (dy > 60) {
+      candidates.push({ scale: (athleteH * 0.81) / dy, weight: 2.5 });
+    }
+  }
+
+  // 3. Hip to Ankle (legs)
+  if (hip && ankle) {
+    const dy = ankle.y - hip.y;
+    if (dy > 40) {
+      candidates.push({ scale: (athleteH * 0.50) / dy, weight: 2.0 });
+    }
+  }
+
+  // 4. Shoulder to Hip (torso)
+  if (shoulder && hip) {
+    const dy = hip.y - shoulder.y;
+    if (dy > 30) {
+      candidates.push({ scale: (athleteH * 0.30) / dy, weight: 1.5 });
+    }
+  }
+
+  // 5. Shoulder width
+  if (ls && rs && ls.score > 0.35 && rs.score > 0.35) {
+    const dx = Math.hypot(rs.x - ls.x, rs.y - ls.y);
+    if (dx > 25) {
+      candidates.push({ scale: (athleteH * 0.23) / dx, weight: 1.0 });
+    }
+  }
+
+  if (candidates.length === 0) return;
+
+  let totalWeight = 0;
+  let weightedSum = 0;
+  for (const c of candidates) {
+    weightedSum += c.scale * c.weight;
+    totalWeight += c.weight;
+  }
+  const instantScale = weightedSum / totalWeight;
+
+  if (instantScale > 0.03 && instantScale < 15.0) {
+    if (currentEstimatedScaleCmPerPx == null) {
+      currentEstimatedScaleCmPerPx = instantScale;
+    } else {
+      currentEstimatedScaleCmPerPx = currentEstimatedScaleCmPerPx * 0.92 + instantScale * 0.08;
+    }
+    distCmPerPx = currentEstimatedScaleCmPerPx;
+  }
+}
+
+function calculateObstacleDistance() {
+  if (!gatePoints[0] || !gatePoints[1]) return null;
+  const dx = gatePoints[1].x - gatePoints[0].x;
+  const dy = gatePoints[1].y - gatePoints[0].y;
+  const pxDist = Math.hypot(dx, dy);
+  
+  const scale = currentEstimatedScaleCmPerPx || distCmPerPx || 0.45;
+  const totalCm = pxDist * scale;
+  const totalM = totalCm / 100;
+  const meters = Math.floor(totalM);
+  const cm = Math.round(totalCm % 100);
+  
+  let textFa = '';
+  if (meters > 0 && cm > 0) {
+    textFa = `${meters} متر و ${cm} سانتی‌متر`;
+  } else if (meters > 0) {
+    textFa = `${meters} متر`;
+  } else {
+    textFa = `${cm} سانتی‌متر`;
+  }
+  
+  return {
+    pxDist,
+    totalCm,
+    totalM,
+    meters,
+    cm,
+    textFa,
+    textShort: `${totalM.toFixed(2)} متر (${Math.round(totalCm)} cm)`
+  };
+}
+
+function announceObstacleDistance() {
+  const distInfo = calculateObstacleDistance();
+  if (!distInfo) return;
+  const faSpeech = `فاصله بین دو مانع: ${distInfo.textFa}`;
+  const enSpeech = `Distance between obstacles: ${distInfo.meters} meters and ${distInfo.cm} centimeters`;
+  speakText(faSpeech, enSpeech);
+}
+
 // ================== RUN MODE ==================
 // runPhase: 'calibrate1' | 'calibrate2' | 'enterDistance' | 'ready' | 'timing' | 'done'
 let runPhase = 'calibrate1';
@@ -2497,7 +2690,7 @@ function runEnterCalibrate2(showGuideOverlay = true) {
   runPhase = 'calibrate2';
   hideAllPanels();
   if (showGuideOverlay) {
-    showGuide('👆', 'انتخاب مانع دوم', 'حالا روی نقطهٔ مانع دوم ضربه بزن. اگه اشتباه زدی دوباره ضربه بزن. فاصله بین این دو نقطه رو بعداً وارد می‌کنی.');
+    showGuide('👆', 'انتخاب مانع دوم', 'حالا روی نقطهٔ مانع دوم ضربه بزن. فاصله دقیق بین دو مانع به متر و سانتی‌متر محاسبه و اعلام می‌شود.');
   }
   updateGateControls();
 }
@@ -2505,8 +2698,22 @@ function runEnterCalibrate2(showGuideOverlay = true) {
 function runEnterEnterDistance() {
   runPhase = 'enterDistance';
   hideAllPanels();
-  setStatus('فاصلهٔ واقعی رو وارد کن و تأیید بزن');
+  setStatus('فاصلهٔ واقعی بین دو مانع را بررسی یا تأیید کنید');
   distPanel.classList.add('visible');
+
+  const distInfo = calculateObstacleDistance();
+  if (distInfo) {
+    distInput.value = distInfo.totalM.toFixed(2);
+    if (autoDistText) {
+      autoDistText.textContent = `${distInfo.textFa} (${distInfo.totalM.toFixed(2)} متر)`;
+    }
+    if (distPanelSpeakBtn) {
+      distPanelSpeakBtn.onclick = (e) => {
+        e.preventDefault();
+        announceObstacleDistance();
+      };
+    }
+  }
 }
 
 function runEnterReady() {
@@ -2564,31 +2771,117 @@ function runFinish() {
   }
 }
 
-function runUpdateGateCrossing(ankleX) {
+let prevRunnerX = null;
+let prevRunnerTime = null;
+
+function runUpdateGateCrossing(runnerX) {
   if (runPhase !== 'ready' && runPhase !== 'timing') return;
-  if (ankleX == null) return;
+  if (runnerX == null) return;
+  const now = performance.now();
 
   for (let i = 0; i < 2; i++) {
     if (gateCrossed[i]) continue;
     if (!gatePoints[i]) continue;
     const gateX = gatePoints[i].x;
-    const side = ankleX < gateX ? -1 : 1;
+    const side = runnerX < gateX ? -1 : 1;
     if (prevSide[i] != null && side !== prevSide[i]) {
       gateCrossed[i] = true;
+      // High-precision sub-frame linear interpolation
+      let crossingTime = now;
+      if (prevRunnerX != null && prevRunnerTime != null && Math.abs(runnerX - prevRunnerX) > 0.5) {
+        const fraction = Math.min(1, Math.max(0, Math.abs(gateX - prevRunnerX) / Math.abs(runnerX - prevRunnerX)));
+        crossingTime = prevRunnerTime + fraction * (now - prevRunnerTime);
+      }
+
       if (runStartTime === null) {
-        runStartTime = performance.now();
+        runStartTime = crossingTime;
         runPhase = 'timing';
         setStatus('در حال دویدن... ⏱');
+        playChime(660);
       } else {
-        runEndTime = performance.now();
+        runEndTime = crossingTime;
+        playChime(880);
         runFinish();
       }
     }
     prevSide[i] = side;
   }
+  prevRunnerX = runnerX;
+  prevRunnerTime = now;
 }
 
 function runDrawGates() {
+  // Ground measurement line between obstacles if both are set
+  if (gatePoints[0] && gatePoints[1]) {
+    const p1 = gatePoints[0];
+    const p2 = gatePoints[1];
+    ctx.save();
+    
+    // Glowing ground connector line
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([8, 6]);
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    // Dimension end ticks
+    const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+    const perpAngle = angle + Math.PI / 2;
+    const tickLen = 14;
+    
+    ctx.strokeStyle = '#facc15';
+    ctx.lineWidth = 2.5;
+    // Tick 1
+    ctx.beginPath();
+    ctx.moveTo(p1.x - Math.cos(perpAngle) * tickLen, p1.y - Math.sin(perpAngle) * tickLen);
+    ctx.lineTo(p1.x + Math.cos(perpAngle) * tickLen, p1.y + Math.sin(perpAngle) * tickLen);
+    ctx.stroke();
+    // Tick 2
+    ctx.beginPath();
+    ctx.moveTo(p2.x - Math.cos(perpAngle) * tickLen, p2.y - Math.sin(perpAngle) * tickLen);
+    ctx.lineTo(p2.x + Math.cos(perpAngle) * tickLen, p2.y + Math.sin(perpAngle) * tickLen);
+    ctx.stroke();
+
+    // Floating Badge in middle of the obstacles
+    const distInfo = calculateObstacleDistance();
+    if (distInfo) {
+      const midX = (p1.x + p2.x) / 2;
+      const midY = (p1.y + p2.y) / 2 - 16;
+      const badgeText = `📏 ${distInfo.textFa} (${distInfo.totalM.toFixed(2)}m)`;
+      
+      ctx.font = 'bold 13px Vazirmatn, Tahoma, sans-serif';
+      const textW = ctx.measureText(badgeText).width;
+      const padX = 10, h = 26;
+      
+      // Shadow
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+      ctx.beginPath();
+      ctx.roundRect(midX - textW/2 - padX + 2, midY - h/2 + 2, textW + padX*2, h, 13);
+      ctx.fill();
+      
+      // Box
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.roundRect(midX - textW/2 - padX, midY - h/2, textW + padX*2, h, 13);
+      ctx.fill();
+      ctx.stroke();
+      
+      // Text
+      ctx.fillStyle = '#4ade80';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(badgeText, midX, midY);
+    }
+    
+    ctx.restore();
+  }
+
+  // Draw vertical gate lines
   gatePoints.forEach((pt, i) => {
     if (!pt) return;
     const done = gateCrossed[i];
@@ -2601,8 +2894,15 @@ function runDrawGates() {
 
     ctx.fillStyle = done ? '#22c55e' : '#f87171';
     ctx.beginPath();
-    ctx.arc(pt.x, pt.y, 8, 0, 2 * Math.PI);
+    ctx.arc(pt.x, pt.y, 9, 0, 2 * Math.PI);
     ctx.fill();
+
+    ctx.save();
+    ctx.font = 'bold 12px Vazirmatn, Tahoma, sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.fillText(i === 0 ? 'مانع ۱' : 'مانع ۲', pt.x, Math.max(20, pt.y - 14));
+    ctx.restore();
   });
 }
 
@@ -2618,24 +2918,47 @@ function updateGateControls() {
   gateNextBtn.disabled = !hasPoint;
   gateNextBtn.textContent = runPhase === 'calibrate1' ? 'ادامه' : 'ادامه و وارد کردن فاصله';
   gateBackBtn.style.display = runPhase === 'calibrate2' ? 'block' : 'none';
-  gateHint.textContent = hasPoint
-    ? 'برای اصلاح، دوباره روی تصویر ضربه بزن یا ادامه بده'
-    : 'روی تصویر ضربه بزن تا نقطهٔ مانع ثبت بشه';
+
+  if (runPhase === 'calibrate1') {
+    if (gateSpeakBtn) gateSpeakBtn.style.display = 'none';
+    gateHint.textContent = hasPoint
+      ? 'مانع اول مشخص شد. برای تغییر دوباره ضربه بزن یا ادامه بده.'
+      : 'روی نقطه مانع اول (روی زمین) ضربه بزن';
+  } else {
+    if (gatePoints[0] && gatePoints[1]) {
+      const distInfo = calculateObstacleDistance();
+      if (distInfo) {
+        gateHint.innerHTML = `فاصله بین دو مانع: <strong style="color: #4ade80;">${distInfo.textFa}</strong> (${distInfo.totalM.toFixed(2)}m)`;
+        if (gateSpeakBtn) {
+          gateSpeakBtn.style.display = 'inline-flex';
+          gateSpeakBtn.onclick = (e) => {
+            e.stopPropagation();
+            announceObstacleDistance();
+          };
+        }
+      }
+    } else {
+      if (gateSpeakBtn) gateSpeakBtn.style.display = 'none';
+      gateHint.textContent = 'حالا روی نقطه مانع دوم ضربه بزن';
+    }
+  }
 }
 
 document.getElementById('stage').addEventListener('click', (e) => {
   if (mode !== 'run') return;
   if (runPhase !== 'calibrate1' && runPhase !== 'calibrate2') return;
-  // Ignore taps that land on the gate-controls bar or the guide banner itself,
-  // so dismissing the guide (or tapping its buttons) never gets misread as
-  // placing an obstacle point.
+  // Ignore taps that land on the gate-controls bar or the guide banner itself
   if (e.target.closest && (e.target.closest('#gateControls') || e.target.closest('#guideOverlay'))) return;
-  // A real tap on the video means the person no longer needs the guide banner.
   guideOverlay.classList.remove('visible');
   const point = clientToCanvasCoords(e.clientX, e.clientY);
   const idx = runPhase === 'calibrate1' ? 0 : 1;
   gatePoints[idx] = point;
   updateGateControls();
+  if (idx === 1 && gatePoints[0] && gatePoints[1]) {
+    setTimeout(() => {
+      announceObstacleDistance();
+    }, 250);
+  }
 });
 
 gateNextBtn.addEventListener('click', () => {
@@ -2688,6 +3011,14 @@ confirmDistBtn.addEventListener('click', () => {
   }
   
   distanceMeters = validation.value;
+  // Update calibrated scale using user-confirmed ground truth distance
+  if (gatePoints[0] && gatePoints[1]) {
+    const pxDist = Math.hypot(gatePoints[1].x - gatePoints[0].x, gatePoints[1].y - gatePoints[0].y);
+    if (pxDist > 10) {
+      currentEstimatedScaleCmPerPx = (distanceMeters * 100) / pxDist;
+      distCmPerPx = currentEstimatedScaleCmPerPx;
+    }
+  }
   runEnterReady();
 });
 
@@ -2713,6 +3044,7 @@ let jumpCandidateTakeoff = null;
 let jumpCandidateLand = null;
 let minHipYDuringJump = Infinity;
 let baselineHipY = null;
+let jumpFrameHistory = [];
 
 function jumpEnterCalibrating() {
   jumpPhase = 'calibrating';
@@ -2725,9 +3057,10 @@ function jumpEnterCalibrating() {
   jumpCandidateTakeoff = null;
   jumpCandidateLand = null;
   minHipYDuringJump = Infinity;
+  jumpFrameHistory = [];
   hideAllPanels();
   applySettings();
-  showGuide('🧍', 'کالیبراسیون پرش', 'صاف و بی‌حرکت بایست تا ارتفاع پایه ثبت بشه. حدود یک ثانیه طول می‌کشه.');
+  showGuide('🧍', 'کالیبراسیون پرش', 'صاف و بی‌حرکت روبروی دوربین بایست تا ارتفاع پایه ثبت بشه. حدود یک ثانیه طول می‌کشه.');
 }
 
 function jumpEnterReady() {
@@ -2739,6 +3072,7 @@ function jumpEnterReady() {
   jumpCandidateTakeoff = null;
   jumpCandidateLand = null;
   minHipYDuringJump = Infinity;
+  jumpFrameHistory = [];
   hideAllPanels();
   resetFrameTracking(); // Reset frame tracking
   setStatus('آماده! بپر 🤸');
@@ -2746,9 +3080,26 @@ function jumpEnterReady() {
 
 function jumpFinish() {
   jumpPhase = 'done';
-  const airTimeSec = Math.max(0.05, (jumpLandTime - jumpTakeoffTime) / 1000);
-  const heightMeters = (9.81 * airTimeSec * airTimeSec) / 8;
-  const heightCm = heightMeters * 100;
+  const airTimeSec = Math.max(0.08, (jumpLandTime - jumpTakeoffTime) / 1000);
+  const heightFlightCm = ((9.81 * airTimeSec * airTimeSec) / 8) * 100;
+
+  // Direct hip displacement
+  const scale = currentEstimatedScaleCmPerPx || distCmPerPx || 0.35;
+  const hipRisePx = (baselineHipY != null && minHipYDuringJump < Infinity)
+    ? Math.max(0, baselineHipY - minHipYDuringJump)
+    : 0;
+  const heightDisplacementCm = hipRisePx * scale;
+
+  // Biomechanical sensor fusion
+  let finalHeightCm = heightFlightCm;
+  if (heightDisplacementCm > 4) {
+    const diff = Math.abs(heightFlightCm - heightDisplacementCm);
+    if (diff < 12) {
+      finalHeightCm = heightFlightCm * 0.55 + heightDisplacementCm * 0.45;
+    } else {
+      finalHeightCm = heightFlightCm * 0.35 + heightDisplacementCm * 0.65;
+    }
+  }
   
   // Validate air time
   const airTimeValidation = validateJumpAirTime(airTimeSec);
@@ -2767,10 +3118,10 @@ function jumpFinish() {
   }
   
   // Validate jump height
-  const heightValidation = validateJumpHeight(heightCm, airTimeSec);
+  const heightValidation = validateJumpHeight(finalHeightCm, airTimeSec);
   
   airTimeResultEl.textContent = airTimeSec.toFixed(3);
-  jumpHeightResultEl.textContent = heightCm.toFixed(1);
+  jumpHeightResultEl.textContent = finalHeightCm.toFixed(1);
   jumpResultPanel.classList.add('visible');
   
   if (!heightValidation.valid && heightValidation.warnings.length > 0) {
@@ -2784,7 +3135,7 @@ function jumpFinish() {
         setStatus('تمام شد!');
         saveToHistory('jump', {
           airTime: airTimeSec.toFixed(3),
-          height: heightCm.toFixed(1)
+          height: finalHeightCm.toFixed(1)
         });
       },
       () => {
@@ -2798,7 +3149,7 @@ function jumpFinish() {
     // Save to history
     saveToHistory('jump', {
       airTime: airTimeSec.toFixed(3),
-      height: heightCm.toFixed(1)
+      height: finalHeightCm.toFixed(1)
     });
   }
 }
@@ -2819,6 +3170,7 @@ function jumpProcessFrame(kp) {
   const data = getHipAnkleY(kp);
   if (!data) return;
   const { ankleY, hipY } = data;
+  const now = performance.now();
 
   if (jumpPhase === 'calibrating') {
     calibSamples.push({ ankleY, hipY });
@@ -2843,38 +3195,54 @@ function jumpProcessFrame(kp) {
   if (baselineY == null) return;
   const risePx = baselineY - ankleY; // positive when feet are above ground level
 
+  // Save history for sub-frame takeoff & landing interpolation
+  jumpFrameHistory.push({ time: now, ankleY, hipY, risePx });
+  if (jumpFrameHistory.length > 30) jumpFrameHistory.shift();
+
   if (jumpPhase === 'ready') {
-    if (risePx > airThresholdPx) {
-      if (aboveCount === 0) {
-        jumpCandidateTakeoff = performance.now();
-      }
+    const triggerPx = Math.max(6, airThresholdPx * 0.45);
+    if (risePx > triggerPx) {
       aboveCount++;
-      if (aboveCount >= DEBOUNCE_FRAMES) {
-        jumpTakeoffTime = jumpCandidateTakeoff || performance.now();
+      if (aboveCount >= 2) {
+        let takeoffTime = now - 50;
+        for (let i = jumpFrameHistory.length - 1; i >= 0; i--) {
+          if (jumpFrameHistory[i].risePx <= 3) {
+            takeoffTime = jumpFrameHistory[i].time;
+            break;
+          }
+        }
+        jumpTakeoffTime = takeoffTime;
         jumpPhase = 'airborne';
         minHipYDuringJump = hipY != null ? hipY : Infinity;
+        aboveCount = 0;
+        belowCount = 0;
+        playChime(520, 'sine', 0.1);
         setStatus('در هوا... ⤴️');
       }
     } else {
       aboveCount = 0;
-      jumpCandidateTakeoff = null;
     }
   } else if (jumpPhase === 'airborne') {
     if (hipY != null && hipY < minHipYDuringJump) {
       minHipYDuringJump = hipY;
     }
-    if (risePx < landThresholdPx) {
-      if (belowCount === 0) {
-        jumpCandidateLand = performance.now();
-      }
+    const touchPx = Math.max(6, landThresholdPx * 0.6);
+    if (risePx < touchPx) {
       belowCount++;
-      if (belowCount >= DEBOUNCE_FRAMES) {
-        jumpLandTime = jumpCandidateLand || performance.now();
+      if (belowCount >= 2) {
+        let landTime = now;
+        for (let i = jumpFrameHistory.length - 1; i >= 0; i--) {
+          if (jumpFrameHistory[i].risePx <= 4) {
+            landTime = jumpFrameHistory[i].time;
+            break;
+          }
+        }
+        jumpLandTime = landTime;
+        playChime(660, 'triangle', 0.12);
         jumpFinish();
       }
     } else {
       belowCount = 0;
-      jumpCandidateLand = null;
     }
   }
 }
@@ -2985,11 +3353,14 @@ function updateBoscoHud(remTime, jumpsCount, touchesCount, lastAir, lastContact,
   if (boscoLastHeightVal && lastHeight != null) boscoLastHeightVal.textContent = `${lastHeight} cm`;
 }
 
+let boscoFrameHistory = [];
+
 function boscoProcessFrame(kp) {
   if (boscoPhase !== 'running') return;
   const data = getHipAnkleY(kp);
   if (!data) return;
   const { ankleY } = data;
+  const now = performance.now();
 
   // Dynamically calibrate or maintain baseline
   if (baselineY != null) {
@@ -3008,42 +3379,54 @@ function boscoProcessFrame(kp) {
   }
 
   const risePx = boscoBaselineY - ankleY;
+  boscoFrameHistory.push({ time: now, ankleY, risePx });
+  if (boscoFrameHistory.length > 30) boscoFrameHistory.shift();
 
   if (boscoJumpState === 'ground') {
-    if (risePx > boscoAirThresh) {
-      if (boscoAboveCount === 0) {
-        boscoCandidateTakeoff = performance.now();
-      }
+    const triggerPx = Math.max(5, boscoAirThresh * 0.4);
+    if (risePx > triggerPx) {
       boscoAboveCount++;
       if (boscoAboveCount >= 2) {
-        boscoTakeoffTime = boscoCandidateTakeoff || performance.now();
+        let takeoffTime = now - 50;
+        for (let i = boscoFrameHistory.length - 1; i >= 0; i--) {
+          if (boscoFrameHistory[i].risePx <= 3) {
+            takeoffTime = boscoFrameHistory[i].time;
+            break;
+          }
+        }
+        boscoTakeoffTime = takeoffTime;
         boscoJumpState = 'airborne';
         boscoAboveCount = 0;
-        let contactTimeSec = 0;
-        if (boscoLastLandTime) {
-          contactTimeSec = Math.max(0.01, (boscoTakeoffTime - boscoLastLandTime) / 1000);
-        }
+        boscoBelowCount = 0;
+        playChime(520, 'sine', 0.08);
         setStatus(`در هوا... (پرش ${boscoJumps.length + 1}) ⤴️`);
       }
     } else {
       boscoAboveCount = 0;
       // Gently drift baseline with ground contact
-      if (risePx > -20 && risePx < 10) {
+      if (risePx > -15 && risePx < 8) {
         boscoBaselineY = boscoBaselineY * 0.95 + ankleY * 0.05;
       }
     }
   } else if (boscoJumpState === 'airborne') {
-    if (risePx < boscoLandThresh) {
-      if (boscoBelowCount === 0) {
-        boscoCandidateLand = performance.now();
-      }
+    const touchPx = Math.max(5, boscoLandThresh * 0.6);
+    if (risePx < touchPx) {
       boscoBelowCount++;
       if (boscoBelowCount >= 2) {
-        boscoLandTime = boscoCandidateLand || performance.now();
+        let landTime = now;
+        for (let i = boscoFrameHistory.length - 1; i >= 0; i--) {
+          if (boscoFrameHistory[i].risePx <= 4) {
+            landTime = boscoFrameHistory[i].time;
+            break;
+          }
+        }
+        boscoLandTime = landTime;
         boscoJumpState = 'ground';
+        boscoAboveCount = 0;
         boscoBelowCount = 0;
+        playChime(660, 'triangle', 0.1);
 
-        const airTimeSec = Math.max(0.05, (boscoLandTime - boscoTakeoffTime) / 1000);
+        const airTimeSec = Math.max(0.06, (boscoLandTime - boscoTakeoffTime) / 1000);
         const heightCm = ((9.81 * airTimeSec * airTimeSec) / 8) * 100;
         let contactTimeSec = 0;
         if (boscoLastLandTime) {
@@ -3194,41 +3577,63 @@ function updateWingspanUI() {
 function wingspanProcessFrame(kp) {
   if (mode !== 'wingspan') return;
   const lw = kp['left_wrist'], rw = kp['right_wrist'];
+  const le = kp['left_elbow'], re = kp['right_elbow'];
   const ls = kp['left_shoulder'], rs = kp['right_shoulder'];
-  const nose = kp['nose'];
-  const la = kp['left_ankle'], ra = kp['right_ankle'];
 
   if (!lw || !rw || lw.score < 0.25 || rw.score < 0.25) {
     wingspanPoints = null;
     return;
   }
 
-  wingspanPoints = { lw, rw, ls, rs };
+  wingspanPoints = { lw, rw, ls, rs, le, re };
 
   const wristDistPx = Math.hypot(rw.x - lw.x, rw.y - lw.y);
 
-  // Height-based scale calibration
+  // Use dynamically estimated scale from full pose or user settings
   const athleteHeight = getSettings().athleteHeight || 175;
-  let cmPerPx = 0.25; // default fallback
+  const scale = currentEstimatedScaleCmPerPx || distCmPerPx || 0.35;
 
-  if (nose && (la || ra)) {
-    const ankleY = (la && la.score > 0.25 && ra && ra.score > 0.25) ? (la.y + ra.y) / 2 : (la ? la.y : ra.y);
-    const bodyHeightPx = ankleY - nose.y;
-    if (bodyHeightPx > 60) {
-      cmPerPx = athleteHeight / (bodyHeightPx * 1.08);
-    }
-  } else if (ls && rs && ls.score > 0.3 && rs.score > 0.3) {
-    const shoulderPx = Math.hypot(rs.x - ls.x, rs.y - ls.y);
-    if (shoulderPx > 20) {
-      const shoulderCm = athleteHeight * 0.23;
-      cmPerPx = shoulderCm / shoulderPx;
-    }
+  // Kinematic chain measurement:
+  // Left arm (wrist -> elbow -> shoulder)
+  let leftArmPx = 0;
+  if (le && le.score > 0.25 && ls && ls.score > 0.25) {
+    leftArmPx = Math.hypot(lw.x - le.x, lw.y - le.y) + Math.hypot(le.x - ls.x, le.y - ls.y);
+  } else if (ls && ls.score > 0.25) {
+    leftArmPx = Math.hypot(lw.x - ls.x, lw.y - ls.y);
+  } else {
+    leftArmPx = wristDistPx * 0.38;
   }
 
-  // Wingspan from fingertip to fingertip is approx wrist distance * 1.15
-  const rawSpan = wristDistPx * cmPerPx * 1.15;
-  if (rawSpan > 40 && rawSpan < 260) {
-    currentWingspanCm = currentWingspanCm === 0 ? rawSpan : (currentWingspanCm * 0.8 + rawSpan * 0.2);
+  // Right arm (wrist -> elbow -> shoulder)
+  let rightArmPx = 0;
+  if (re && re.score > 0.25 && rs && rs.score > 0.25) {
+    rightArmPx = Math.hypot(rw.x - re.x, rw.y - re.y) + Math.hypot(re.x - rs.x, re.y - rs.y);
+  } else if (rs && rs.score > 0.25) {
+    rightArmPx = Math.hypot(rw.x - rs.x, rw.y - rs.y);
+  } else {
+    rightArmPx = wristDistPx * 0.38;
+  }
+
+  // Chest width (shoulder to shoulder)
+  let chestPx = 0;
+  if (ls && rs && ls.score > 0.25 && rs.score > 0.25) {
+    chestPx = Math.hypot(rs.x - ls.x, rs.y - ls.y);
+  } else {
+    chestPx = wristDistPx * 0.24;
+  }
+
+  const kinematicSpanPx = leftArmPx + chestPx + rightArmPx;
+  const effectiveSpanPx = Math.max(wristDistPx, kinematicSpanPx);
+
+  // Anatomical hand length (wrist crease to tip of middle finger = ~10.8% of body height)
+  const handLengthCm = athleteHeight * 0.108;
+  const rawSpan = (effectiveSpanPx * scale) + (2 * handLengthCm);
+
+  if (rawSpan > 50 && rawSpan < 280) {
+    currentWingspanCm = currentWingspanCm === 0 
+      ? rawSpan 
+      : (currentWingspanCm * 0.85 + rawSpan * 0.15);
+
     if (currentWingspanCm > maxWingspanCm) {
       maxWingspanCm = currentWingspanCm;
     }
@@ -3491,6 +3896,23 @@ if (distanceSaveBtn) {
       distanceSaveBtn.textContent = 'ذخیره شد ✓';
       setTimeout(() => { distanceSaveBtn.textContent = 'ذخیره در تاریخچه'; }, 2000);
     }
+  });
+}
+
+if (distObjSpeakBtn) {
+  distObjSpeakBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (!distPointA || !distPointB) return;
+    const pxDist = Math.hypot(distPointB.x - distPointA.x, distPointB.y - distPointA.y);
+    const scale = currentEstimatedScaleCmPerPx || distCmPerPx || 0.25;
+    const totalCm = pxDist * scale;
+    const totalM = totalCm / 100;
+    const meters = Math.floor(totalM);
+    const cm = Math.round(totalCm % 100);
+    const textFa = meters > 0 
+      ? (cm > 0 ? `${meters} متر و ${cm} سانتی‌متر` : `${meters} متر`)
+      : `${cm} سانتی‌متر`;
+    speakText(`فاصله بین دو مانع: ${textFa}`, `Distance: ${meters} meters and ${cm} centimeters`);
   });
 }
 
@@ -4126,7 +4548,10 @@ function drawPose(poses) {
       }
     }
 
-    if (mode === 'run') runUpdateGateCrossing(getAnkleX(kp));
+    // Dynamically calibrate scale from detected human pose
+    updateEstimatedScaleFromPose(kp);
+
+    if (mode === 'run') runUpdateGateCrossing(getRunnerX(kp));
     if (mode === 'jump') jumpProcessFrame(kp);
     if (mode === 'bosco') boscoProcessFrame(kp);
     if (mode === 'wingspan') wingspanProcessFrame(kp);
@@ -4137,14 +4562,26 @@ function drawPose(poses) {
   }
 }
 
-function getAnkleX(kp) {
-  const l = kp['left_ankle'], r = kp['right_ankle'];
-  const validL = l && l.score > currentConfidenceThreshold;
-  const validR = r && r.score > currentConfidenceThreshold;
-  if (validL && validR) return (l.x + r.x) / 2;
-  if (validL) return l.x;
-  if (validR) return r.x;
+function getRunnerX(kp) {
+  if (!kp) return null;
+  // Standard photo-finish / athletics timing tracks the runner's torso
+  const ls = kp['left_shoulder'], rs = kp['right_shoulder'];
+  const lh = kp['left_hip'], rh = kp['right_hip'];
+  const la = kp['left_ankle'], ra = kp['right_ankle'];
+  
+  const torso = [ls, rs, lh, rh].filter(p => p && p.score > currentConfidenceThreshold);
+  if (torso.length >= 2) {
+    return torso.reduce((sum, p) => sum + p.x, 0) / torso.length;
+  }
+  const ankles = [la, ra].filter(p => p && p.score > currentConfidenceThreshold);
+  if (ankles.length > 0) {
+    return ankles.reduce((sum, p) => sum + p.x, 0) / ankles.length;
+  }
   return null;
+}
+
+function getAnkleX(kp) {
+  return getRunnerX(kp);
 }
 
 /**

@@ -301,8 +301,44 @@
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
   }
 
+  /* Fade-in and slide-up animations for mobile panels */
+  @keyframes panelSlideUpFade {
+    0% {
+      opacity: 0;
+      transform: translateY(24px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes modalSlideUpFade {
+    0% {
+      opacity: 0;
+      transform: translate(-50%, calc(-50% + 28px)) scale(0.96);
+    }
+    100% {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+  }
+
+  @keyframes guideSlideDownFade {
+    0% {
+      opacity: 0;
+      transform: translateY(-16px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
   .panel.visible {
     display: block;
+    animation: panelSlideUpFade 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    will-change: transform, opacity;
   }
 
   .panel input[type="number"] {
@@ -383,6 +419,8 @@
 
   #gateControls.visible {
     display: flex;
+    animation: panelSlideUpFade 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    will-change: transform, opacity;
   }
 
   #gateHint {
@@ -448,6 +486,8 @@
 
   #historyPanel.visible {
     display: block;
+    animation: modalSlideUpFade 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    will-change: transform, opacity;
   }
 
   #historyPanel h3 {
@@ -486,6 +526,37 @@
     font-weight: 600;
   }
 
+  #historyPanel button, #settingsPanel button {
+    display: block;
+    width: 100%;
+    background: #22c55e;
+    color: #052e16;
+    border: none;
+    padding: 10px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 999px;
+    margin-top: 6px;
+    min-height: 40px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  #historyPanel button.secondary, #settingsPanel button.secondary {
+    background: transparent;
+    color: #94a3b8;
+    border: 2px solid #475569;
+  }
+
+  #historyPanel button.primary-blue {
+    background: #0284c7;
+    color: #ffffff;
+  }
+
+  #historyPanel button.primary-blue:hover {
+    background: #0369a1;
+  }
+
   /* Settings Panel - modal style */
   #settingsPanel {
     position: absolute;
@@ -509,6 +580,8 @@
 
   #settingsPanel.visible {
     display: block;
+    animation: modalSlideUpFade 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    will-change: transform, opacity;
   }
 
   #settingsPanel h3 {
@@ -579,6 +652,11 @@
 
   #guideOverlay.visible {
     display: flex;
+  }
+
+  #guideOverlay.visible .guideContent {
+    animation: guideSlideDownFade 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    will-change: transform, opacity;
   }
 
   #guideOverlay .guideContent {
@@ -821,6 +899,25 @@
       max-width: 260px;
     }
   }
+
+  @media (prefers-reduced-motion: reduce) {
+    .panel.visible,
+    #gateControls.visible,
+    #historyPanel.visible,
+    #settingsPanel.visible,
+    #guideOverlay.visible .guideContent {
+      animation: none !important;
+      opacity: 1 !important;
+    }
+    #historyPanel.visible,
+    #settingsPanel.visible {
+      transform: translate(-50%, -50%) !important;
+    }
+    .panel.visible,
+    #gateControls.visible {
+      transform: none !important;
+    }
+  }
 </style>
 </head>
 <body>
@@ -940,6 +1037,7 @@
     <h3>📋 تاریخچه اندازه‌گیری‌ها</h3>
     <div id="historyList"></div>
     <div class="btnRow">
+      <button id="downloadCsvBtn" class="primary-blue">📥 دانلود فایل اکسل (CSV)</button>
       <button id="clearHistoryBtn" class="secondary">پاک کردن همه</button>
       <button id="closeHistoryBtn">بستن</button>
     </div>

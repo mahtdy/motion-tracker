@@ -150,6 +150,7 @@ function showValidationWarning(title, message, onConfirm, onCancel) {
       width: 100%;
       text-align: center;
       color: #e2e8f0;
+      animation: modalSlideUpFade 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     ">
       <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
       <h3 style="color: #f59e0b; margin-bottom: 12px; font-size: 18px;">${title}</h3>
@@ -788,6 +789,7 @@ const historyBtn = document.getElementById('historyBtn');
 const settingsBtn = document.getElementById('settingsBtn');
 const historyPanel = document.getElementById('historyPanel');
 const historyList = document.getElementById('historyList');
+const downloadCsvBtn = document.getElementById('downloadCsvBtn');
 const clearHistoryBtn = document.getElementById('clearHistoryBtn');
 const closeHistoryBtn = document.getElementById('closeHistoryBtn');
 const settingsPanel = document.getElementById('settingsPanel');
@@ -2132,6 +2134,158 @@ historyBtn.addEventListener('click', () => {
 closeHistoryBtn.addEventListener('click', () => {
   historyPanel.classList.remove('visible');
 });
+
+function escapeCsv(val) {
+  if (val === null || val === undefined) return '""';
+  const str = String(val).replace(/"/g, '""');
+  return `"${str}"`;
+}
+
+function exportHistoryToCsv() {
+  const history = getHistory();
+  if (!history || history.length === 0) {
+    showValidationWarning(
+      'تاریخچه خالی است',
+      'هیچ رکوردی در تاریخچه ثبت نشده است تا دانلود شود.',
+      null,
+      null
+    );
+    return;
+  }
+
+  // BOM for UTF-8 in Excel so Persian characters render properly without mojibake
+  const bom = '\uFEFF';
+
+  const headers = [
+    'ردیف',
+    'نوع آزمون',
+    'تاریخ و زمان',
+    'زمان رکورد (ثانیه)',
+    'سرعت (متر بر ثانیه)',
+    'مسافت دویدن (متر)',
+    'زمان هوا (ثانیه)',
+    'ارتفاع پرش (سانتی‌متر)',
+    'تعداد پرش‌ها',
+    'تعداد لمس زمین',
+    'میانگین زمان هوا (ثانیه)',
+    'میانگین تماس زمین (ثانیه)',
+    'طول دست‌ها (سانتی‌متر)',
+    'قد ورزشکار (سانتی‌متر)',
+    'فاصله دو جسم (سانتی‌متر)',
+    'فاصله دو جسم (متر)',
+    'خلاصه کامل نتیجه'
+  ];
+
+  const rows = history.map((entry, index) => {
+    const rowNum = index + 1;
+    let testTypeTitle = '';
+    let recordTime = '';
+    let speed = '';
+    let runDist = '';
+    let airTime = '';
+    let jumpHeight = '';
+    let jumpsCount = '';
+    let touchesCount = '';
+    let avgAir = '';
+    let avgContact = '';
+    let wingspan = '';
+    let athleteHeight = '';
+    let distCm = '';
+    let distM = '';
+    let summary = '';
+
+    const d = entry.data || {};
+
+    if (entry.type === 'run') {
+      testTypeTitle = 'دویدن سرعت';
+      recordTime = d.time || '';
+      speed = d.speed || '';
+      runDist = d.distance || '';
+      summary = `زمان: ${d.time}s | سرعت: ${d.speed} m/s | مسافت: ${d.distance}m`;
+    } else if (entry.type === 'jump') {
+      testTypeTitle = 'پرش عمودی تک';
+      recordTime = d.airTime || '';
+      airTime = d.airTime || '';
+      jumpHeight = d.height || '';
+      jumpsCount = '1';
+      touchesCount = '1';
+      summary = `زمان پرواز: ${d.airTime}s | ارتفاع پرش: ${d.height} cm`;
+    } else if (entry.type === 'bosco') {
+      testTypeTitle = 'آزمون ۳۰ ثانیه پرش (باسکو)';
+      recordTime = d.totalAirTime || '30.0';
+      airTime = d.totalAirTime || '';
+      jumpHeight = d.maxHeight || '';
+      jumpsCount = d.totalJumps || '';
+      touchesCount = d.totalTouches || '';
+      avgAir = d.avgAirTime || '';
+      avgContact = d.avgContactTime || '';
+      summary = `تعداد پرش: ${d.totalJumps} | لمس زمین: ${d.totalTouches} | زمان هوا: ${d.totalAirTime}s | میانگین هوا: ${d.avgAirTime}s | اوج ارتفاع: ${d.maxHeight} cm`;
+    } else if (entry.type === 'wingspan') {
+      testTypeTitle = 'طول دو دست (Wingspan)';
+      wingspan = d.wingspan || '';
+      athleteHeight = d.athleteHeight || 175;
+      summary = `طول دست‌ها: ${d.wingspan} cm (${(parseFloat(d.wingspan)/100).toFixed(2)}m) | قد ثبت شده: ${athleteHeight} cm`;
+    } else if (entry.type === 'distance') {
+      testTypeTitle = 'فاصله بین دو جسم';
+      distCm = d.distanceCm || '';
+      distM = d.distanceM || '';
+      summary = `فاصله: ${d.distanceM >= 1 ? d.distanceM + ' متر' : d.distanceCm + ' سانتی‌متر'}`;
+    } else {
+      testTypeTitle = entry.type || 'سایر';
+      summary = JSON.stringify(d);
+    }
+
+    return [
+      escapeCsv(rowNum),
+      escapeCsv(testTypeTitle),
+      escapeCsv(entry.date || ''),
+      escapeCsv(recordTime),
+      escapeCsv(speed),
+      escapeCsv(runDist),
+      escapeCsv(airTime),
+      escapeCsv(jumpHeight),
+      escapeCsv(jumpsCount),
+      escapeCsv(touchesCount),
+      escapeCsv(avgAir),
+      escapeCsv(avgContact),
+      escapeCsv(wingspan),
+      escapeCsv(athleteHeight),
+      escapeCsv(distCm),
+      escapeCsv(distM),
+      escapeCsv(summary)
+    ].join(',');
+  });
+
+  const csvContent = bom + [headers.map(escapeCsv).join(','), ...rows].join('\r\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+  const filename = `harakat_sanj_history_${dateStr}.csv`;
+
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', filename);
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+
+  if (downloadCsvBtn) {
+    const origText = downloadCsvBtn.textContent;
+    downloadCsvBtn.textContent = 'دانلود شد ✓';
+    setTimeout(() => {
+      downloadCsvBtn.textContent = origText;
+    }, 2500);
+  }
+  setStatus('فایل CSV تاریخچه با موفقیت دانلود شد 📥');
+}
+
+if (downloadCsvBtn) {
+  downloadCsvBtn.addEventListener('click', exportHistoryToCsv);
+}
 
 clearHistoryBtn.addEventListener('click', () => {
   const history = getHistory();

@@ -47,6 +47,59 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transition: object-fit 0.2s ease;
+  }
+
+  /* Fit contain mode: full uncropped sensor view (essential for Android & sports field) */
+  #stage.fit-contain video,
+  #stage.fit-contain canvas {
+    object-fit: contain !important;
+  }
+
+  /* Camera hardware zoom pill on screen */
+  #cameraZoomControls {
+    position: absolute;
+    bottom: 90px;
+    right: 14px;
+    z-index: 9;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(51, 65, 85, 0.8);
+    border-radius: 999px;
+    padding: 4px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+  }
+
+  .zoomBtn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1.5px solid transparent;
+    background: rgba(30, 41, 59, 0.7);
+    color: #cbd5e1;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+  }
+
+  .zoomBtn:hover {
+    background: rgba(51, 65, 85, 0.9);
+  }
+
+  .zoomBtn.active {
+    background: #22c55e;
+    color: #0f172a;
+    border-color: #4ade80;
+    font-weight: 900;
+    box-shadow: 0 0 10px rgba(34, 197, 94, 0.4);
   }
 
   /* Header container - compact at top */
@@ -987,6 +1040,9 @@
     </div>
   </div>
 
+  <!-- Floating Zoom Control for Multi-lens / Android -->
+  <div id="cameraZoomControls" style="display: none;"></div>
+
   <!-- Header Container: Action bar + Status + Mode bar -->
   <div id="headerContainer">
     <!-- Action bar: icons + FPS -->
@@ -995,6 +1051,7 @@
         <button id="historyBtn" title="تاریخچه">📊</button>
         <button id="settingsBtn" title="تنظیمات">⚙️</button>
         <button id="orientationLockBtn" title="قفل جهت">🔓</button>
+        <button id="cameraFitToggleBtn" title="تغییر کادر دوربین (دید کامل واید / تمام صفحه)">📐</button>
         <button id="cameraSwitcherBtn" title="تغییر دوربین">📷</button>
       </div>
       <div id="fpsDisplay">FPS: --</div>
@@ -1068,11 +1125,45 @@
     <div class="value" id="calibFramesValue">20 فریم</div>
 
     <label>قد ورزشکار (جهت کالیبراسیون دقیق پرش و طول دست‌ها)</label>
-    <div class="input-row" style="margin: 4px 0 8px 0;">
-      <input type="number" id="athleteHeightSetting" min="100" max="230" step="1" value="175" style="width: 80px; padding: 6px; text-align: center; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: #fff;"> سانتی‌متر
+    <div class="input-row" style="margin: 4px 0 8px 0; display: flex; align-items: center; gap: 8px; justify-content: center; flex-wrap: wrap;">
+      <div style="display: flex; align-items: center; gap: 4px;">
+        <input type="number" id="athleteHeightSetting" min="100" max="230" step="1" value="175" style="width: 80px; padding: 6px; text-align: center; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: #fff;">
+        <span style="font-size: 12px; color: #94a3b8;">سانتی‌متر</span>
+      </div>
+      <button type="button" id="startHeightCalibBtn" class="secondary" style="margin: 0; padding: 6px 12px; font-size: 11px; white-space: nowrap; border: 1px solid #38bdf8; color: #38bdf8; border-radius: 8px; cursor: pointer; background: rgba(56, 189, 248, 0.12);">🎯 کالیبراسیون با دیوار</button>
     </div>
 
     <button id="closeSettingsBtn">ذخیره و بستن</button>
+  </div>
+
+  <!-- Height Calibration against Wall Panel -->
+  <div id="heightCalibPanel" class="panel" style="display: none; max-width: 360px;">
+    <div style="font-weight: bold; font-size: 15px; color: #38bdf8;">🎯 کالیبراسیون قد با دیوار</div>
+    <p id="heightCalibStepHint" style="font-size: 12px; color: #cbd5e1; margin: 6px 0; line-height: 1.6;">
+      کنار دیوار صاف بایستید و به ترتیب روی <strong>بالاترین نقطه سر</strong> و سپس <strong>کف پا</strong> روی تصویر ضربه بزنید.
+    </p>
+    
+    <div style="background: rgba(15, 23, 42, 0.75); border: 1px solid #334155; border-radius: 10px; padding: 8px; margin: 8px 0; text-align: center;">
+      <div style="display: flex; justify-content: space-around; align-items: center; margin-bottom: 8px;">
+        <span id="heightPointHeadStatus" style="font-size: 11px; color: #f87171;">🔴 سر: انتخاب نشده</span>
+        <span id="heightPointFeetStatus" style="font-size: 11px; color: #f87171;">🔴 پا: انتخاب نشده</span>
+      </div>
+      <div style="font-size: 11px; color: #94a3b8;">فاصله تقریبی دوربین تا دیوار:</div>
+      <div style="display: flex; justify-content: center; gap: 6px; margin: 6px 0;" id="wallDistButtons">
+        <button type="button" class="wallDistBtn" data-dist="1.5" style="padding: 4px 8px; font-size: 11px; border-radius: 6px; border: 1px solid #475569; background: #1e293b; color: #94a3b8; cursor: pointer;">۱.۵ متر</button>
+        <button type="button" class="wallDistBtn active" data-dist="2.0" style="padding: 4px 8px; font-size: 11px; border-radius: 6px; border: 1px solid #38bdf8; background: #0284c7; color: #fff; cursor: pointer;">۲.۰ متر</button>
+        <button type="button" class="wallDistBtn" data-dist="2.5" style="padding: 4px 8px; font-size: 11px; border-radius: 6px; border: 1px solid #475569; background: #1e293b; color: #94a3b8; cursor: pointer;">۲.۵ متر</button>
+        <button type="button" class="wallDistBtn" data-dist="3.0" style="padding: 4px 8px; font-size: 11px; border-radius: 6px; border: 1px solid #475569; background: #1e293b; color: #94a3b8; cursor: pointer;">۳.۰ متر</button>
+      </div>
+      <div style="font-size: 11px; color: #38bdf8; margin-top: 6px;">قد محاسبه‌شده:</div>
+      <div id="heightCalibResult" style="font-size: 22px; font-weight: bold; color: #4ade80; margin: 2px 0;">-- سانتی‌متر</div>
+    </div>
+
+    <div class="btnRow">
+      <button id="heightCalibConfirmBtn" disabled style="flex: 2; background: #16a34a;">تأیید و ذخیره در تنظیمات</button>
+      <button id="heightCalibResetBtn" class="secondary" style="flex: 1;">شروع مجدد</button>
+      <button id="heightCalibCancelBtn" class="secondary" style="flex: 1;">انصراف</button>
+    </div>
   </div>
 
   <!-- Run mode: gate calibration controls (allows correcting a mis-tapped point) -->

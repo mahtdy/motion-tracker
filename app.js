@@ -784,6 +784,16 @@ const distanceSaveBtn = document.getElementById('distanceSaveBtn');
 
 // Settings Elements
 const athleteHeightSetting = document.getElementById('athleteHeightSetting');
+const startHeightCalibBtn = document.getElementById('startHeightCalibBtn');
+const heightCalibPanel = document.getElementById('heightCalibPanel');
+const heightCalibStepHint = document.getElementById('heightCalibStepHint');
+const heightPointHeadStatus = document.getElementById('heightPointHeadStatus');
+const heightPointFeetStatus = document.getElementById('heightPointFeetStatus');
+const heightCalibResult = document.getElementById('heightCalibResult');
+const heightCalibConfirmBtn = document.getElementById('heightCalibConfirmBtn');
+const heightCalibResetBtn = document.getElementById('heightCalibResetBtn');
+const heightCalibCancelBtn = document.getElementById('heightCalibCancelBtn');
+
 const gateSpeakBtn = document.getElementById('gateSpeakBtn');
 const autoDistBox = document.getElementById('autoDistBox');
 const autoDistText = document.getElementById('autoDistText');
@@ -1042,7 +1052,7 @@ function updateFPSIndicator() {
   }
 }
 
-// ================== CAMERA SWITCHER SYSTEM ==================
+// ================== CAMERA SWITCHER & DISPLAY SYSTEM ==================
 /**
  * Camera switcher state
  */
@@ -1050,6 +1060,8 @@ let availableCameras = [];
 let currentCameraId = null;
 let currentCameraInfo = null;
 let cameraSwitcherBtn = null;
+let currentCameraZoom = 1.0;
+let cameraFitMode = localStorage.getItem('cameraFitMode') || 'cover';
 
 /**
  * Initialize camera switcher
@@ -1057,63 +1069,137 @@ let cameraSwitcherBtn = null;
 async function initCameraSwitcher() {
   try {
     console.log('[Camera Switcher] Initializing...');
-    
-    // Get list of cameras
-    availableCameras = await enumerateDevices();
-    
-    console.log(`📷 Found ${availableCameras.length} camera(s)`);
-    
-    // Enable/disable camera switcher button
-    if (cameraSwitcherBtn) {
-      if (availableCameras.length > 1) {
-        cameraSwitcherBtn.disabled = false;
-        cameraSwitcherBtn.style.opacity = '1';
-        console.log('[Camera Switcher] Button enabled');
-      } else {
-        cameraSwitcherBtn.disabled = true;
-        cameraSwitcherBtn.style.opacity = '0.5';
-        console.log('[Camera Switcher] Button disabled (only 1 camera)');
-      }
-    } else {
-      console.warn('[Camera Switcher] Button not found');
-    }
-    
-    // Update camera info display
-    updateCameraInfoDisplay();
-    
+    cameraSwitcherBtn = document.getElementById('cameraSwitcherBtn');
+
+    // Get list of cameras without disruptive getUserMedia calls
+    await refreshAvailableCameras();
+
+    // Initialize camera fit mode (contain vs cover)
+    applyCameraFitMode(cameraFitMode, false);
+
     console.log('[Camera Switcher] Initialization complete');
-    
   } catch (error) {
     console.error('[Camera Switcher] Initialization failed:', error);
   }
 }
 
 /**
- * Enumerate all video input devices
+ * Refresh list of cameras and update UI
+ */
+async function refreshAvailableCameras() {
+  try {
+    availableCameras = await enumerateDevices();
+    console.log(`📷 Found ${availableCameras.length} camera(s)`);
+
+    if (cameraSwitcherBtn) {
+      if (availableCameras.length > 1) {
+        cameraSwitcherBtn.disabled = false;
+        cameraSwitcherBtn.style.opacity = '1';
+      } else {
+        // Keep accessible so user can check or re-probe
+        cameraSwitcherBtn.disabled = false;
+        cameraSwitcherBtn.style.opacity = '0.75';
+      }
+    }
+
+    // Sync currentCameraInfo if currentCameraId is set
+    if (currentCameraId && availableCameras.length > 0) {
+      const match = availableCameras.find(c => c.deviceId === currentCameraId);
+      if (match) {
+        currentCameraInfo = match;
+      }
+    }
+
+    updateCameraInfoDisplay();
+  } catch (err) {
+    console.warn('refreshAvailableCameras error:', err);
+  }
+}
+
+/**
+ * Enumerate all video input devices reliably and without blocking streams
  */
 async function enumerateDevices() {
   try {
     const devices = await navigator.mediaDevices.enumerateDevices();
     const videoDevices = devices.filter(device => device.kind === 'videoinput');
-    
-    // Get detailed info for each camera
+
+    // Deduplicate by deviceId and remove duplicates
+    const seenIds = new Set();
+    const uniqueDevices = [];
+    for (const d of videoDevices) {
+      if (!d.deviceId && uniqueDevices.length > 0) continue;
+      if (seenIds.has(d.deviceId)) continue;
+      seenIds.add(d.deviceId);
+      uniqueDevices.push(d);
+    }
+
+    // Determine count of back & front cameras
+    let backCount = 0;
+    let frontCount = 0;
+    const preAnalyzed = uniqueDevices.map((device, idx) => {
+      const typeInfo = detectCameraType(device.label, idx);
+      if (typeInfo.position === 'back') backCount++;
+      else frontCount++;
+      return { device, typeInfo };
+    });
+
+    let currentBackIdx = 0;
+    let currentFrontIdx = 0;
     const camerasWithInfo = [];
-    
-    for (const device of videoDevices) {
-      const info = await getCameraInfo(device);
+
+    for (let i = 0; i < preAnalyzed.length; i++) {
+      const { device, typeInfo } = preAnalyzed[i];
+      let subIdx = 0;
+      if (typeInfo.position === 'back') {
+        subIdx = currentBackIdx++;
+      } else {
+        subIdx = currentFrontIdx++;
+      }
+
+      const info = {
+        deviceId: device.deviceId,
+        label: device.label || `دوربین ${i + 1}`,
+        originalLabel: device.label,
+        groupId: device.groupId,
+        type: typeInfo.type,
+        position: typeInfo.position,
+        zoomRatio: typeInfo.zoomRatio,
+        icon: typeInfo.icon
+      };
+
+      info.persianLabel = formatCameraLabel(info, subIdx, backCount, frontCount);
+
+      // If this device is the currently active camera, read settings & capabilities with ZERO overhead
+      if (currentCameraStream) {
+        const activeTrack = currentCameraStream.getVideoTracks()[0];
+        if (activeTrack) {
+          const settings = activeTrack.getSettings ? activeTrack.getSettings() : {};
+          if (settings.deviceId === device.deviceId || device.deviceId === currentCameraId) {
+            const caps = activeTrack.getCapabilities ? activeTrack.getCapabilities() : {};
+            info.capabilities = caps;
+            if (settings.width && settings.height) {
+              info.resolution = `${settings.width}x${settings.height}`;
+            }
+          }
+        }
+      }
+
+      if (!info.resolution) {
+        info.resolution = info.position === 'front' ? 'سلفی' : (info.type === 'wide' ? 'فوق‌عریض (واید)' : 'استاندارد');
+      }
+
       camerasWithInfo.push(info);
     }
-    
-    // Sort: back cameras first, then by zoom (wide > normal > tele)
+
+    // Sort: back cameras first, wide lens first, then standard, then tele, then front
     camerasWithInfo.sort((a, b) => {
-      // Back cameras before front
       if (a.position !== b.position) {
         return a.position === 'back' ? -1 : 1;
       }
-      // Wide angle first (lower zoom = wider)
       return (a.zoomRatio || 1) - (b.zoomRatio || 1);
     });
-    
+
     return camerasWithInfo;
   } catch (error) {
     console.error('Failed to enumerate devices:', error);
@@ -1122,200 +1208,178 @@ async function enumerateDevices() {
 }
 
 /**
- * Get camera information
+ * Detect camera type and lens optics from device label & index
  */
-async function getCameraInfo(device) {
-  const info = {
-    deviceId: device.deviceId,
-    label: device.label || 'دوربین ناشناس',
-    originalLabel: device.label,
-    groupId: device.groupId
-  };
-  
-  // Detect camera type from label
-  const type = detectCameraType(device.label);
-  info.type = type.type;
-  info.position = type.position;
-  info.zoomRatio = type.zoomRatio;
-  info.icon = type.icon;
-  
-  // Format label in Persian
-  info.persianLabel = formatCameraLabel(info);
-  
-  // Try to get capabilities (may require permission)
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { deviceId: { exact: device.deviceId } }
-    });
-    
-    const track = stream.getVideoTracks()[0];
-    const capabilities = track.getCapabilities ? track.getCapabilities() : {};
-    
-    info.capabilities = {
-      width: capabilities.width || {},
-      height: capabilities.height || {},
-      zoom: capabilities.zoom || {},
-      focusMode: capabilities.focusMode || []
-    };
-    
-    // Get current settings
-    const settings = track.getSettings();
-    info.resolution = `${settings.width || '?'}x${settings.height || '?'}`;
-    
-    // Stop the test stream
-    track.stop();
-    stream.getTracks().forEach(t => t.stop());
-    
-  } catch (error) {
-    console.warn('Could not get camera capabilities:', error);
-    info.capabilities = {};
-    info.resolution = 'نامشخص';
-  }
-  
-  return info;
-}
-
-/**
- * Detect camera type from label
- */
-function detectCameraType(label) {
-  const lower = label.toLowerCase();
+function detectCameraType(label, index) {
+  const lower = (label || '').toLowerCase();
   
   let type = 'normal';
   let position = 'back';
   let zoomRatio = 1;
   let icon = '📸';
   
-  // Detect position
-  if (lower.includes('front') || lower.includes('face') || lower.includes('user')) {
+  // 1. Position detection
+  if (lower.includes('front') || lower.includes('face') || lower.includes('user') || lower.includes('selfie') || lower.includes('جلو')) {
     position = 'front';
-    icon = '📷';
+    icon = '🤳';
+  } else if (lower.includes('back') || lower.includes('rear') || lower.includes('environment') || lower.includes('عقب')) {
+    position = 'back';
+    icon = '📸';
+  } else {
+    // Standard heuristic: camera index 1 is usually front, 0 is back
+    position = index === 1 ? 'front' : 'back';
+    icon = position === 'front' ? '🤳' : '📸';
   }
   
-  // Detect zoom/type
-  if (lower.includes('wide') || lower.includes('ultra') || lower.includes('0.5')) {
+  // 2. Lens & Zoom detection
+  if (lower.includes('ultra') || lower.includes('wide') || lower.includes('0.5') || lower.includes('0.6') || lower.includes('واید')) {
     type = 'wide';
     zoomRatio = 0.5;
-    icon = position === 'front' ? '📷' : '🌐';
-  } else if (lower.includes('tele') || lower.includes('zoom') || lower.includes('2x') || lower.includes('3x')) {
+    icon = position === 'front' ? '🤳' : '🌐';
+  } else if (lower.includes('tele') || lower.includes('zoom') || lower.includes('2x') || lower.includes('3x') || lower.includes('تله')) {
     type = 'telephoto';
     zoomRatio = lower.includes('3x') ? 3 : 2;
     icon = '🔭';
+  } else if (lower.includes('macro') || lower.includes('ماکرو')) {
+    type = 'macro';
+    icon = '🔍';
+  } else if (position === 'back') {
+    // Android Camera2 naming: "camera2 0, facing back" (main 1x), "camera2 2, facing back" (wide)
+    const match = lower.match(/camera2?\s*(\d+)/);
+    if (match) {
+      const camNum = parseInt(match[1], 10);
+      if (camNum === 0) {
+        type = 'main';
+        zoomRatio = 1;
+        icon = '📸';
+      } else if (camNum === 2) {
+        type = 'wide';
+        zoomRatio = 0.5;
+        icon = '🌐';
+      } else {
+        type = 'secondary';
+        icon = '📷';
+      }
+    }
   }
   
   return { type, position, zoomRatio, icon };
 }
 
 /**
- * Format camera label in Persian
+ * Format camera label in descriptive Persian
  */
-function formatCameraLabel(info) {
-  const parts = [];
-  
-  // Position
+function formatCameraLabel(info, subIdx, backCount, frontCount) {
   if (info.position === 'front') {
-    parts.push('دوربین جلو');
-  } else {
-    parts.push('دوربین عقب');
+    if (info.type === 'wide') return 'دوربین جلو (سلفی عریض 🌐)';
+    return frontCount > 1 ? `دوربین جلو ${subIdx + 1} (سلفی 🤳)` : 'دوربین جلو (سلفی 🤳)';
   }
-  
-  // Type
+
+  // Back cameras
   if (info.type === 'wide') {
-    parts.push('واید');
-    if (info.zoomRatio) {
-      parts.push(`${info.zoomRatio}x`);
-    }
-  } else if (info.type === 'telephoto') {
-    parts.push('تله‌فوتو');
-    if (info.zoomRatio) {
-      parts.push(`${info.zoomRatio}x`);
-    }
-  } else if (info.zoomRatio && info.zoomRatio !== 1) {
-    parts.push(`${info.zoomRatio}x`);
+    return `دوربین فوق‌عریض عقب (${info.zoomRatio || '0.5'}x 🌐)`;
   }
-  
-  return parts.join(' ');
+  if (info.type === 'telephoto') {
+    return `دوربین تله‌فوتو عقب (${info.zoomRatio || '2'}x 🔭)`;
+  }
+  if (info.type === 'macro') {
+    return 'دوربین ماکرو عقب 🔍';
+  }
+  if (info.type === 'main' || subIdx === 0) {
+    return 'دوربین اصلی عقب (1x 📸)';
+  }
+
+  if (backCount > 1) {
+    return `دوربین عقب (لنز ${subIdx + 1} 📷)`;
+  }
+
+  return 'دوربین اصلی عقب (📸)';
 }
 
 /**
- * Show camera switcher modal
+ * Show camera switcher modal with live refresh
  */
-function showCameraSwitcherModal() {
-  // Don't allow switching during timing
+async function showCameraSwitcherModal() {
   if ((mode === 'run' && runPhase === 'timing') || 
       (mode === 'jump' && jumpPhase === 'measuring')) {
     setStatus('⚠️ در حین اندازه‌گیری نمی‌تونی دوربین رو عوض کنی');
-    setTimeout(() => {
-      if (mode === 'run' && runPhase === 'timing') {
-        setStatus('در حال دویدن... ⏱');
-      } else if (mode === 'jump' && jumpPhase === 'measuring') {
-        setStatus('در حال اندازه‌گیری... 📊');
-      }
-    }, 2000);
     return;
   }
-  
+
+  // Refresh available devices right before rendering modal
+  await refreshAvailableCameras();
+
+  const existingModal = document.getElementById('cameraSwitcherModal');
+  if (existingModal) existingModal.remove();
+
   const modal = document.createElement('div');
   modal.id = 'cameraSwitcherModal';
   modal.style.cssText = `
     position: fixed;
     inset: 0;
     z-index: 9999;
-    background: rgba(0, 0, 0, 0.95);
+    background: rgba(0, 0, 0, 0.92);
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 20px;
     overflow-y: auto;
   `;
-  
-  const cameraCards = availableCameras.map((camera, index) => {
-    const isActive = camera.deviceId === currentCameraId;
+
+  const cameraCards = (availableCameras.length > 0 ? availableCameras : [
+    { deviceId: '', icon: '📸', persianLabel: 'دوربین اصلی عقب', position: 'back', resolution: 'استاندارد' }
+  ]).map((camera) => {
+    const isActive = camera.deviceId === currentCameraId || (!currentCameraId && camera.position === 'back');
     const borderColor = isActive ? '#22c55e' : '#475569';
-    const bgColor = isActive ? 'rgba(34, 197, 94, 0.1)' : 'rgba(30, 41, 59, 0.6)';
-    
+    const bgColor = isActive ? 'rgba(34, 197, 94, 0.15)' : 'rgba(30, 41, 59, 0.7)';
+
     return `
-      <div class="camera-card" data-device-id="${camera.deviceId}" style="
+      <div class="camera-card" data-device-id="${camera.deviceId || ''}" style="
         background: ${bgColor};
         border: 2px solid ${borderColor};
         border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 12px;
+        padding: 14px;
+        margin-bottom: 10px;
         cursor: pointer;
         transition: all 0.2s;
       ">
-        <div style="display: flex; align-items: center; gap: 12px;">
-          <div style="font-size: 32px;">${camera.icon}</div>
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <div style="font-size: 30px;">${camera.icon}</div>
           <div style="flex: 1;">
-            <div style="color: #e2e8f0; font-weight: bold; font-size: 15px; margin-bottom: 4px;">
-              ${camera.persianLabel}
-              ${isActive ? '<span style="color: #22c55e;">✓</span>' : ''}
+            <div style="color: #e2e8f0; font-weight: bold; font-size: 15px; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center;">
+              <span>${camera.persianLabel}</span>
+              ${isActive ? '<span style="color: #22c55e; font-size: 13px; font-weight: 900;">✓ فعال</span>' : ''}
             </div>
-            <div style="color: #94a3b8; font-size: 12px;">
-              ${camera.position === 'front' ? 'جلو' : 'عقب'} • 
-              ${camera.resolution}
-              ${camera.zoomRatio ? ` • ${camera.zoomRatio}x` : ''}
+            <div style="color: #94a3b8; font-size: 12px; line-height: 1.4;">
+              ${camera.originalLabel ? `<span style="font-family: monospace; font-size: 11px; opacity: 0.8;">${camera.originalLabel}</span><br/>` : ''}
+              ${camera.position === 'front' ? 'سلفی' : 'عقب'} • 
+              ${camera.resolution || 'کیفیت استاندارد'}
+              ${camera.zoomRatio && camera.zoomRatio !== 1 ? ` • ${camera.zoomRatio}x` : ''}
             </div>
           </div>
         </div>
       </div>
     `;
   }).join('');
-  
+
   modal.innerHTML = `
     <div style="
       background: #1e293b;
       border: 2px solid #334155;
       border-radius: 20px;
       padding: 20px;
-      max-width: 400px;
+      max-width: 420px;
       width: 100%;
-      max-height: 80vh;
+      max-height: 85vh;
       overflow-y: auto;
+      box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);
     ">
-      <h3 style="color: #4ade80; margin-bottom: 16px; font-size: 18px; text-align: center;">
-        📷 انتخاب دوربین
+      <h3 style="color: #4ade80; margin-bottom: 6px; font-size: 18px; text-align: center;">
+        📷 انتخاب دوربین و لنز
       </h3>
+      <p style="color: #94a3b8; font-size: 12px; text-align: center; margin-bottom: 14px;">
+        لنز مورد نظر را انتخاب کنید. در صورت عدم پشتیبانی سخت‌افزار، دوربین فعال بازگردانده می‌شود.
+      </p>
       <div id="cameraList">
         ${cameraCards}
       </div>
@@ -1330,138 +1394,171 @@ function showCameraSwitcherModal() {
         cursor: pointer;
         width: 100%;
         min-height: 44px;
-        margin-top: 12px;
+        margin-top: 8px;
       ">بستن</button>
     </div>
   `;
-  
+
   document.body.appendChild(modal);
-  
-  // Add click handlers for camera cards
-  document.querySelectorAll('.camera-card').forEach(card => {
-    card.addEventListener('click', () => {
+
+  modal.querySelectorAll('.camera-card').forEach(card => {
+    card.addEventListener('click', async () => {
       const deviceId = card.getAttribute('data-device-id');
-      switchCamera(deviceId);
       modal.remove();
-    });
-    
-    // Hover effect
-    card.addEventListener('mouseenter', () => {
-      if (card.getAttribute('data-device-id') !== currentCameraId) {
-        card.style.background = 'rgba(51, 65, 85, 0.6)';
-      }
-    });
-    card.addEventListener('mouseleave', () => {
-      if (card.getAttribute('data-device-id') !== currentCameraId) {
-        card.style.background = 'rgba(30, 41, 59, 0.6)';
+      if (deviceId && deviceId !== currentCameraId) {
+        await switchCamera(deviceId);
       }
     });
   });
-  
+
   document.getElementById('closeCameraSwitcher').onclick = () => {
     modal.remove();
   };
 }
 
 /**
- * Switch to a different camera
+ * Switch to a different camera with full safety fallback (never black screen)
  */
 async function switchCamera(deviceId) {
   const camera = availableCameras.find(c => c.deviceId === deviceId);
-  
-  if (!camera) {
-    console.error('Camera not found:', deviceId);
-    return;
-  }
-  
-  console.log(`📷 Switching to camera: ${camera.persianLabel}`);
+  const prevCameraId = currentCameraId;
+
+  console.log(`📷 Switching to camera: ${camera ? camera.persianLabel : deviceId}`);
   setStatus('🔄 در حال تعویض دوربین...');
-  
+
   try {
-    // Save calibration if exists
     if ((mode === 'run' && gatePoints[0] && gatePoints[1]) || 
         (mode === 'jump' && legLengthPx !== null)) {
       saveCalibrationAsRatio();
     }
-    
-    // Stop current stream
-    if (video.srcObject) {
-      video.srcObject.getTracks().forEach(track => track.stop());
-      video.srcObject = null;
-    }
-    
-    // Save selected camera
+
+    // Force reconfiguration with the target deviceId
+    await setupCamera(true, deviceId);
+
+    // Update state on success
     currentCameraId = deviceId;
-    currentCameraInfo = camera;
+    currentCameraInfo = camera || availableCameras.find(c => c.deviceId === deviceId);
     localStorage.setItem('selectedCameraId', deviceId);
-    
-    // Setup camera with new deviceId
-    await setupCamera(false, deviceId);
-    
-    // Try to restore calibration
+
     if (calibrationData) {
-      const restored = restoreCalibrationFromRatio();
-      if (restored) {
-        setStatus(`✅ دوربین عوض شد - کالیبراسیون حفظ شد`);
-      } else {
-        setStatus(`✅ دوربین عوض شد`);
-        
-        // Reset calibration
-        if (mode === 'run' && runPhase !== 'calibrate1') {
-          setTimeout(() => {
-            showValidationWarning(
-              'کالیبراسیون از دست رفت',
-              'با تعویض دوربین، کالیبراسیون قبلی از دست رفت.\n\nلطفاً دوباره کالیبراسیون کن.',
-              () => {
-                if (mode === 'run') runEnterCalibrate1();
-              },
-              null
-            );
-          }, 1000);
-        } else if (mode === 'jump' && jumpPhase !== 'calibrating') {
-          setTimeout(() => {
-            showValidationWarning(
-              'کالیبراسیون از دست رفت',
-              'با تعویض دوربین، کالیبراسیون قبلی از دست رفت.\n\nلطفاً دوباره کالیبراسیون کن.',
-              () => {
-                if (mode === 'jump') jumpEnterCalibrating();
-              },
-              null
-            );
-          }, 1000);
-        }
-      }
-    } else {
-      setStatus(`✅ دوربین عوض شد: ${camera.persianLabel}`);
+      restoreCalibrationFromRatio();
     }
-    
-    // Update camera info display
+
+    setStatus(`✅ دوربین فعال شد: ${currentCameraInfo ? currentCameraInfo.persianLabel : 'موفق'}`);
     updateCameraInfoDisplay();
-    
-    setTimeout(() => {
-      if (mode === 'run' && runPhase === 'ready') {
-        setStatus('آماده! از کنار یکی از موانع رد شو تا زمان شروع بشه');
-      } else if (mode === 'jump' && jumpPhase === 'ready') {
-        setStatus('آماده! بپر 🤸');
-      }
-    }, 3000);
-    
+
   } catch (error) {
     console.error('Failed to switch camera:', error);
     logError('switchCamera', error, { deviceId, camera });
-    
-    showErrorModal('CAMERA_UNKNOWN', `Failed to switch to camera: ${camera.persianLabel}\n\n${error.message}`);
-    
-    // Try to restore previous camera
-    if (currentCameraId && currentCameraId !== deviceId) {
-      console.log('Attempting to restore previous camera');
-      try {
-        await setupCamera(false, currentCameraId);
-      } catch (restoreError) {
-        console.error('Failed to restore previous camera:', restoreError);
+
+    setStatus('⚠️ این لنز توسط اندروید قفل است. بازگشت به دوربین قبلی...');
+
+    // Safe recovery: Never leave the screen black!
+    try {
+      if (prevCameraId && prevCameraId !== deviceId) {
+        await setupCamera(true, prevCameraId);
+      } else {
+        await setupCamera(true, null);
       }
+      setStatus('✅ دوربین فعال بازگردانده شد');
+      updateCameraInfoDisplay();
+    } catch (restoreErr) {
+      console.error('Failed to restore previous camera:', restoreErr);
+      showErrorModal('CAMERA_UNKNOWN', `امکان فعال‌سازی این دوربین وجود ندارد:\n${error.message || error}`);
     }
   }
+}
+
+/**
+ * Setup floating interactive Zoom Controls on screen when supported by camera
+ */
+function setupZoomControlsUI(track, caps) {
+  const container = document.getElementById('cameraZoomControls');
+  if (!container) return;
+
+  if (!caps || !caps.zoom || caps.zoom.min === caps.zoom.max) {
+    container.style.display = 'none';
+    return;
+  }
+
+  container.innerHTML = '';
+  container.style.display = 'flex';
+
+  const zoomLevels = [];
+  if (caps.zoom.min <= 0.6) {
+    zoomLevels.push({ label: '0.5x', value: caps.zoom.min });
+    zoomLevels.push({ label: '1x', value: 1.0 });
+    if (caps.zoom.max >= 2.0) {
+      zoomLevels.push({ label: '2x', value: 2.0 });
+    }
+  } else if (caps.zoom.max >= 2.0) {
+    zoomLevels.push({ label: '1x', value: caps.zoom.min });
+    zoomLevels.push({ label: '2x', value: Math.min(2.0, caps.zoom.max) });
+    if (caps.zoom.max >= 3.0) {
+      zoomLevels.push({ label: '3x', value: Math.min(3.0, caps.zoom.max) });
+    }
+  } else {
+    zoomLevels.push({ label: '1x', value: caps.zoom.min });
+    zoomLevels.push({ label: 'Max', value: caps.zoom.max });
+  }
+
+  zoomLevels.forEach(lvl => {
+    const btn = document.createElement('button');
+    btn.className = 'zoomBtn' + (Math.abs(currentCameraZoom - lvl.value) < 0.15 ? ' active' : '');
+    btn.textContent = lvl.label;
+    btn.title = `بزرگ‌نمایی لنز: ${lvl.label}`;
+    btn.onclick = async (e) => {
+      e.stopPropagation();
+      try {
+        await track.applyConstraints({ advanced: [{ zoom: lvl.value }] });
+        currentCameraZoom = lvl.value;
+        container.querySelectorAll('.zoomBtn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        setStatus(`🔍 بزرگ‌نمایی: ${lvl.label}`);
+      } catch (err) {
+        console.warn('Failed to apply zoom constraint:', err);
+      }
+    };
+    container.appendChild(btn);
+  });
+}
+
+/**
+ * Apply camera view framing mode (contain = full uncropped sensor, cover = fullscreen)
+ */
+function applyCameraFitMode(fitMode, announce = false) {
+  cameraFitMode = fitMode;
+  localStorage.setItem('cameraFitMode', fitMode);
+  const stage = document.getElementById('stage');
+  const btn = document.getElementById('cameraFitToggleBtn');
+  
+  if (fitMode === 'contain') {
+    if (stage) stage.classList.add('fit-contain');
+    if (btn) {
+      btn.textContent = '🖼️';
+      btn.title = 'دید کامل فعال است (بدون برش تصویر سنسور). کلیک برای تمام‌صفحه';
+      btn.style.color = '#4ade80';
+      btn.style.borderColor = '#22c55e';
+    }
+    if (announce) setStatus('کادر دوربین: دید کامل بدون برش سنسور (واید) 📐');
+  } else {
+    if (stage) stage.classList.remove('fit-contain');
+    if (btn) {
+      btn.textContent = '📐';
+      btn.title = 'حالت تمام‌صفحه فعال است. کلیک برای دید کامل بدون برش تصویر';
+      btn.style.color = '#94a3b8';
+      btn.style.borderColor = '#475569';
+    }
+    if (announce) setStatus('کادر دوربین: تمام صفحه 📱');
+  }
+}
+
+/**
+ * Toggle camera fit mode between full sensor (contain) and full screen (cover)
+ */
+function toggleCameraFitMode() {
+  const nextMode = cameraFitMode === 'contain' ? 'cover' : 'contain';
+  applyCameraFitMode(nextMode, true);
 }
 
 /**
@@ -1718,49 +1815,35 @@ function getCurrentOrientation() {
 
 /**
  * Calculate optimal resolution based on screen and orientation
+ * Uses standard 16:9 / 4:3 native camera sensor profiles to prevent sensor digital cropping
  */
 function calculateOptimalResolution(orientation) {
-  const screenW = window.screen.width;
-  const screenH = window.screen.height;
-  const aspectRatio = Math.min(screenW, screenH) / Math.max(screenW, screenH);
+  const screenW = window.screen?.width || window.innerWidth || 1080;
+  const screenH = window.screen?.height || window.innerHeight || 1920;
   
-  console.log(`📐 Screen: ${screenW}x${screenH}, Aspect: ${aspectRatio.toFixed(2)}`);
-
   let targetWidth, targetHeight;
 
   if (orientation === 'portrait') {
-    // Portrait: taller than wide
-    // Common ratios: 16:9 (1.78), 18:9 (2.0), 19.5:9 (2.17), 20:9 (2.22)
-    if (aspectRatio >= 0.55) {
-      // Ultra-tall phones (20:9, 21:9)
-      targetWidth = 1080;
-      targetHeight = Math.round(1080 / aspectRatio);
-    } else if (aspectRatio >= 0.50) {
-      // Modern phones (18:9, 19.5:9)
+    // Mobile native camera video sensor streams: 720x1280 or 1080x1920 (standard 16:9)
+    if (Math.max(screenW, screenH) >= 1600) {
       targetWidth = 1080;
       targetHeight = 1920;
     } else {
-      // Older phones (16:9)
-      targetWidth = 1080;
-      targetHeight = 1920;
+      targetWidth = 720;
+      targetHeight = 1280;
     }
   } else {
-    // Landscape: wider than tall
-    if (aspectRatio >= 0.55) {
+    // Landscape: 1920x1080 or 1280x720
+    if (Math.max(screenW, screenH) >= 1600) {
       targetWidth = 1920;
       targetHeight = 1080;
     } else {
-      targetWidth = Math.round(1080 / aspectRatio);
-      targetHeight = 1080;
+      targetWidth = 1280;
+      targetHeight = 720;
     }
   }
 
-  // Ensure we don't request resolution higher than screen
-  targetWidth = Math.min(targetWidth, Math.max(screenW, screenH));
-  targetHeight = Math.min(targetHeight, Math.max(screenW, screenH));
-
-  console.log(`🎯 Optimal resolution: ${targetWidth}x${targetHeight} (${orientation})`);
-
+  console.log(`🎯 Optimal sensor resolution: ${targetWidth}x${targetHeight} (${orientation})`);
   return { width: targetWidth, height: targetHeight };
 }
 
@@ -2364,15 +2447,56 @@ function saveSettings(settings) {
   }
 }
 
+function saveCurrentSettingsFromUI() {
+  const lowPowerEl = document.getElementById('lowPowerMode');
+  const lowPowerChecked = lowPowerEl ? lowPowerEl.checked : false;
+  const athleteHeightVal = athleteHeightSetting ? (parseInt(athleteHeightSetting.value) || 175) : 175;
+  const jumpSensEl = document.getElementById('jumpSensitivity');
+  const landSensEl = document.getElementById('landSensitivity');
+  const calibFrEl = document.getElementById('calibFrames');
+
+  const jumpSensVal = jumpSensEl ? parseFloat(jumpSensEl.value) : 0.12;
+  const landSensVal = landSensEl ? parseFloat(landSensEl.value) : 0.06;
+  const calibFramesVal = calibFrEl ? parseInt(calibFrEl.value) : 20;
+
+  const safeHeight = Math.max(90, Math.min(240, athleteHeightVal));
+  const settings = {
+    jumpThresholdRatio: isNaN(jumpSensVal) ? 0.12 : jumpSensVal,
+    landThresholdRatio: isNaN(landSensVal) ? 0.06 : landSensVal,
+    calibFrames: isNaN(calibFramesVal) ? 20 : calibFramesVal,
+    lowPowerMode: !!lowPowerChecked,
+    athleteHeight: safeHeight
+  };
+  saveSettings(settings);
+  applySettings();
+  return settings;
+}
+
 function loadSettingsUI() {
   const settings = getSettings();
-  document.getElementById('jumpSensitivity').value = settings.jumpThresholdRatio;
-  document.getElementById('landSensitivity').value = settings.landThresholdRatio;
-  document.getElementById('calibFrames').value = settings.calibFrames;
-  document.getElementById('jumpSensValue').textContent = Math.round(settings.jumpThresholdRatio * 100) + '%';
-  document.getElementById('landSensValue').textContent = Math.round(settings.landThresholdRatio * 100) + '%';
-  document.getElementById('calibFramesValue').textContent = settings.calibFrames + ' فریم';
-  document.getElementById('lowPowerMode').checked = settings.lowPowerMode || false;
+  const jumpSens = document.getElementById('jumpSensitivity');
+  const landSens = document.getElementById('landSensitivity');
+  const calibFr = document.getElementById('calibFrames');
+  const lowPowerCb = document.getElementById('lowPowerMode');
+
+  if (jumpSens) {
+    jumpSens.value = settings.jumpThresholdRatio;
+    const sensValEl = document.getElementById('jumpSensValue');
+    if (sensValEl) sensValEl.textContent = Math.round(settings.jumpThresholdRatio * 100) + '%';
+  }
+  if (landSens) {
+    landSens.value = settings.landThresholdRatio;
+    const landValEl = document.getElementById('landSensValue');
+    if (landValEl) landValEl.textContent = Math.round(settings.landThresholdRatio * 100) + '%';
+  }
+  if (calibFr) {
+    calibFr.value = settings.calibFrames;
+    const calibValEl = document.getElementById('calibFramesValue');
+    if (calibValEl) calibValEl.textContent = settings.calibFrames + ' فریم';
+  }
+  if (lowPowerCb) {
+    lowPowerCb.checked = !!settings.lowPowerMode;
+  }
   if (athleteHeightSetting) {
     athleteHeightSetting.value = settings.athleteHeight || 175;
   }
@@ -2380,8 +2504,73 @@ function loadSettingsUI() {
   // Update performance mode
   if (settings.lowPowerMode) {
     performanceMode = 'low-power';
+  } else {
+    performanceMode = 'normal';
   }
 }
+
+// Automatically bind listeners to auto-save settings to localStorage immediately upon user input
+if (athleteHeightSetting) {
+  athleteHeightSetting.addEventListener('input', () => {
+    saveCurrentSettingsFromUI();
+  });
+  athleteHeightSetting.addEventListener('change', () => {
+    saveCurrentSettingsFromUI();
+  });
+}
+
+const jumpSensEl = document.getElementById('jumpSensitivity');
+if (jumpSensEl) {
+  jumpSensEl.addEventListener('input', (e) => {
+    const valEl = document.getElementById('jumpSensValue');
+    if (valEl) valEl.textContent = Math.round(e.target.value * 100) + '%';
+    saveCurrentSettingsFromUI();
+  });
+  jumpSensEl.addEventListener('change', () => {
+    saveCurrentSettingsFromUI();
+  });
+}
+
+const landSensEl = document.getElementById('landSensitivity');
+if (landSensEl) {
+  landSensEl.addEventListener('input', (e) => {
+    const valEl = document.getElementById('landSensValue');
+    if (valEl) valEl.textContent = Math.round(e.target.value * 100) + '%';
+    saveCurrentSettingsFromUI();
+  });
+  landSensEl.addEventListener('change', () => {
+    saveCurrentSettingsFromUI();
+  });
+}
+
+const calibFramesEl = document.getElementById('calibFrames');
+if (calibFramesEl) {
+  calibFramesEl.addEventListener('input', (e) => {
+    const valEl = document.getElementById('calibFramesValue');
+    if (valEl) valEl.textContent = e.target.value + ' فریم';
+    saveCurrentSettingsFromUI();
+  });
+  calibFramesEl.addEventListener('change', () => {
+    saveCurrentSettingsFromUI();
+  });
+}
+
+const lowPowerCbEl = document.getElementById('lowPowerMode');
+if (lowPowerCbEl) {
+  lowPowerCbEl.addEventListener('change', (e) => {
+    const isChecked = e.target.checked;
+    if (isChecked) {
+      enableLowPowerMode();
+    } else {
+      disableLowPowerMode();
+    }
+    saveCurrentSettingsFromUI();
+  });
+}
+
+// Automatically load and apply settings from localStorage upon script startup
+loadSettingsUI();
+applySettings();
 
 settingsBtn.addEventListener('click', () => {
   loadSettingsUI();
@@ -2394,6 +2583,12 @@ if (orientationLockBtn) {
   orientationLockBtn.addEventListener('click', toggleOrientationLock);
 }
 
+// Camera fit framing toggle button (wide uncropped sensor vs fullscreen cover)
+const cameraFitToggleBtn = document.getElementById('cameraFitToggleBtn');
+if (cameraFitToggleBtn) {
+  cameraFitToggleBtn.addEventListener('click', toggleCameraFitMode);
+}
+
 // Camera switcher button
 cameraSwitcherBtn = document.getElementById('cameraSwitcherBtn');
 if (cameraSwitcherBtn) {
@@ -2401,38 +2596,8 @@ if (cameraSwitcherBtn) {
 }
 
 closeSettingsBtn.addEventListener('click', () => {
-  const lowPowerChecked = document.getElementById('lowPowerMode').checked;
-  const athleteHeightVal = athleteHeightSetting ? (parseInt(athleteHeightSetting.value) || 175) : 175;
-  const settings = {
-    jumpThresholdRatio: parseFloat(document.getElementById('jumpSensitivity').value),
-    landThresholdRatio: parseFloat(document.getElementById('landSensitivity').value),
-    calibFrames: parseInt(document.getElementById('calibFrames').value),
-    lowPowerMode: lowPowerChecked,
-    athleteHeight: athleteHeightVal
-  };
-  saveSettings(settings);
-  
-  // Apply performance mode change
-  if (lowPowerChecked && performanceMode === 'normal') {
-    enableLowPowerMode();
-  } else if (!lowPowerChecked && performanceMode === 'low-power') {
-    disableLowPowerMode();
-  }
-  
-  applySettings();
+  saveCurrentSettingsFromUI();
   settingsPanel.classList.remove('visible');
-});
-
-document.getElementById('jumpSensitivity').addEventListener('input', (e) => {
-  document.getElementById('jumpSensValue').textContent = Math.round(e.target.value * 100) + '%';
-});
-
-document.getElementById('landSensitivity').addEventListener('input', (e) => {
-  document.getElementById('landSensValue').textContent = Math.round(e.target.value * 100) + '%';
-});
-
-document.getElementById('calibFrames').addEventListener('input', (e) => {
-  document.getElementById('calibFramesValue').textContent = e.target.value + ' فریم';
 });
 
 function applySettings() {
@@ -2445,6 +2610,287 @@ function applySettings() {
   }
   CALIB_FRAMES_NEEDED = settings.calibFrames;
 }
+
+// ================== WALL HEIGHT CALIBRATION ==================
+let isCalibratingHeight = false;
+let heightHeadPoint = null;
+let heightFeetPoint = null;
+let heightWallDistanceM = 2.0; // default 2.0 meters from wall
+let calculatedHeightCm = 175;
+
+function startWallHeightCalibration() {
+  if (settingsPanel) settingsPanel.classList.remove('visible');
+  hideAllPanels();
+  isCalibratingHeight = true;
+  heightHeadPoint = null;
+  heightFeetPoint = null;
+  calculatedHeightCm = getSettings().athleteHeight || 175;
+  if (heightCalibPanel) {
+    heightCalibPanel.style.display = 'block';
+    heightCalibPanel.classList.add('visible');
+  }
+  updateHeightCalibUI();
+  setStatus('کالیبراسیون قد با دیوار: روی بالاترین نقطه سر ضربه بزنید 🎯');
+  speakText('کنار دیوار صاف بایستید و به ترتیب روی سر و کف پا ضربه بزنید', 'Stand against the wall and tap head then feet');
+}
+
+function exitHeightCalibration() {
+  isCalibratingHeight = false;
+  heightHeadPoint = null;
+  heightFeetPoint = null;
+  if (heightCalibPanel) {
+    heightCalibPanel.style.display = 'none';
+    heightCalibPanel.classList.remove('visible');
+  }
+}
+
+function computeCalibratedHeight() {
+  if (!heightHeadPoint || !heightFeetPoint) return getSettings().athleteHeight || 175;
+  const pxH = Math.abs(heightFeetPoint.y - heightHeadPoint.y);
+  const canvasH = canvas.height || 480;
+
+  // Optical field of view calculation:
+  // Standard phone camera vertical FOV is ~56 degrees (2 * tan(28 deg) ~= 1.063)
+  // At distance D meters, visible frame vertical height = D * 1.063 meters
+  const viewHeightCm = (heightWallDistanceM * 1.063) * 100;
+  let estimatedCm = (pxH / canvasH) * viewHeightCm;
+
+  // If calibrated scale exists from run obstacle gates or pose, blend for maximum precision
+  if (currentEstimatedScaleCmPerPx && currentEstimatedScaleCmPerPx > 0.08) {
+    const poseScaleCm = pxH * currentEstimatedScaleCmPerPx;
+    if (poseScaleCm > 110 && poseScaleCm < 235) {
+      estimatedCm = estimatedCm * 0.55 + poseScaleCm * 0.45;
+    }
+  }
+
+  calculatedHeightCm = Math.round(Math.max(100, Math.min(240, estimatedCm)));
+  return calculatedHeightCm;
+}
+
+function updateHeightCalibUI() {
+  if (heightPointHeadStatus) {
+    if (heightHeadPoint) {
+      heightPointHeadStatus.style.color = '#4ade80';
+      heightPointHeadStatus.textContent = '🟢 سر: ثبت شد ✓';
+    } else {
+      heightPointHeadStatus.style.color = '#f87171';
+      heightPointHeadStatus.textContent = '🔴 سر: ضربه بزنید';
+    }
+  }
+
+  if (heightPointFeetStatus) {
+    if (heightFeetPoint) {
+      heightPointFeetStatus.style.color = '#4ade80';
+      heightPointFeetStatus.textContent = '🟢 پا: ثبت شد ✓';
+    } else {
+      heightPointFeetStatus.style.color = heightHeadPoint ? '#38bdf8' : '#94a3b8';
+      heightPointFeetStatus.textContent = heightHeadPoint ? '🔵 پا: ضربه بزنید' : '⚪ پا: منتظر سر';
+    }
+  }
+
+  if (heightHeadPoint && heightFeetPoint) {
+    const h = computeCalibratedHeight();
+    if (heightCalibResult) heightCalibResult.textContent = `${h} سانتی‌متر`;
+    if (heightCalibConfirmBtn) heightCalibConfirmBtn.disabled = false;
+    if (heightCalibStepHint) {
+      heightCalibStepHint.innerHTML = `هر دو نقطه مشخص شدند. قد تخمینی: <strong style="color: #4ade80;">${h} سانتی‌متر</strong>. برای تغییر می‌توانید دوباره روی سر یا پا ضربه بزنید.`;
+    }
+    setStatus(`قد تخمینی با دیوار: ${h} سانتی‌متر 🎯`);
+  } else if (heightHeadPoint) {
+    if (heightCalibResult) heightCalibResult.textContent = '-- سانتی‌متر';
+    if (heightCalibConfirmBtn) heightCalibConfirmBtn.disabled = true;
+    if (heightCalibStepHint) {
+      heightCalibStepHint.innerHTML = 'نقطه سر ثبت شد. حالا روی <strong>کف پا / خط زمین</strong> ضربه بزنید.';
+    }
+    setStatus('روی کف پا / خط زمین ضربه بزنید 🦶');
+  } else {
+    if (heightCalibResult) heightCalibResult.textContent = '-- سانتی‌متر';
+    if (heightCalibConfirmBtn) heightCalibConfirmBtn.disabled = true;
+    if (heightCalibStepHint) {
+      heightCalibStepHint.innerHTML = 'کنار دیوار صاف بایستید و به ترتیب روی <strong>بالاترین نقطه سر</strong> و سپس <strong>کف پا</strong> روی تصویر ضربه بزنید.';
+    }
+    setStatus('کالیبراسیون قد: روی بالاترین نقطه سر ضربه بزنید 🎯');
+  }
+}
+
+function handleHeightCalibStageClick(e) {
+  if (!isCalibratingHeight) return;
+  if (e.target.closest && (e.target.closest('#heightCalibPanel') || e.target.closest('#headerContainer') || e.target.closest('#actionBar'))) return;
+  const pt = clientToCanvasCoords(e.clientX, e.clientY);
+
+  if (!heightHeadPoint) {
+    heightHeadPoint = pt;
+    playChime(587, 'sine', 0.15); // D5
+    speakText('سر ثبت شد. حالا روی کف پا ضربه بزنید', 'Head marked. Now tap your feet.');
+    updateHeightCalibUI();
+  } else if (!heightFeetPoint) {
+    heightFeetPoint = pt;
+    playChime(784, 'triangle', 0.2); // G5
+    updateHeightCalibUI();
+    const h = computeCalibratedHeight();
+    speakText(`قد شما حدود ${h} سانتی‌متر تخمین زده شد`, `Your height is approximately ${h} centimeters`);
+  } else {
+    // If both exist, re-tap adjusts the closer point
+    const distH = Math.hypot(pt.x - heightHeadPoint.x, pt.y - heightHeadPoint.y);
+    const distF = Math.hypot(pt.x - heightFeetPoint.x, pt.y - heightFeetPoint.y);
+    if (distH < distF) {
+      heightHeadPoint = pt;
+    } else {
+      heightFeetPoint = pt;
+    }
+    playChime(659, 'sine', 0.12);
+    updateHeightCalibUI();
+  }
+}
+
+function heightCalibDrawOverlay() {
+  if (!isCalibratingHeight) return;
+  ctx.save();
+
+  // Head horizontal guide & marker
+  if (heightHeadPoint) {
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(0, heightHeadPoint.y);
+    ctx.lineTo(canvas.width, heightHeadPoint.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = '#0284c7';
+    ctx.beginPath();
+    ctx.arc(heightHeadPoint.x, heightHeadPoint.y, 9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.font = 'bold 12px Vazirmatn, Tahoma, sans-serif';
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillText('🔝 بالای سر', Math.min(canvas.width - 70, heightHeadPoint.x + 14), heightHeadPoint.y - 8);
+  }
+
+  // Feet horizontal guide & marker
+  if (heightFeetPoint) {
+    ctx.strokeStyle = '#facc15';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(0, heightFeetPoint.y);
+    ctx.lineTo(canvas.width, heightFeetPoint.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = '#eab308';
+    ctx.beginPath();
+    ctx.arc(heightFeetPoint.x, heightFeetPoint.y, 9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.font = 'bold 12px Vazirmatn, Tahoma, sans-serif';
+    ctx.fillStyle = '#facc15';
+    ctx.fillText('🦶 کف پا / زمین', Math.min(canvas.width - 80, heightFeetPoint.x + 14), heightFeetPoint.y + 18);
+  }
+
+  // Dimension vertical line between head and feet
+  if (heightHeadPoint && heightFeetPoint) {
+    const midX = (heightHeadPoint.x + heightFeetPoint.x) / 2;
+    ctx.strokeStyle = '#4ade80';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(midX, heightHeadPoint.y);
+    ctx.lineTo(midX, heightFeetPoint.y);
+    ctx.stroke();
+
+    // Top tick
+    ctx.beginPath();
+    ctx.moveTo(midX - 14, heightHeadPoint.y);
+    ctx.lineTo(midX + 14, heightHeadPoint.y);
+    ctx.stroke();
+
+    // Bottom tick
+    ctx.beginPath();
+    ctx.moveTo(midX - 14, heightFeetPoint.y);
+    ctx.lineTo(midX + 14, heightFeetPoint.y);
+    ctx.stroke();
+
+    // Dimension badge
+    const midY = (heightHeadPoint.y + heightFeetPoint.y) / 2;
+    const label = `📏 قد: ${calculatedHeightCm} cm`;
+    ctx.font = 'bold 14px Vazirmatn, Tahoma, sans-serif';
+    const textW = ctx.measureText(label).width;
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+    ctx.fillRect(midX - textW / 2 - 8, midY - 14, textW + 16, 28);
+    ctx.strokeStyle = '#4ade80';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(midX - textW / 2 - 8, midY - 14, textW + 16, 28);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, midX, midY);
+  }
+
+  ctx.restore();
+}
+
+if (startHeightCalibBtn) {
+  startHeightCalibBtn.addEventListener('click', startWallHeightCalibration);
+}
+
+if (heightCalibConfirmBtn) {
+  heightCalibConfirmBtn.addEventListener('click', () => {
+    const finalH = calculatedHeightCm || 175;
+    if (athleteHeightSetting) {
+      athleteHeightSetting.value = finalH;
+    }
+    // Automatically save to localStorage and apply
+    saveCurrentSettingsFromUI();
+    playChime(880, 'triangle', 0.25);
+    speakText(`قد ورزشکار روی ${finalH} سانتی‌متر ذخیره شد`, `Height saved: ${finalH} centimeters`);
+    setStatus(`قد ورزشکار روی ${finalH} سانتی‌متر تنظیم و در تنظیمات ذخیره شد ✅`);
+    exitHeightCalibration();
+  });
+}
+
+if (heightCalibResetBtn) {
+  heightCalibResetBtn.addEventListener('click', () => {
+    heightHeadPoint = null;
+    heightFeetPoint = null;
+    updateHeightCalibUI();
+    setStatus('نقاط بازنشانی شدند. دوباره روی بالاترین نقطه سر ضربه بزنید.');
+  });
+}
+
+if (heightCalibCancelBtn) {
+  heightCalibCancelBtn.addEventListener('click', () => {
+    exitHeightCalibration();
+    setStatus('کالیبراسیون قد لغو شد');
+  });
+}
+
+// Distance to wall buttons
+document.querySelectorAll('.wallDistBtn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.wallDistBtn').forEach(b => {
+      b.classList.remove('active');
+      b.style.borderColor = '#475569';
+      b.style.background = '#1e293b';
+      b.style.color = '#94a3b8';
+    });
+    btn.classList.add('active');
+    btn.style.borderColor = '#38bdf8';
+    btn.style.background = '#0284c7';
+    btn.style.color = '#fff';
+    heightWallDistanceM = parseFloat(btn.dataset.dist) || 2.0;
+    if (heightHeadPoint && heightFeetPoint) {
+      updateHeightCalibUI();
+    }
+  });
+});
 
 // ================== GUIDE SYSTEM ==================
 function showGuide(icon, title, text) {
@@ -2467,6 +2913,11 @@ function hideAllPanels() {
   if (boscoResultPanel) boscoResultPanel.classList.remove('visible');
   if (wingspanPanel) wingspanPanel.classList.remove('visible');
   if (distanceMeasurePanel) distanceMeasurePanel.classList.remove('visible');
+  if (heightCalibPanel) {
+    heightCalibPanel.style.display = 'none';
+    heightCalibPanel.classList.remove('visible');
+  }
+  isCalibratingHeight = false;
   if (boscoHud) boscoHud.style.display = 'none';
   if (wingspanHud) wingspanHud.style.display = 'none';
   if (distanceHud) distanceHud.style.display = 'none';
@@ -2945,6 +3396,10 @@ function updateGateControls() {
 }
 
 document.getElementById('stage').addEventListener('click', (e) => {
+  if (isCalibratingHeight) {
+    handleHeightCalibStageClick(e);
+    return;
+  }
   if (mode !== 'run') return;
   if (runPhase !== 'calibrate1' && runPhase !== 'calibrate2') return;
   // Ignore taps that land on the gate-controls bar or the guide banner itself
@@ -3296,18 +3751,41 @@ function boscoEnterIntro() {
   setStatus('آزمون ۳۰ ثانیه پرش: دکمه شروع را بزنید');
 }
 
+let boscoCountdownVal = 3;
+let boscoLastCountdownSec = 30;
+
 function boscoStartCountdown() {
   boscoPhase = 'countdown';
   hideAllPanels();
   let count = 3;
-  setStatus(`آماده... ${count} ⏳`);
+  boscoCountdownVal = 3;
+  setStatus('آماده... ۳ ⏳');
+
+  // Audio chime and TTS for "3"
+  playChime(523, 'sine', 0.16); // C5
+  speakText('سه', 'Three');
+
   const cdInterval = setInterval(() => {
     count--;
+    boscoCountdownVal = count > 0 ? count : 'GO';
     if (count > 0) {
-      setStatus(`آماده... ${count} ⏳`);
+      const faDigits = { 2: '۲', 1: '۱' };
+      setStatus(`آماده... ${faDigits[count] || count} ⏳`);
+      if (count === 2) {
+        playChime(523, 'sine', 0.16); // C5
+        speakText('دو', 'Two');
+      } else if (count === 1) {
+        playChime(659, 'sine', 0.18); // E5
+        speakText('یک', 'One');
+      }
     } else {
       clearInterval(cdInterval);
-      boscoStartRunning();
+      setStatus('شروع! بپر! 🦘');
+      playChime(880, 'triangle', 0.35); // A5 high start beep
+      speakText('شروع! بپر!', 'Go! Jump!');
+      setTimeout(() => {
+        boscoStartRunning();
+      }, 400);
     }
   }, 1000);
 }
@@ -3323,6 +3801,7 @@ function boscoStartRunning() {
   boscoAboveCount = 0;
   boscoBelowCount = 0;
   boscoStartTime = performance.now();
+  boscoLastCountdownSec = 30;
   hideAllPanels();
   if (boscoHud) boscoHud.style.display = 'block';
   updateBoscoHud(30, 0, 0, null, null, null);
@@ -3337,6 +3816,16 @@ function boscoStartRunning() {
     const elapsedSec = (performance.now() - boscoStartTime) / 1000;
     const remainingSec = Math.max(0, 30.0 - elapsedSec);
     if (boscoTimerVal) boscoTimerVal.textContent = remainingSec.toFixed(1) + 's';
+
+    // Countdown beeps for final 3 seconds of the test
+    if (remainingSec <= 3.05 && remainingSec > 0.1) {
+      const secCeil = Math.ceil(remainingSec);
+      if (secCeil !== boscoLastCountdownSec) {
+        boscoLastCountdownSec = secCeil;
+        playChime(587, 'sine', 0.12);
+      }
+    }
+
     if (remainingSec <= 0) {
       clearInterval(boscoTimerInterval);
       boscoFinish();
@@ -3469,6 +3958,34 @@ function boscoProcessFrame(kp) {
 }
 
 function boscoDrawOverlay() {
+  if (boscoPhase === 'countdown') {
+    ctx.save();
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+
+    // Glowing circular backdrop
+    ctx.beginPath();
+    ctx.arc(cx, cy, 75, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+    ctx.fill();
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = boscoCountdownVal === 'GO' ? '#4ade80' : '#38bdf8';
+    ctx.stroke();
+
+    ctx.font = 'bold 52px Vazirmatn, Tahoma, sans-serif';
+    ctx.fillStyle = boscoCountdownVal === 'GO' ? '#4ade80' : '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const text = boscoCountdownVal === 'GO' ? 'بپر!' : (boscoCountdownVal === 3 ? '۳' : (boscoCountdownVal === 2 ? '۲' : '۱'));
+    ctx.fillText(text, cx, cy - 6);
+
+    ctx.font = '13px Vazirmatn, Tahoma, sans-serif';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText(boscoCountdownVal === 'GO' ? 'شروع شد' : 'آماده باش', cx, cy + 42);
+    ctx.restore();
+    return;
+  }
+
   if (boscoPhase === 'running' && boscoBaselineY != null) {
     ctx.strokeStyle = boscoJumpState === 'airborne' ? '#facc15' : '#22c55e';
     ctx.lineWidth = 3;
@@ -3485,6 +4002,8 @@ function boscoFinish() {
   if (boscoTimerInterval) clearInterval(boscoTimerInterval);
   boscoPhase = 'finished';
   setStatus('آزمون پایان یافت! 🏁');
+  playChime(880, 'triangle', 0.35);
+  speakText('پایان آزمون بوسکو', 'Bosco test finished');
 
   if (boscoHud) boscoHud.style.display = 'none';
 
@@ -3946,7 +4465,7 @@ if (modeWingspanBtn) modeWingspanBtn.addEventListener('click', () => switchMode(
 if (modeDistanceBtn) modeDistanceBtn.addEventListener('click', () => switchMode('distance'));
 
 // ---- Convert a tap's client (viewport) coords to canvas pixel space,
-// accounting for object-fit: cover cropping/scaling. ----
+// accurately accounting for object-fit: contain (wide uncropped) or cover (fullscreen). ----
 function clientToCanvasCoords(clientX, clientY) {
   const rect = canvas.getBoundingClientRect();
   const x = clientX - rect.left;
@@ -3958,17 +4477,45 @@ function clientToCanvasCoords(clientX, clientY) {
   const natH = canvas.height;
   if (!natW || !natH) return { x, y };
 
-  const dispAspect = dispW / dispH;
-  const natAspect = natW / natH;
-  let scale, offsetX = 0, offsetY = 0;
-  if (natAspect > dispAspect) {
-    scale = dispH / natH;
-    offsetX = (dispW - natW * scale) / 2;
+  const isContain = document.getElementById('stage')?.classList.contains('fit-contain');
+
+  if (isContain) {
+    // object-fit: contain
+    const canvasAspect = natW / natH;
+    const boxAspect = dispW / dispH;
+    let renderW, renderH, offsetX, offsetY;
+
+    if (boxAspect > canvasAspect) {
+      renderH = dispH;
+      renderW = dispH * canvasAspect;
+      offsetX = (dispW - renderW) / 2;
+      offsetY = 0;
+    } else {
+      renderW = dispW;
+      renderH = dispW / canvasAspect;
+      offsetX = 0;
+      offsetY = (dispH - renderH) / 2;
+    }
+
+    const scale = natW / renderW;
+    return {
+      x: (x - offsetX) * scale,
+      y: (y - offsetY) * scale
+    };
   } else {
-    scale = dispW / natW;
-    offsetY = (dispH - natH * scale) / 2;
+    // object-fit: cover
+    const dispAspect = dispW / dispH;
+    const natAspect = natW / natH;
+    let scale, offsetX = 0, offsetY = 0;
+    if (natAspect > dispAspect) {
+      scale = dispH / natH;
+      offsetX = (dispW - natW * scale) / 2;
+    } else {
+      scale = dispW / natW;
+      offsetY = (dispH - natH * scale) / 2;
+    }
+    return { x: (x - offsetX) / scale, y: (y - offsetY) / scale };
   }
-  return { x: (x - offsetX) / scale, y: (y - offsetY) / scale };
 }
 
 // ================== Camera + model setup ==================
@@ -3990,29 +4537,15 @@ async function getAvailableCameras() {
  * Prefers back camera with ultra-wide or wide-angle
  */
 async function selectBestCamera(preferredDeviceId = null) {
+  if (preferredDeviceId) {
+    return preferredDeviceId;
+  }
+
   const cameras = await getAvailableCameras();
-  
   if (cameras.length === 0) {
     return null;
   }
 
-  console.log(`📷 Found ${cameras.length} camera(s):`, cameras.map(c => ({
-    id: c.deviceId,
-    label: c.label || 'Unknown'
-  })));
-  
-  // If preferred device ID is provided, try to use it
-  if (preferredDeviceId) {
-    const preferred = cameras.find(c => c.deviceId === preferredDeviceId);
-    if (preferred) {
-      console.log('✅ Using preferred camera:', preferred.label || preferred.deviceId);
-      currentCameraId = preferred.deviceId;
-      return preferred.deviceId;
-    } else {
-      console.warn('⚠️ Preferred camera not found, falling back to auto-select');
-    }
-  }
-  
   // Check for saved camera preference
   const savedId = loadSavedCamera();
   if (savedId) {
@@ -4021,19 +4554,17 @@ async function selectBestCamera(preferredDeviceId = null) {
       console.log('✅ Using saved camera:', saved.label || saved.deviceId);
       currentCameraId = saved.deviceId;
       return saved.deviceId;
-    } else {
-      console.warn('⚠️ Saved camera not found, falling back to auto-select');
     }
   }
 
   // Try to find back camera with wide-angle indicators in label
-  const wideAngleKeywords = ['wide', 'ultra', '0.5', '0.6', '0.7', 'back'];
+  const wideAngleKeywords = ['wide', 'ultra', '0.5', '0.6', '0.7'];
   const backCameras = cameras.filter(camera => {
     const label = (camera.label || '').toLowerCase();
-    return label.includes('back') || label.includes('rear') || label.includes('environment');
+    return label.includes('back') || label.includes('rear') || label.includes('environment') || label.includes('عقب');
   });
 
-  // Among back cameras, prefer ones with wide-angle keywords
+  // Among back cameras, prefer ones with ultra-wide keywords
   const wideBackCamera = backCameras.find(camera => {
     const label = (camera.label || '').toLowerCase();
     return wideAngleKeywords.some(keyword => label.includes(keyword));
@@ -4045,15 +4576,11 @@ async function selectBestCamera(preferredDeviceId = null) {
     return wideBackCamera.deviceId;
   }
 
-  // Fall back to any back camera
+  // Fall back to first back camera
   if (backCameras.length > 0) {
-    console.log('✅ Selected back camera:', backCameras[0].label || backCameras[0].deviceId);
     return backCameras[0].deviceId;
   }
 
-  // If labels are empty (iOS before permission) or no back camera detected,
-  // return null so getUserMedia uses facingMode: 'environment' natively
-  console.log('⚠️ No specific back camera labeled, falling back to facingMode environment');
   return null;
 }
 
@@ -4064,81 +4591,95 @@ async function setupCamera(forceReconfigure = false, preferredDeviceId = null) {
   try {
     const isAppleDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     const orientation = getCurrentOrientation();
-    console.log(`🔄 setupCamera called: ${orientation}, force: ${forceReconfigure}`);
+    console.log(`🔄 setupCamera called: orientation=${orientation}, force=${forceReconfigure}, preferredDeviceId=${preferredDeviceId}`);
 
-    // If already running with same orientation and not forced, skip
-    if (!forceReconfigure && currentOrientation === orientation && currentCameraStream) {
+    // If already running with same orientation and not forced and no preferredDeviceId, skip
+    if (!forceReconfigure && !preferredDeviceId && currentOrientation === orientation && currentCameraStream) {
       console.log('✅ Camera already configured for this orientation');
       return;
     }
 
-    // Try to select the best camera (wide-angle if available)
-    let selectedCameraId = null;
-    try {
-      selectedCameraId = await selectBestCamera(preferredDeviceId);
-    } catch (error) {
-      console.warn('Could not enumerate cameras, using default:', error);
+    // Try to select camera
+    let selectedCameraId = preferredDeviceId;
+    if (!selectedCameraId) {
+      try {
+        selectedCameraId = await selectBestCamera(null);
+      } catch (error) {
+        console.warn('Could not select best camera:', error);
+      }
+    }
+
+    // Check if chosen camera is front
+    let isFrontCamera = false;
+    if (selectedCameraId && availableCameras.length > 0) {
+      const found = availableCameras.find(c => c.deviceId === selectedCameraId);
+      if (found && found.position === 'front') {
+        isFrontCamera = true;
+      }
     }
 
     // Calculate optimal resolution for this orientation
     const optimalRes = calculateOptimalResolution(orientation);
 
-    // Build constraints with preference for wide-angle and optimal resolution
-    const constraints = {
-      video: {
-        width: { ideal: optimalRes.width },
-        height: { ideal: optimalRes.height },
-        facingMode: { ideal: 'environment' },
-        // Prefer deviceId if we found a specific camera
-        ...(selectedCameraId && { deviceId: { exact: selectedCameraId } })
-      },
-      audio: false,
-    };
-
-    console.log('📷 Requesting camera with constraints:', constraints);
-
-    let stream;
+    let stream = null;
     let attemptCount = 0;
     const maxAttempts = 3;
 
-    // Try multiple strategies to get the best camera
     while (!stream && attemptCount < maxAttempts) {
       attemptCount++;
-      
       try {
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        let videoConstraints;
+
+        if (attemptCount === 1) {
+          if (selectedCameraId) {
+            videoConstraints = {
+              deviceId: { ideal: selectedCameraId },
+              width: { ideal: optimalRes.width },
+              height: { ideal: optimalRes.height }
+            };
+            if (isFrontCamera) {
+              videoConstraints.facingMode = { ideal: 'user' };
+            }
+          } else {
+            videoConstraints = {
+              facingMode: { ideal: 'environment' },
+              width: { ideal: optimalRes.width },
+              height: { ideal: optimalRes.height }
+            };
+          }
+        } else if (attemptCount === 2) {
+          if (selectedCameraId) {
+            // Try with exact deviceId or without resolution constraints
+            videoConstraints = {
+              deviceId: { exact: selectedCameraId }
+            };
+          } else {
+            videoConstraints = {
+              facingMode: { ideal: 'environment' },
+              width: { min: 640, ideal: optimalRes.width },
+              height: { min: 480, ideal: optimalRes.height }
+            };
+          }
+        } else {
+          // Attempt 3: General fallback
+          videoConstraints = isFrontCamera ? { facingMode: 'user' } : { facingMode: 'environment' };
+        }
+
+        console.log(`📷 getUserMedia attempt ${attemptCount}:`, videoConstraints);
+        stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: false });
         console.log(`✅ Camera acquired on attempt ${attemptCount}`);
         break;
       } catch (error) {
         console.warn(`Attempt ${attemptCount} failed:`, error.message);
-
-        // If exact deviceId failed, try without it
-        if (attemptCount === 1 && constraints.video.deviceId) {
-          delete constraints.video.deviceId;
-          console.log('Retrying without exact deviceId...');
-          continue;
+        if (attemptCount >= maxAttempts) {
+          const errorType = classifyCameraError(error);
+          logError('setupCamera - getUserMedia', error, {
+            attemptCount,
+            selectedCameraId,
+            orientation
+          });
+          throw { type: errorType, original: error };
         }
-
-        // If that failed, try with relaxed resolution
-        if (attemptCount === 2) {
-          constraints.video = {
-            width: { min: 640, ideal: optimalRes.width },
-            height: { min: 480, ideal: optimalRes.height },
-            facingMode: { ideal: 'environment' }
-          };
-          console.log('Retrying with relaxed constraints...');
-          continue;
-        }
-
-        // Last attempt failed
-        const errorType = classifyCameraError(error);
-        logError('setupCamera - getUserMedia', error, { 
-          constraints,
-          attemptCount,
-          selectedCameraId,
-          orientation
-        });
-        throw { type: errorType, original: error };
       }
     }
 
@@ -4149,16 +4690,18 @@ async function setupCamera(forceReconfigure = false, preferredDeviceId = null) {
       };
     }
 
-    // Stop previous stream if exists
-    if (currentCameraStream) {
+    // Stop previous stream tracks cleanly AFTER new stream is acquired
+    if (currentCameraStream && currentCameraStream !== stream) {
       console.log('🛑 Stopping previous camera stream');
-      currentCameraStream.getTracks().forEach(track => track.stop());
+      try {
+        currentCameraStream.getTracks().forEach(track => track.stop());
+      } catch (e) {}
     }
 
     currentCameraStream = stream;
     currentOrientation = orientation;
 
-    // Configure video element attributes properly for iOS Safari
+    // Configure video element attributes properly for iOS Safari and Android Chrome
     video.setAttribute('playsinline', 'true');
     video.setAttribute('webkit-playsinline', 'true');
     video.setAttribute('autoplay', 'true');
@@ -4168,42 +4711,39 @@ async function setupCamera(forceReconfigure = false, preferredDeviceId = null) {
     video.defaultMuted = true;
 
     const track = stream.getVideoTracks()[0];
+    if (track) {
+      const settings = track.getSettings ? track.getSettings() : {};
+      if (settings.deviceId) {
+        currentCameraId = settings.deviceId;
+      }
 
-    // Check supported resolutions
-    const supportedRes = await getSupportedResolutions(track);
-    if (supportedRes) {
-      console.log('📊 Supported resolutions:', supportedRes);
-    }
-
-    // Do NOT apply advanced constraints on Apple devices as WebKit crashes/blanks the camera stream
-    if (!isAppleDevice && track && track.getCapabilities) {
-      try {
-        const caps = track.getCapabilities();
-        const constraintsToApply = {};
-        
-        // Reset zoom to minimum (widest view)
-        if (caps.zoom) {
-          constraintsToApply.zoom = caps.zoom.min;
-          console.log(`🔍 Setting zoom to minimum: ${caps.zoom.min}`);
+      // Check zoom capabilities and apply widest angle
+      if (!isAppleDevice && track.getCapabilities) {
+        try {
+          const caps = track.getCapabilities();
+          if (caps.zoom) {
+            console.log(`🔍 Zoom capability supported: min=${caps.zoom.min}, max=${caps.zoom.max}`);
+            try {
+              await track.applyConstraints({ advanced: [{ zoom: caps.zoom.min }] });
+              currentCameraZoom = caps.zoom.min;
+              console.log(`✅ Set camera zoom to widest: ${caps.zoom.min}`);
+            } catch (zErr) {
+              console.warn('Could not set initial zoom:', zErr);
+            }
+          }
+          if (caps.focusMode && caps.focusMode.includes('continuous')) {
+            try {
+              await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+            } catch (fErr) {}
+          }
+          setupZoomControlsUI(track, caps);
+        } catch (e) {
+          console.warn('⚠️ Could not apply camera optimizations:', e.message);
         }
-
-        // Set focus mode to continuous if available
-        if (caps.focusMode && caps.focusMode.includes('continuous')) {
-          constraintsToApply.focusMode = 'continuous';
-        }
-
-        // Apply constraints if we have any
-        if (Object.keys(constraintsToApply).length > 0) {
-          await track.applyConstraints({ advanced: [constraintsToApply] });
-          console.log('✅ Applied camera optimizations:', constraintsToApply);
-        }
-
-      } catch (e) {
-        console.warn('⚠️ Could not apply camera optimizations:', e.message);
       }
     }
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       let isSettled = false;
       let checkInterval = null;
 
@@ -4219,7 +4759,7 @@ async function setupCamera(forceReconfigure = false, preferredDeviceId = null) {
       };
 
       video.onloadedmetadata = () => {
-        video.play().catch(e => console.warn('video.play() caught:', e));
+        video.play().catch(e => console.warn('video.play() caught on metadata:', e));
         finishReady();
       };
       video.oncanplay = finishReady;
@@ -4237,7 +4777,7 @@ async function setupCamera(forceReconfigure = false, preferredDeviceId = null) {
           checks++;
           if (video.readyState >= 2 && video.videoWidth > 0) {
             finishReady();
-          } else if (checks > 35) {
+          } else if (checks > 30) {
             clearInterval(checkInterval);
             if (!isSettled) {
               isSettled = true;
@@ -4248,7 +4788,7 @@ async function setupCamera(forceReconfigure = false, preferredDeviceId = null) {
         }, 100);
       }
 
-      // Timeout after 10 seconds
+      // Safe fallback timeout
       setTimeout(() => {
         if (!isSettled) {
           if (checkInterval) clearInterval(checkInterval);
@@ -4256,7 +4796,7 @@ async function setupCamera(forceReconfigure = false, preferredDeviceId = null) {
           resizeCanvas();
           resolve();
         }
-      }, 10000);
+      }, 5000);
     });
 
   } catch (error) {
@@ -4483,6 +5023,7 @@ function drawPose(poses) {
     if (mode === 'bosco') boscoDrawOverlay();
     if (mode === 'wingspan') wingspanDrawOverlay();
     if (mode === 'distance') distanceDrawOverlay();
+    if (isCalibratingHeight) heightCalibDrawOverlay();
 
     if (!poses || !poses.length) return;
     const kp = {};

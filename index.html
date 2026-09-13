@@ -7,9 +7,9 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>حرکت‌سنج</title>
-<meta name="description" content="سامانه استعدادیابی ورزشی و ارزیابی بیومکانیک: آزمون‌های پرش عمودی و باسکو، دراز و نشست، شنا سوئدی، سرعت دو، پروفایل ورزشکاران، نمودار روند پیشرفت و خروجی رسمی PDF">
+<meta name="description" content="سامانه استعدادیابی ورزشی و ارزیابی بیومکانیک: آزمون‌های چابکی و شاتل، پرش عمودی، سرعت دو، شنا و درازونشست، پروفایل استعدادیابی هندبال و رشته‌ها، کارنامه رسمی PDF با نمودار رادار">
 <meta property="og:title" content="حرکت‌سنج">
-<meta property="og:description" content="سامانه استعدادیابی ورزشی و ارزیابی بیومکانیک: آزمون‌های پرش عمودی و باسکو، دراز و نشست، شنا سوئدی، سرعت دو، پروفایل ورزشکاران، نمودار روند پیشرفت و خروجی رسمی PDF">
+<meta property="og:description" content="سامانه استعدادیابی ورزشی و ارزیابی بیومکانیک: آزمون‌های چابکی و شاتل، پرش عمودی، سرعت دو، شنا و درازونشست، پروفایل استعدادیابی هندبال و رشته‌ها، کارنامه رسمی PDF با نمودار رادار">
 
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0f172a">
@@ -173,7 +173,8 @@
     left: 0;
     transform: none;
     width: 100%;
-    max-width: none;
+    max-width: 100%;
+    box-sizing: border-box;
     z-index: auto;
     color: #4ade80;
     font-size: 11px;
@@ -185,8 +186,9 @@
     border: 1px solid #334155;
     border-radius: 10px;
     white-space: normal;
-    overflow: visible;
-    text-overflow: clip;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    overflow: hidden;
   }
 
   /* Mode bar - horizontal scrollable pill buttons */
@@ -938,6 +940,102 @@
     border-top: 1px dashed #cbd5e1;
     margin-top: 10px;
   }
+  .pdfBenchmarkBadge {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 9px;
+    font-weight: bold;
+    white-space: nowrap;
+  }
+  .pdfBenchmarkBadge.elite { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+  .pdfBenchmarkBadge.good { background: #e0f2fe; color: #0369a1; border: 1px solid #7dd3fc; }
+  .pdfBenchmarkBadge.needWork { background: #fef9c3; color: #854d0e; border: 1px solid #fde047; }
+  .pdfBenchmarkBadge.none { background: #f1f5f9; color: #64748b; }
+
+  /* Jump Preparation and Line Controls */
+  #jumpHud {
+    position: absolute;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 80px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 25;
+    background: rgba(15, 23, 42, 0.94);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1.5px solid #334155;
+    border-radius: 14px;
+    padding: 7px 14px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+    max-width: 95vw;
+    box-sizing: border-box;
+  }
+  .jump-tool-btn {
+    background: rgba(30, 41, 59, 0.85);
+    color: #cbd5e1;
+    border: 1px solid #475569;
+    border-radius: 8px;
+    padding: 5px 9px;
+    font-size: 11px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    transition: all 0.15s;
+    user-select: none;
+    white-space: nowrap;
+  }
+  .jump-tool-btn:hover, .jump-tool-btn:active {
+    background: #0284c7;
+    color: #fff;
+    border-color: #38bdf8;
+  }
+  .jump-prep-btn {
+    background: linear-gradient(135deg, #0284c7, #0369a1);
+    color: #fff;
+    border: 1px solid #38bdf8;
+    border-radius: 8px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    box-shadow: 0 2px 10px rgba(2, 132, 199, 0.4);
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .jump-prep-btn:active {
+    transform: scale(0.96);
+  }
+
+  .distPresetBtn {
+    flex: 1;
+    min-width: 48px;
+    padding: 6px 4px;
+    font-size: 11px;
+    border-radius: 8px;
+    border: 1px solid #475569;
+    background: #1e293b;
+    color: #cbd5e1;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+    text-align: center;
+  }
+  .distPresetBtn.active, .distPresetBtn:hover {
+    background: #0284c7 !important;
+    border-color: #38bdf8 !important;
+    color: #ffffff !important;
+    font-weight: 700;
+  }
+
+  @keyframes jumpPulse {
+    0% { transform: scale(0.92); opacity: 0.8; }
+    50% { transform: scale(1.08); opacity: 1; }
+    100% { transform: scale(0.92); opacity: 0.8; }
+  }
 
   @media print {
     body * {
@@ -1362,6 +1460,335 @@
       transform: none !important;
     }
   }
+
+  /* ================== COMPACT TOP BAR & HAMBURGER NAVIGATION ================== */
+  #compactTopBar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(15, 23, 42, 0.94);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 5px 8px;
+    gap: 6px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+    min-height: 44px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .topBarGroup {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .hamburgerBtn {
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(30, 41, 59, 0.95));
+    color: #38bdf8;
+    border: 1.5px solid rgba(56, 189, 248, 0.45);
+    padding: 5px 10px;
+    border-radius: 9px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    min-height: 36px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .hamburgerBtn:hover {
+    background: rgba(56, 189, 248, 0.3);
+    border-color: #38bdf8;
+    color: #ffffff;
+    transform: scale(1.04);
+  }
+  .hamburgerBtn:active {
+    transform: scale(0.96);
+  }
+
+  .modeBadgeChip {
+    background: rgba(30, 41, 59, 0.9);
+    color: #f8fafc;
+    border: 1.5px solid #475569;
+    border-radius: 999px;
+    padding: 5px 11px;
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+  }
+  .modeBadgeChip:hover {
+    background: rgba(51, 65, 85, 0.95);
+    border-color: #38bdf8;
+  }
+  .modeBadgeChip .accentDot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #22c55e;
+    box-shadow: 0 0 6px #22c55e;
+  }
+
+  .athleteChip {
+    background: rgba(2, 132, 199, 0.18);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    border-radius: 999px;
+    padding: 5px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    white-space: nowrap;
+    max-width: 115px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: all 0.2s;
+  }
+  .athleteChip:hover {
+    background: rgba(2, 132, 199, 0.28);
+    border-color: #38bdf8;
+  }
+
+  .quickToolBtn {
+    background: rgba(30, 41, 59, 0.85);
+    color: #cbd5e1;
+    border: 1px solid #475569;
+    padding: 5px 8px;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    min-width: 34px;
+    min-height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+  .quickToolBtn:hover {
+    color: #fff;
+    border-color: #38bdf8;
+  }
+
+  /* Drawer Backdrop & Side Drawer */
+  #drawerBackdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 850;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.28s ease;
+  }
+  #drawerBackdrop.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  #appDrawer {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    width: 320px;
+    max-width: 86vw;
+    background: #0f172a;
+    border-left: 1px solid #334155;
+    z-index: 851;
+    transform: translateX(105%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    flex-direction: column;
+    box-shadow: -10px 0 36px rgba(0, 0, 0, 0.75);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    text-align: right;
+  }
+  #appDrawer.open {
+    transform: translateX(0);
+  }
+
+  .drawerHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid #1e293b;
+    background: rgba(15, 23, 42, 0.98);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .drawerCloseBtn {
+    background: rgba(51, 65, 85, 0.5);
+    border: 1px solid #475569;
+    color: #94a3b8;
+    font-size: 16px;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+  .drawerCloseBtn:hover {
+    color: #fff;
+    border-color: #ef4444;
+  }
+
+  .drawerSection {
+    padding: 12px 14px;
+    border-bottom: 1px solid #1e293b;
+  }
+  .drawerSectionTitle {
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .drawerMenuItem {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 9px 12px;
+    margin-bottom: 5px;
+    background: rgba(30, 41, 59, 0.5);
+    border: 1px solid transparent;
+    border-radius: 10px;
+    color: #e2e8f0;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: right;
+    transition: all 0.18s ease;
+  }
+  .drawerMenuItem:hover {
+    background: rgba(51, 65, 85, 0.85);
+    border-color: rgba(56, 189, 248, 0.4);
+    color: #fff;
+    transform: translateX(-3px);
+  }
+  .drawerMenuItem.active {
+    background: linear-gradient(90deg, rgba(34, 197, 94, 0.22), rgba(30, 41, 59, 0.95));
+    border-color: #22c55e;
+    color: #4ade80;
+    font-weight: 600;
+  }
+  .drawerMenuItem .itemLeft {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .drawerMenuItem .itemIcon {
+    font-size: 17px;
+    width: 24px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .drawerBadge {
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 9999px;
+    font-weight: bold;
+    flex-shrink: 0;
+  }
+  .drawerBadge.new {
+    background: #0284c7;
+    color: #fff;
+  }
+  .drawerBadge.special {
+    background: #d97706;
+    color: #fff;
+  }
+
+  /* Agility Presets */
+  .agilityPresetBtn {
+    background: rgba(30, 41, 59, 0.8);
+    color: #cbd5e1;
+    border: 1px solid #475569;
+    border-radius: 8px;
+    padding: 7px 6px;
+    font-size: 11px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s;
+  }
+  .agilityPresetBtn.active {
+    background: #0284c7;
+    color: #fff;
+    border-color: #38bdf8;
+    font-weight: bold;
+  }
+
+  /* Handball Scouting Cards & Progress Bars */
+  .handballStatRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    font-size: 12px;
+  }
+  .handballBarBg {
+    height: 8px;
+    background: rgba(51, 65, 85, 0.6);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+  .handballBarFill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #0284c7, #38bdf8);
+    transition: width 0.6s ease;
+  }
+  .handballBarFill.high { background: linear-gradient(90deg, #16a34a, #4ade80); }
+  .handballBarFill.mid { background: linear-gradient(90deg, #d97706, #facc15); }
+  .handballBarFill.low { background: linear-gradient(90deg, #dc2626, #f87171); }
+
+  /* PDF Radar Chart Container */
+  .pdfRadarWrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    gap: 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 10px;
+    margin: 8px 0;
+  }
+  .pdfRadarLegend {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 11px;
+    color: #334155;
+    text-align: right;
+  }
 </style>
 </head>
 <body>
@@ -1487,40 +1914,462 @@
     </div>
   </div>
 
+  <!-- Sprint Run Live HUD -->
+  <div id="runHud" class="liveHud" style="display: none;">
+    <div class="hudRow">
+      <div class="hudMetric">
+        <span class="hudLabel">⏱️ کرونومتر دوی سرعت</span>
+        <span class="hudVal accent" id="runTimerVal">0.00s</span>
+      </div>
+      <div class="hudMetric">
+        <span class="hudLabel">🏁 وضعیت گیت‌ها</span>
+        <span class="hudVal warn" id="runGateStatusVal">در انتظار مانع ۱</span>
+      </div>
+      <div class="hudMetric">
+        <span class="hudLabel">⚡ سرعت تخمینی</span>
+        <span class="hudVal" id="runSpeedVal">-- m/s</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Single Jump Live HUD -->
+  <div id="singleJumpHud" class="liveHud" style="display: none;">
+    <div class="hudRow">
+      <div class="hudMetric">
+        <span class="hudLabel">🦘 ارتفاع زنده پرش</span>
+        <span class="hudVal accent" id="jumpLiveHeightVal">0.0 cm</span>
+      </div>
+      <div class="hudMetric">
+        <span class="hudLabel">✈️ زمان در هوا</span>
+        <span class="hudVal" id="jumpLiveAirVal">0.000s</span>
+      </div>
+      <div class="hudMetric">
+        <span class="hudLabel">🚦 وضعیت ورزشکار</span>
+        <span class="hudVal warn" id="jumpLiveStatusVal">روی زمین (آماده)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Single Jump Controls HUD -->
+  <div id="jumpHud" style="display: none;">
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+      <div style="display: flex; align-items: center; gap: 5px;">
+        <span style="font-size: 11px; color: #94a3b8; font-weight: bold; margin-left: 2px;">تراز مبنا:</span>
+        <button type="button" id="jumpLineUpBtn" class="jump-tool-btn" title="انتقال خط به بالاتر">▲ بالا</button>
+        <button type="button" id="jumpLineDownBtn" class="jump-tool-btn" title="انتقال خط به پایین‌تر">▼ پایین</button>
+        <button type="button" id="jumpLineAutoBtn" class="jump-tool-btn" title="تراز هوشمند خودکار با کف و مچ پا">🎯 تراز کف پا</button>
+      </div>
+      <button type="button" id="jumpPrepTimerBtn" class="jump-prep-btn" title="شروع شمارش معکوس ۳ ثانیه‌ای برای آمادگی قبل از پرش">
+        <span>⏱️</span>
+        <span>آمادگی پرش (۳ ثانیه)</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Jump Countdown Overlay -->
+  <div id="jumpCountdownOverlay" style="display: none; position: absolute; inset: 0; z-index: 45; pointer-events: none; flex-direction: column; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(2px);">
+    <div id="jumpCountdownNumber" style="font-size: 88px; font-weight: 900; color: #38bdf8; text-shadow: 0 0 35px rgba(56, 189, 248, 0.9), 0 4px 14px #000; animation: jumpPulse 0.85s ease-in-out infinite;">
+      ۳
+    </div>
+    <div id="jumpCountdownSub" style="position: absolute; bottom: 22%; font-size: 15px; font-weight: bold; color: #f8fafc; background: rgba(15, 23, 42, 0.9); padding: 7px 20px; border-radius: 9999px; border: 1px solid #334155; box-shadow: 0 4px 16px rgba(0,0,0,0.6);">
+      صاف روبروی دوربین بایستید و آماده جهش شوید...
+    </div>
+  </div>
+
+  <!-- Flexibility HUD -->
+  <div id="flexibilityHud" class="liveHud" style="display: none;">
+    <div class="hudRow">
+      <div class="hudMetric">
+        <span class="hudLabel">📏 خمش / فاصله دست تا پنجه</span>
+        <span class="hudVal accent" id="flexReachVal">--</span>
+      </div>
+      <div class="hudMetric">
+        <span class="hudLabel">📐 زاویه خمش تنه (Hip Hinge)</span>
+        <span class="hudVal" id="flexAngleVal">--°</span>
+      </div>
+      <div class="hudMetric">
+        <span class="hudLabel">🦵 وضعیت زانوها</span>
+        <span class="hudVal" id="flexKneeStatusVal">✓ صاف</span>
+      </div>
+      <div class="hudMetric">
+        <span class="hudLabel">🏆 اوج رکورد خمش</span>
+        <span class="hudVal warn" id="flexMaxReachVal">--</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Anthropometry HUD -->
+  <div id="anthroHud" class="liveHud" style="display: none;">
+    <div class="hudRow">
+      <div class="hudMetric">
+        <span class="hudLabel">🧍 قد ایستاده</span>
+        <span class="hudVal accent" id="anthroHeightVal">--</span>
+      </div>
+      <div class="hudMetric">
+        <span class="hudLabel">🪑 قد میان‌تنه (تنه به سر)</span>
+        <span class="hudVal" id="anthroTrunkVal">--</span>
+      </div>
+      <div class="hudMetric">
+        <span class="hudLabel">📏 گستره دو دست (Wingspan)</span>
+        <span class="hudVal warn" id="anthroWingspanVal">--</span>
+      </div>
+    </div>
+    <div class="hudRow">
+      <div class="hudMetric">
+        <span class="hudLabel">📊 شاخص کورمیک (تنه/قد)</span>
+        <span class="hudVal accent" id="anthroCormicVal">--%</span>
+      </div>
+      <div class="hudMetric">
+        <span class="hudLabel">🦍 نسبت دست به قد (Ape Index)</span>
+        <span class="hudVal" id="anthroApeVal">--</span>
+      </div>
+      <div class="hudMetric">
+        <span class="hudLabel">🦵 طول تقریبی پاها</span>
+        <span class="hudVal" id="anthroLegVal">--</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Agility Live HUD -->
+  <div id="agilityHud" class="liveHud" style="display: none;">
+    <div class="hudRow">
+      <div class="hudMetric">
+        <span class="hudLabel">⏱️ زمان شاتل چابکی</span>
+        <span class="hudVal accent" id="agilityTimerVal">0.00</span> <span style="font-size: 11px; color: #94a3b8;">ثانیه</span>
+      </div>
+      <div class="hudMetric">
+        <span class="hudLabel">🔄 وضعیت مسیر</span>
+        <span class="hudVal" id="agilityLapVal" style="color: #facc15; font-size: 12px;">آماده استارت</span>
+      </div>
+      <div class="hudMetric">
+        <span class="hudLabel">🏃 سرعت لحظه‌ای</span>
+        <span class="hudVal" id="agilitySpeedVal">0.0</span> <span style="font-size: 11px; color: #94a3b8;">m/s</span>
+      </div>
+      <div class="hudMetric">
+        <span class="hudLabel">🏁 دور / رفت‌وبرگشت</span>
+        <span class="hudVal" id="agilityLapCountVal" style="color: #38bdf8;">دور ۱ از ۲</span>
+      </div>
+    </div>
+  </div>
+
   <!-- Floating Zoom Control for Multi-lens / Android -->
   <div id="cameraZoomControls" style="display: none;"></div>
 
-  <!-- Header Container: Action bar + Status + Mode bar -->
+  <!-- Header Container: Compact Top Bar + Status + Collapsible Mode bar -->
   <div id="headerContainer">
-    <!-- Action bar: icons + FPS -->
-    <div id="actionBar">
-      <div id="actionButtons">
-        <button id="athleteProfileBtn" class="athlete-badge-btn" title="پروفایل و انتخاب ورزشکار">
-          <span>👤</span>
-          <span id="activeAthleteBtnName" style="max-width: 65px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">ورزشکار ۱</span>
+    <!-- Sleek Compact Top Bar (Declutters screen on mobile) -->
+    <div id="compactTopBar">
+      <div class="topBarGroup">
+        <button id="hamburgerBtn" class="hamburgerBtn" title="منوی اصلی و آزمون‌ها">
+          <span>☰</span>
         </button>
-        <button id="guideTourBtn" title="تور راهنمای استقرار دوربین و کالیبراسیون">🎓</button>
-        <button id="historyBtn" title="تاریخچه و نمودار پیشرفت">📊</button>
+        <button id="currentModeBadge" class="modeBadgeChip" title="تغییر آزمون ورزشی">
+          <span class="accentDot"></span>
+          <span id="currentModeIcon">🏃</span>
+          <span id="currentModeLabel">دوی سرعت</span>
+          <span style="font-size: 10px; color: #94a3b8;">▾</span>
+        </button>
+      </div>
+
+      <div class="topBarGroup">
+        <button id="athleteProfileBtn" class="athleteChip" title="پروفایل و انتخاب ورزشکار">
+          <span>👤</span>
+          <span id="activeAthleteBtnName" style="max-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">ورزشکار ۱</span>
+        </button>
+      </div>
+
+      <div class="topBarGroup">
+        <button id="cameraSwitcherBtn" class="quickToolBtn" title="تغییر دوربین">📷</button>
+        <button id="cameraFitToggleBtn" class="quickToolBtn" title="تغییر کادر (دید کامل / تمام‌صفحه)">📐</button>
+        <div id="fpsDisplay">FPS: --</div>
+      </div>
+    </div>
+
+    <!-- Hidden Action Bar Buttons for backwards-compatibility -->
+    <div id="actionBar" style="display: none;">
+      <div id="actionButtons">
+        <button id="guideTourBtn" title="تور راهنما">🎓</button>
+        <button id="historyBtn" title="تاریخچه">📊</button>
         <button id="settingsBtn" title="تنظیمات">⚙️</button>
         <button id="orientationLockBtn" title="قفل جهت">🔓</button>
-        <button id="cameraFitToggleBtn" title="تغییر کادر دوربین (دید کامل واید / تمام صفحه)">📐</button>
-        <button id="cameraSwitcherBtn" title="تغییر دوربین">📷</button>
       </div>
-      <div id="fpsDisplay">FPS: --</div>
     </div>
 
     <!-- Status message -->
     <div id="status">در حال آماده‌سازی مدل...</div>
 
-    <!-- Mode selection (scrollable pill bar) -->
+    <!-- Mode selection bar (hidden by default for clean UI, accessible via drawer) -->
     <div id="modeBar" style="display:none;">
+      <button id="modeAgilityBtn" class="modeBtn">⚡ چابکی شاتل</button>
       <button id="modeRunBtn" class="modeBtn active">🏃 دو</button>
       <button id="modeJumpBtn" class="modeBtn">⤴️ پرش تک</button>
       <button id="modeBoscoBtn" class="modeBtn">⏱️ پرش متوالی</button>
       <button id="modeSitupBtn" class="modeBtn">🧘 دراز و نشست</button>
       <button id="modePushupBtn" class="modeBtn">💪 شنا سوئدی</button>
+      <button id="modeFlexBtn" class="modeBtn">🧘‍♀️ انعطاف‌پذیری</button>
+      <button id="modeAnthroBtn" class="modeBtn">📐 ابعاد و نسبت‌ها</button>
       <button id="modeWingspanBtn" class="modeBtn">📏 طول دست‌ها</button>
       <button id="modeDistanceBtn" class="modeBtn">📐 فاصله اجسام</button>
+    </div>
+  </div>
+
+  <!-- ================== HAMBURGER NAVIGATION DRAWER & BACKDROP ================== -->
+  <div id="drawerBackdrop"></div>
+  <div id="appDrawer">
+    <div class="drawerHeader">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 24px;">⚡</span>
+        <div>
+          <div style="font-size: 15px; font-weight: bold; color: #38bdf8;">سامانه حرکت‌سنج پرو</div>
+          <div style="font-size: 10px; color: #94a3b8;">استعدادیابی و ارزیابی بیومکانیک</div>
+        </div>
+      </div>
+      <button id="drawerCloseBtn" class="drawerCloseBtn" title="بستن منو">✕</button>
+    </div>
+
+    <!-- Active Athlete Info inside drawer -->
+    <div style="padding: 12px 14px; background: linear-gradient(135deg, rgba(2,132,199,0.22), rgba(15,23,42,0.95)); border-bottom: 1px solid #1e293b;">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 18px; background: rgba(56,189,248,0.2); width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid #38bdf8;">👤</span>
+          <div>
+            <div style="font-size: 13px; font-weight: bold; color: #fff;" id="drawerAthleteName">ورزشکار ۱</div>
+            <div style="font-size: 10px; color: #94a3b8;" id="drawerAthleteDetails">کد: ۱۰۱ • قد: ۱۷۵cm</div>
+          </div>
+        </div>
+        <button id="drawerSwitchAthleteBtn" style="background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.4); color: #38bdf8; font-size: 11px; padding: 4px 8px; border-radius: 6px; cursor: pointer;">تغییر ورزشکار</button>
+      </div>
+    </div>
+
+    <!-- Section 1: All 10 Tests -->
+    <div class="drawerSection">
+      <div class="drawerSectionTitle">
+        <span>🏆</span>
+        <span>آزمون‌های ورزشی و بیومکانیک</span>
+      </div>
+
+      <button id="drawerItemAgility" class="drawerMenuItem">
+        <div class="itemLeft">
+          <span class="itemIcon">⚡</span>
+          <div>
+            <div>تست چابکی و شاتل (رفت و برگشت)</div>
+            <div style="font-size: 10px; color: #94a3b8;">شاتل ایلینویز، Pro-Agility و ۵×۲ متر</div>
+          </div>
+        </div>
+        <span class="drawerBadge new">جدید</span>
+      </button>
+
+      <button id="drawerItemRun" class="drawerMenuItem active">
+        <div class="itemLeft">
+          <span class="itemIcon">🏃</span>
+          <div>
+            <div>دوی سرعت (دروازه نوری فتوسل)</div>
+            <div style="font-size: 10px; color: #94a3b8;">زمان‌سنجی صدم ثانیه و شتاب لحظه‌ای</div>
+          </div>
+        </div>
+      </button>
+
+      <button id="drawerItemJump" class="drawerMenuItem">
+        <div class="itemLeft">
+          <span class="itemIcon">⤴️</span>
+          <div>
+            <div>پرش عمودی تک (Sargent Jump)</div>
+            <div style="font-size: 10px; color: #94a3b8;">ارتفاع اوج جهش و توان مکانیکی وات</div>
+          </div>
+        </div>
+      </button>
+
+      <button id="drawerItemBosco" class="drawerMenuItem">
+        <div class="itemLeft">
+          <span class="itemIcon">⏱️</span>
+          <div>
+            <div>پرش متوالی باسکو (Bosco Test)</div>
+            <div style="font-size: 10px; color: #94a3b8;">استقامت توان بی‌هوازی و تعداد جهش</div>
+          </div>
+        </div>
+      </button>
+
+      <button id="drawerItemSitup" class="drawerMenuItem">
+        <div class="itemLeft">
+          <span class="itemIcon">🧘</span>
+          <div>
+            <div>آزمون دراز و نشست</div>
+            <div style="font-size: 10px; color: #94a3b8;">استقامت عضلات کور و ثبات مرکزی</div>
+          </div>
+        </div>
+      </button>
+
+      <button id="drawerItemPushup" class="drawerMenuItem">
+        <div class="itemLeft">
+          <span class="itemIcon">💪</span>
+          <div>
+            <div>آزمون شنا سوئدی</div>
+            <div style="font-size: 10px; color: #94a3b8;">قدرت عضلات بالاتنه و کمربند شانه</div>
+          </div>
+        </div>
+      </button>
+
+      <button id="drawerItemFlex" class="drawerMenuItem">
+        <div class="itemLeft">
+          <span class="itemIcon">🧘‍♀️</span>
+          <div>
+            <div>انعطاف‌پذیری (Sit & Reach)</div>
+            <div style="font-size: 10px; color: #94a3b8;">دامنه حرکتی بالاتنه و همسترینگ</div>
+          </div>
+        </div>
+      </button>
+
+      <button id="drawerItemAnthro" class="drawerMenuItem">
+        <div class="itemLeft">
+          <span class="itemIcon">📐</span>
+          <div>
+            <div>ابعاد و شاخص‌های بیومکانیک</div>
+            <div style="font-size: 10px; color: #94a3b8;">شاخص کورمیک، قد نشسته و نسبت‌ها</div>
+          </div>
+        </div>
+      </button>
+
+      <button id="drawerItemWingspan" class="drawerMenuItem">
+        <div class="itemLeft">
+          <span class="itemIcon">📏</span>
+          <div>
+            <div>طول دو دست (Wingspan / Ape Index)</div>
+            <div style="font-size: 10px; color: #94a3b8;">اهرم‌های حرکتی و مزیت پرتاب</div>
+          </div>
+        </div>
+      </button>
+
+      <button id="drawerItemDistance" class="drawerMenuItem">
+        <div class="itemLeft">
+          <span class="itemIcon">📐</span>
+          <div>
+            <div>اندازه‌گیری فاصله اجسام</div>
+            <div style="font-size: 10px; color: #94a3b8;">کالیبراسیون و متر تصویری</div>
+          </div>
+        </div>
+      </button>
+    </div>
+
+    <!-- Section 2: Scouting & Analytics -->
+    <div class="drawerSection">
+      <div class="drawerSectionTitle">
+        <span>🤾‍♂️</span>
+        <span>استعدادیابی تخصصی و گزارشات</span>
+      </div>
+
+      <button id="drawerItemHandball" class="drawerMenuItem" style="background: rgba(2, 132, 199, 0.18); border-color: rgba(56, 189, 248, 0.35);">
+        <div class="itemLeft">
+          <span class="itemIcon">🤾‍♂️</span>
+          <div>
+            <div style="color: #38bdf8; font-weight: bold;">تحلیل استعدادیابی هندبال و رشته‌ها</div>
+            <div style="font-size: 10px; color: #94a3b8;">پست‌های تخصصی، نقاط قوت/ضعف و تمرین</div>
+          </div>
+        </div>
+        <span class="drawerBadge special">ویژه</span>
+      </button>
+
+      <button id="drawerItemProfile" class="drawerMenuItem">
+        <div class="itemLeft">
+          <span class="itemIcon">👤</span>
+          <div>
+            <div>مدیریت و پرونده ورزشکاران</div>
+            <div style="font-size: 10px; color: #94a3b8;">تعریف ورزشکار، تغییر قد، سن و رشته</div>
+          </div>
+        </div>
+      </button>
+
+      <button id="drawerItemHistory" class="drawerMenuItem">
+        <div class="itemLeft">
+          <span class="itemIcon">📊</span>
+          <div>
+            <div>تاریخچه و نمودار پیشرفت</div>
+            <div style="font-size: 10px; color: #94a3b8;">روند رکوردها و فیلتر آزمون‌ها</div>
+          </div>
+        </div>
+      </button>
+
+      <button id="drawerItemPdf" class="drawerMenuItem">
+        <div class="itemLeft">
+          <span class="itemIcon">📄</span>
+          <div>
+            <div>کارنامه رسمی PDF با نمودار رادار</div>
+            <div style="font-size: 10px; color: #94a3b8;">نمودار عنکبوتی شایستگی‌های فیزیکی</div>
+          </div>
+        </div>
+        <span class="drawerBadge new">رادار</span>
+      </button>
+
+      <button id="drawerItemCsv" class="drawerMenuItem">
+        <div class="itemLeft">
+          <span class="itemIcon">📥</span>
+          <div>
+            <div>خروجی داده‌ها به اکسل (CSV)</div>
+            <div style="font-size: 10px; color: #94a3b8;">دانلود فایل داده‌های خام</div>
+          </div>
+        </div>
+      </button>
+    </div>
+
+    <!-- Section 3: Tools & Settings -->
+    <div class="drawerSection">
+      <div class="drawerSectionTitle">
+        <span>⚙️</span>
+        <span>ابزارها و تنظیمات دوربین</span>
+      </div>
+
+      <button id="drawerItemCamera" class="drawerMenuItem">
+        <div class="itemLeft">
+          <span class="itemIcon">📷</span>
+          <div>
+            <div>تغییر دوربین / انتخاب لنز</div>
+            <div style="font-size: 10px; color: #94a3b8;">پشت، جلو، لنز واید و زاویه باز</div>
+          </div>
+        </div>
+      </button>
+
+      <button id="drawerItemFit" class="drawerMenuItem">
+        <div class="itemLeft">
+          <span class="itemIcon">📐</span>
+          <div>
+            <div>حالت کادر تصویر (Fit / Fill)</div>
+            <div style="font-size: 10px; color: #94a3b8;">دید کامل واید بدون برش</div>
+          </div>
+        </div>
+      </button>
+
+      <button id="drawerItemOrientation" class="drawerMenuItem">
+        <div class="itemLeft">
+          <span class="itemIcon">🔓</span>
+          <div>
+            <div>قفل جهت چرخش صفحه</div>
+            <div style="font-size: 10px; color: #94a3b8;">افقی (Landscape) یا عمودی</div>
+          </div>
+        </div>
+      </button>
+
+      <button id="drawerItemTour" class="drawerMenuItem">
+        <div class="itemLeft">
+          <span class="itemIcon">🎓</span>
+          <div>
+            <div>تور راهنمای استقرار و کالیبراسیون</div>
+            <div style="font-size: 10px; color: #94a3b8;">راهنمای گام‌به‌گام فاصله و زاویه</div>
+          </div>
+        </div>
+      </button>
+
+      <button id="drawerItemSettings" class="drawerMenuItem">
+        <div class="itemLeft">
+          <span class="itemIcon">⚙️</span>
+          <div>
+            <div>تنظیمات پیشرفته سامانه</div>
+            <div style="font-size: 10px; color: #94a3b8;">حساسیت سنسورها و آستانه زوایا</div>
+          </div>
+        </div>
+      </button>
+    </div>
+
+    <div style="padding: 14px; text-align: center; font-size: 10px; color: #64748b; margin-top: auto;">
+      سامانه حرکت‌سنج هوشمند • نسخه 1.8.0
     </div>
   </div>
 
@@ -1639,8 +2488,45 @@
       </form>
     </div>
 
+    <!-- Handball & Multi-Sport Talent Scouting Callout -->
+    <div style="background: linear-gradient(135deg, rgba(2, 132, 199, 0.25), rgba(15, 23, 42, 0.95)); border: 1.5px solid rgba(56, 189, 248, 0.45); border-radius: 10px; padding: 10px; margin-top: 10px; text-align: right;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+        <div style="font-weight: bold; font-size: 13px; color: #38bdf8; display: flex; align-items: center; gap: 6px;">
+          <span>🤾‍♂️</span>
+          <span>استعدادیابی تخصصی هندبال و رشته‌های ورزشی</span>
+        </div>
+        <span class="drawerBadge special">تحلیل هوشمند</span>
+      </div>
+      <p style="font-size: 11px; color: #cbd5e1; margin-bottom: 8px; line-height: 1.5;">
+        تحلیل سوابق آزمون‌های این ورزشکار، تعیین پست‌های تخصصی در هندبال (بک، گوش، پخش‌کن، خط‌زن، دروازه‌بان)، نقاط قوت، ضعف و تمرینات پیشنهادی.
+      </p>
+      <button type="button" id="openHandballScoutingFromProfileBtn" style="width: 100%; background: linear-gradient(135deg, #0284c7, #0369a1); color: #fff; border: none; padding: 7px; border-radius: 6px; font-weight: bold; font-size: 12px; cursor: pointer;">
+        مشاهده کارنامه استعدادیابی هندبال و رشته‌ها 🤾‍♂️
+      </button>
+    </div>
+
     <div class="btnRow" style="margin-top: 12px;">
       <button id="closeAthleteModalBtn" class="secondary">بستن</button>
+    </div>
+  </div>
+
+  <!-- Handball & Multi-Sport Talent Scouting Modal -->
+  <div id="handballScoutingModal" class="panel" style="display: none; max-width: 500px; max-height: 88vh; z-index: 60; overflow-y: auto; text-align: right;">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 8px; margin-bottom: 12px; position: sticky; top: 0; background: #1e293b; z-index: 5;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 20px;">🤾‍♂️</span>
+        <h3 style="margin: 0; color: #38bdf8; font-size: 16px;">استعدادیابی تخصصی هندبال و رشته‌ها</h3>
+      </div>
+      <button id="closeHandballModalXBtn" style="background: none; border: none; color: #94a3b8; font-size: 18px; cursor: pointer; padding: 0 4px; width: auto; min-height: auto;">✕</button>
+    </div>
+
+    <div id="handballScoutingContent">
+      <!-- Generated dynamically based on athlete tests in localStorage -->
+    </div>
+
+    <div class="btnRow" style="margin-top: 14px;">
+      <button id="handballExportPdfBtn" style="background: #0284c7; flex: 1.5;">📄 دریافت کارنامه رسمی PDF با نمودار رادار</button>
+      <button id="closeHandballModalBtn" class="secondary" style="flex: 1;">بستن</button>
     </div>
   </div>
 
@@ -1675,13 +2561,17 @@
       <div class="trendControlRow">
         <label for="trendMetricSelect">شاخص آزمون:</label>
         <select id="trendMetricSelect">
+          <option value="agility">⚡ آزمون چابکی و شاتل (ثانیه)</option>
           <option value="jump">⤴️ ارتفاع پرش تک (cm)</option>
           <option value="bosco_jumps">⏱️ پرش متوالی Bosco (تعداد پرش)</option>
           <option value="bosco_height">⏱️ پرش متوالی Bosco (بیشترین ارتفاع cm)</option>
           <option value="situp">🧘 دراز و نشست (تعداد تکرار صحیح)</option>
           <option value="pushup">💪 شنا سوئدی (تعداد تکرار)</option>
           <option value="run">🏃 سرعت دویدن (متر بر ثانیه)</option>
+          <option value="flexibility">🧘‍♀️ آزمون انعطاف‌پذیری (cm)</option>
           <option value="wingspan">📏 طول دو دست (cm)</option>
+          <option value="anthro_cormic">📐 شاخص کورمیک (تنه به قد %)</option>
+          <option value="anthro_ape">🦍 نسبت دست به قد (Ape Index)</option>
         </select>
       </div>
 
@@ -1878,43 +2768,219 @@
   </div>
 
   <!-- Run mode panels -->
-  <div id="distPanel" class="panel">
-    <div style="font-weight: bold; font-size: 15px; color: #38bdf8;">📐 فاصله بین دو مانع</div>
+  <div id="distPanel" class="panel" style="max-width: 440px;">
+    <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #334155; padding-bottom: 6px; margin-bottom: 8px;">
+      <div style="font-weight: bold; font-size: 15px; color: #38bdf8; display: flex; align-items: center; gap: 6px;">
+        <span>📐</span>
+        <span>تنظیم فاصله موانع زمان‌گیری</span>
+      </div>
+      <span style="font-size: 11px; color: #94a3b8;">آزمون دوی سرعت</span>
+    </div>
+
     <div id="autoDistBox" style="background: rgba(14, 116, 144, 0.25); border: 1px solid #0284c7; border-radius: 12px; padding: 8px 12px; margin: 8px 0; text-align: center;">
       <div style="font-size: 11px; color: #38bdf8;">فاصله تخمینی خودکار بین دو مانع:</div>
-      <div style="font-size: 16px; font-weight: bold; color: #4ade80; margin: 4px 0;" id="autoDistText">-- متر و -- سانتی‌متر</div>
+      <div style="font-size: 17px; font-weight: bold; color: #4ade80; margin: 4px 0;" id="autoDistText">-- متر و -- سانتی‌متر</div>
       <div style="display: flex; gap: 6px; justify-content: center; margin-top: 5px; flex-wrap: wrap;">
         <button id="distPanelSpeakBtn" type="button" style="background: #0284c7; color: #fff; border: none; padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; width: auto; margin: 0;">🔊 خواندن صوتی فاصله</button>
         <button id="distPanelA4CalibBtn" type="button" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; width: auto; margin: 0;">📏 کالیبره با کاغذ A4 یا خط‌کش</button>
       </div>
     </div>
-    <div style="font-size: 11px; color: #94a3b8; margin: 6px 0 2px 0;">فاصلهٔ نهایی جهت زمان‌گیری (قابل ویرایش):</div>
-    <div class="input-row">
-      <input id="distInput" type="number" value="5" step="0.01" inputmode="decimal"> متر
+
+    <!-- Quick Distance Presets for Track & Field / Scouting -->
+    <div style="font-size: 11px; color: #cbd5e1; margin-top: 8px; margin-bottom: 4px; text-align: right;">فواصل استاندارد استعدادیابی (انتخاب سریع با ۱ لمس):</div>
+    <div id="distPresetsRow" style="display: flex; gap: 4px; justify-content: center; margin-bottom: 8px; flex-wrap: wrap;">
+      <button type="button" class="distPresetBtn" data-dist="3">۳ متر (شتاب اولیه)</button>
+      <button type="button" class="distPresetBtn active" data-dist="5">۵ متر (استارت)</button>
+      <button type="button" class="distPresetBtn" data-dist="10">۱۰ متر (شتاب)</button>
+      <button type="button" class="distPresetBtn" data-dist="20">۲۰ متر (شاتل)</button>
+      <button type="button" class="distPresetBtn" data-dist="30">۳۰ متر (سرعت)</button>
     </div>
-    <button id="confirmDistBtn">تأیید و شروع اندازه‌گیری</button>
-    <button id="backToGatesBtn" class="secondary">بازگشت و اصلاح موانع</button>
+
+    <div style="font-size: 11px; color: #94a3b8; margin: 6px 0 2px 0;">یا وارد کردن فاصله دلخواه:</div>
+    <div class="input-row" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+      <input id="distInput" type="number" value="5" step="0.1" min="0.5" max="200" inputmode="decimal" style="width: 90px; text-align: center; font-size: 16px; font-weight: bold; padding: 6px;">
+      <span style="font-size: 13px; color: #cbd5e1; font-weight: bold;">متر</span>
+    </div>
+
+    <div class="btnRow" style="margin-top: 10px;">
+      <button id="confirmDistBtn" style="flex: 2; background: #16a34a;">✅ شروع اندازه‌گیری و زمان‌گیری</button>
+      <button id="backToGatesBtn" class="secondary" style="flex: 1;">اصلاح موانع</button>
+    </div>
   </div>
 
-  <div id="resultPanel" class="panel">
-    <div>زمان دویدن</div>
-    <div class="big"><span id="timeResult">--</span> ثانیه</div>
-    <div>سرعت: <span id="speedResult">--</span> m/s</div>
-    <div class="btnRow">
-      <button id="againBtn">دوباره (همین موانع)</button>
-      <button id="recalibBtn" class="secondary">تعیین موانع جدید</button>
+  <!-- Run mode result panel -->
+  <div id="resultPanel" class="panel" style="max-width: 440px;">
+    <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #334155; padding-bottom: 8px; margin-bottom: 10px;">
+      <div style="font-weight: bold; font-size: 15px; color: #38bdf8; display: flex; align-items: center; gap: 6px;">
+        <span>⚡</span>
+        <span>تحلیل زمان و سرعت دوی سرعت</span>
+      </div>
+      <span id="runRatingBadge" class="pdfBenchmarkBadge good" style="font-size: 10px; padding: 3px 8px;">سرعت مناسب</span>
     </div>
+
+    <div style="text-align: center; background: rgba(30, 41, 59, 0.6); border: 1px solid #334155; border-radius: 12px; padding: 12px; margin-bottom: 10px;">
+      <div style="font-size: 11px; color: #94a3b8;">زمان ثبت‌شده بین دو مانع</div>
+      <div style="font-size: 34px; font-weight: 800; color: #4ade80; margin: 4px 0; letter-spacing: -0.5px;">
+        <span id="timeResult">--</span> <span style="font-size: 16px; font-weight: normal; color: #94a3b8;">ثانیه</span>
+      </div>
+      <div style="font-size: 11px; color: #64748b;">فاصله موانع: <strong id="runDistBadge" style="color: #38bdf8;">۵.۰</strong> متر</div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+      <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid #334155; border-radius: 10px; padding: 8px; text-align: center;">
+        <span style="font-size: 10px; color: #94a3b8; display: block;">🏃 سرعت متوسط</span>
+        <strong id="speedResult" style="color: #38bdf8; font-size: 16px;">--</strong> <span style="font-size: 11px; color: #94a3b8;">m/s</span>
+      </div>
+      <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid #334155; border-radius: 10px; padding: 8px; text-align: center;">
+        <span style="font-size: 10px; color: #94a3b8; display: block;">🚗 معادل کیلومتر/ساعت</span>
+        <strong id="speedKmhResult" style="color: #facc15; font-size: 16px;">--</strong> <span style="font-size: 11px; color: #94a3b8;">km/h</span>
+      </div>
+      <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid #334155; border-radius: 10px; padding: 8px; text-align: center;">
+        <span style="font-size: 10px; color: #94a3b8; display: block;">⏱️ ریتم و آهنگ گام</span>
+        <strong id="runPaceResult" style="color: #c084fc; font-size: 13px;">--</strong>
+      </div>
+      <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid #334155; border-radius: 10px; padding: 8px; text-align: center;">
+        <span style="font-size: 10px; color: #94a3b8; display: block;">👤 ورزشکار ثبت‌شده</span>
+        <strong id="runAthleteName" style="color: #f8fafc; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">--</strong>
+      </div>
+    </div>
+
+    <div class="btnRow">
+      <button id="runSaveBtn" style="background: #16a34a; flex: 1.2;">💾 ذخیره در سوابق</button>
+      <button id="againBtn" style="flex: 1;">🔄 دوباره</button>
+    </div>
+    <button id="recalibBtn" class="secondary" style="margin-top: 6px;">📐 تعیین موانع جدید</button>
+  </div>
+
+  <!-- Agility Mode Cone Controls Panel -->
+  <div id="agilityConeControls" class="panel" style="max-width: 440px;">
+    <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #334155; padding-bottom: 8px; margin-bottom: 10px;">
+      <div style="font-weight: bold; font-size: 15px; color: #38bdf8; display: flex; align-items: center; gap: 6px;">
+        <span>⚡</span>
+        <span>آزمون چابکی و شاتل رفت‌وبرگشت</span>
+      </div>
+      <span style="font-size: 10px; background: rgba(56, 189, 248, 0.2); color: #38bdf8; padding: 2px 7px; border-radius: 9999px;">تست چابکی</span>
+    </div>
+
+    <div id="agilityConeHint" style="font-size: 12px; color: #cbd5e1; background: rgba(30, 41, 59, 0.7); padding: 9px 12px; border-radius: 8px; border: 1px solid #475569; margin-bottom: 10px; line-height: 1.6;">
+      روی تصویر ضربه بزنید تا <strong>مخروط اول (خط استارت / پایان)</strong> را مشخص کنید.
+    </div>
+
+    <!-- Distance Presets -->
+    <div style="margin-bottom: 10px;">
+      <div style="font-size: 11px; color: #94a3b8; margin-bottom: 5px;">الگوی آزمون چابکی:</div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;" id="agilityPresetsContainer">
+        <button type="button" class="agilityPresetBtn active" data-dist="5" data-name="شاتل ۵×۲ متر (۱۰ متر کل)">
+          شاتل ۵×۲ متر (۱۰m)
+        </button>
+        <button type="button" class="agilityPresetBtn" data-dist="10" data-name="شاتل ۱۰×۲ متر (۲۰ متر کل)">
+          شاتل ۱۰×۲ متر (۲۰m)
+        </button>
+        <button type="button" class="agilityPresetBtn" data-dist="5" data-name="تست چابکی Pro-Agility (5-10-5)">
+          تست Pro-Agility
+        </button>
+        <button type="button" class="agilityPresetBtn" data-dist="10" data-name="تست چابکی ایلینویز (Illinois)">
+          تست ایلینویز (Illinois)
+        </button>
+      </div>
+    </div>
+
+    <div class="btnRow">
+      <button id="agilityStartReadyBtn" style="background: #22c55e; color: #052e16; flex: 2; font-weight: bold;" disabled>
+        شروع زمان‌گیری چابکی ⚡
+      </button>
+      <button id="agilityResetConesBtn" class="secondary" style="flex: 1;">
+        تعیین مجدد مخروط‌ها
+      </button>
+    </div>
+  </div>
+
+  <!-- Agility Mode Result Panel -->
+  <div id="agilityResultPanel" class="panel" style="max-width: 440px;">
+    <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #334155; padding-bottom: 8px; margin-bottom: 10px;">
+      <div style="font-weight: bold; font-size: 15px; color: #38bdf8; display: flex; align-items: center; gap: 6px;">
+        <span>⚡</span>
+        <span>کارنامه بیومکانیک آزمون چابکی</span>
+      </div>
+      <span id="agilityRatingBadge" class="pdfBenchmarkBadge elite" style="font-size: 10px; padding: 3px 8px;">نخبگی / چابکی عالی</span>
+    </div>
+
+    <div style="text-align: center; background: rgba(30, 41, 59, 0.6); border: 1px solid #334155; border-radius: 12px; padding: 12px; margin-bottom: 10px;">
+      <div style="font-size: 11px; color: #94a3b8;">زمان کل رفت و برگشت شاتل</div>
+      <div style="font-size: 36px; font-weight: 800; color: #4ade80; margin: 4px 0; letter-spacing: -0.5px;">
+        <span id="agilityTotalTimeResult">--</span> <span style="font-size: 16px; font-weight: normal; color: #94a3b8;">ثانیه</span>
+      </div>
+      <div style="font-size: 11px; color: #64748b;" id="agilityPatternResult">الگو: شاتل ۵×۲ متر (۱۰ متر کل)</div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+      <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid #334155; border-radius: 10px; padding: 8px; text-align: center;">
+        <span style="font-size: 10px; color: #94a3b8; display: block;">➔ زمان رفت (Lap 1)</span>
+        <strong id="agilityLap1Result" style="color: #38bdf8; font-size: 15px;">--</strong> <span style="font-size: 10px; color: #94a3b8;">s</span>
+      </div>
+      <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid #334155; border-radius: 10px; padding: 8px; text-align: center;">
+        <span style="font-size: 10px; color: #94a3b8; display: block;">⮂ زمان برگشت (Lap 2)</span>
+        <strong id="agilityLap2Result" style="color: #facc15; font-size: 15px;">--</strong> <span style="font-size: 10px; color: #94a3b8;">s</span>
+      </div>
+      <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid #334155; border-radius: 10px; padding: 8px; text-align: center;">
+        <span style="font-size: 10px; color: #94a3b8; display: block;">🔄 شاخص تغییر مسیر</span>
+        <strong id="agilityTurnPenaltyResult" style="color: #c084fc; font-size: 14px;">--</strong>
+      </div>
+      <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid #334155; border-radius: 10px; padding: 8px; text-align: center;">
+        <span style="font-size: 10px; color: #94a3b8; display: block;">🏃 میانگین سرعت</span>
+        <strong id="agilityAvgSpeedResult" style="color: #4ade80; font-size: 14px;">--</strong> <span style="font-size: 10px; color: #94a3b8;">m/s</span>
+      </div>
+    </div>
+
+    <div class="btnRow">
+      <button id="agilitySaveBtn" style="background: #16a34a; flex: 1.2;">💾 ذخیره در سوابق</button>
+      <button id="agilityAgainBtn" style="flex: 1;">🔄 تکرار آزمون</button>
+    </div>
+    <button id="agilityRecalibBtn" class="secondary" style="margin-top: 6px;">📐 تعیین مجدد مخروط‌ها</button>
   </div>
 
   <!-- Jump mode panel -->
-  <div id="jumpResultPanel" class="panel">
-    <div>زمان پرواز</div>
-    <div class="big"><span id="airTimeResult">--</span> ثانیه</div>
-    <div>ارتفاع تخمینی پرش: <span id="jumpHeightResult">--</span> سانتی‌متر</div>
-    <div class="btnRow">
-      <button id="jumpAgainBtn">دوباره</button>
-      <button id="jumpRecalibBtn" class="secondary">کالیبراسیون جدید</button>
+  <div id="jumpResultPanel" class="panel" style="max-width: 440px;">
+    <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #334155; padding-bottom: 8px; margin-bottom: 10px;">
+      <div style="font-weight: bold; font-size: 15px; color: #4ade80; display: flex; align-items: center; gap: 6px;">
+        <span>🏆</span>
+        <span>تحلیل بیومکانیکی پرش عمودی</span>
+      </div>
+      <span id="jumpRatingBadge" class="pdfBenchmarkBadge elite" style="font-size: 10px; padding: 3px 8px;">عالی / Elite</span>
     </div>
+
+    <div style="text-align: center; background: rgba(30, 41, 59, 0.6); border: 1px solid #334155; border-radius: 12px; padding: 12px; margin-bottom: 10px;">
+      <div style="font-size: 11px; color: #94a3b8;">ارتفاع اوج پرش (Apex Height)</div>
+      <div style="font-size: 36px; font-weight: 800; color: #38bdf8; margin: 4px 0; letter-spacing: -0.5px;">
+        <span id="jumpHeightResult">--</span> <span style="font-size: 17px; font-weight: normal; color: #94a3b8;">cm</span>
+      </div>
+      <div style="font-size: 11px; color: #64748b;">محاسبه‌شده با هم‌جوشی زمان پرواز و جابجایی تنه</div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+      <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid #334155; border-radius: 10px; padding: 8px; text-align: center;">
+        <span style="font-size: 10px; color: #94a3b8; display: block;">⏱️ زمان پرواز (Hang Time)</span>
+        <strong id="airTimeResult" style="color: #4ade80; font-size: 16px;">--</strong> <span style="font-size: 11px; color: #94a3b8;">s</span>
+      </div>
+      <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid #334155; border-radius: 10px; padding: 8px; text-align: center;">
+        <span style="font-size: 10px; color: #94a3b8; display: block;">⚡ سرعت جدا شدن (v₀)</span>
+        <strong id="jumpVelocityResult" style="color: #facc15; font-size: 16px;">--</strong> <span style="font-size: 11px; color: #94a3b8;">m/s</span>
+      </div>
+      <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid #334155; border-radius: 10px; padding: 8px; text-align: center;">
+        <span style="font-size: 10px; color: #94a3b8; display: block;">💥 توان انفجاری (Sayers)</span>
+        <strong id="jumpPowerResult" style="color: #c084fc; font-size: 16px;">--</strong> <span style="font-size: 11px; color: #94a3b8;">W</span>
+      </div>
+      <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid #334155; border-radius: 10px; padding: 8px; text-align: center;">
+        <span style="font-size: 10px; color: #94a3b8; display: block;">👤 ورزشکار ثبت‌شده</span>
+        <strong id="jumpAthleteName" style="color: #f8fafc; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">--</strong>
+      </div>
+    </div>
+
+    <div class="btnRow">
+      <button id="jumpSaveBtn" style="background: #16a34a; flex: 1.2;">💾 ذخیره در سوابق</button>
+      <button id="jumpAgainBtn" style="flex: 1;">🔄 دوباره</button>
+    </div>
+    <button id="jumpRecalibBtn" class="secondary" style="margin-top: 6px;">📐 تراز مجدد خط مبنا</button>
   </div>
 
   <!-- Bosco continuous jump panels -->
@@ -2127,6 +3193,67 @@
     <div class="btnRow">
       <button id="pushupAgainBtn">آزمون مجدد</button>
       <button id="pushupSaveBtn" class="secondary">ذخیره در تاریخچه</button>
+    </div>
+  </div>
+
+  <!-- Flexibility measurement panel -->
+  <div id="flexibilityPanel" class="panel">
+    <div style="font-weight: bold; font-size: 15px; color: #38bdf8;">🧘‍♀️ آزمون انعطاف‌پذیری بالاتنه (Sit & Reach)</div>
+    <p style="font-size: 11px; color: #94a3b8; margin: 4px 0; line-height: 1.5;">
+      نشسته یا ایستاده روبروی دوربین؛ زانوها را کاملاً صاف نگه دارید و نوک دست‌ها را به سمت پنجه پا به جلو امتداد دهید.
+    </p>
+    <div class="big"><span id="flexibilityPanelCur">--</span></div>
+    <div style="background: rgba(30, 41, 59, 0.7); padding: 8px 10px; border-radius: 8px; margin: 6px 0; border: 1px solid #334155; font-size: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; text-align: center;">
+      <div>بیشترین رکورد: <strong id="flexibilityPanelMax" style="color: #facc15;">--</strong></div>
+      <div>ارزیابی انعطاف: <strong id="flexibilityPanelRating" style="color: #4ade80;">--</strong></div>
+    </div>
+    <div class="btnRow">
+      <button id="flexibilityRecordBtn">ثبت این رکورد</button>
+      <button id="flexibilityResetBtn" class="secondary">صفر کردن رکورد</button>
+      <button id="flexibilitySaveBtn" class="secondary">ذخیره در تاریخچه</button>
+    </div>
+  </div>
+
+  <!-- Anthropometry (قد، قد میان‌تنه، طول دست و نسبت‌ها) panel -->
+  <div id="anthroPanel" class="panel">
+    <div style="font-weight: bold; font-size: 15px; color: #38bdf8;">📐 آزمون ابعاد اسکلتی و آنتروپومتری</div>
+    <p style="font-size: 11px; color: #94a3b8; margin: 4px 0; line-height: 1.5;">
+      صاف روبروی دوربین بایستید تا قد کامل، قد نشسته/میان‌تنه، طول دو دست و شاخص‌های کورمیک و Ape Index محاسبه شوند.
+    </p>
+    
+    <div style="background: rgba(15, 23, 42, 0.85); padding: 8px; border-radius: 8px; margin: 6px 0; border: 1px solid #334155; font-size: 11px; display: flex; flex-direction: column; gap: 5px;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span style="color: #94a3b8;">شاخص کورمیک (Cormic Index):</span>
+        <strong id="anthroCormicDesc" style="color: #38bdf8;">--</strong>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span style="color: #94a3b8;">نسبت طول دست به قد (Ape Index):</span>
+        <strong id="anthroApeDesc" style="color: #4ade80;">--</strong>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span style="color: #94a3b8;">طول اندام تحتانی (پاها):</span>
+        <strong id="anthroLegDesc" style="color: #f59e0b;">--</strong>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; margin: 6px 0;">
+      <div>
+        <label style="font-size: 10px; color: #94a3b8; display: block; text-align: center;">قد (cm):</label>
+        <input type="number" id="anthroHeightInput" style="width: 100%; background: #0f172a; border: 1px solid #334155; color: #fff; padding: 4px; border-radius: 6px; font-size: 11px; text-align: center;" />
+      </div>
+      <div>
+        <label style="font-size: 10px; color: #94a3b8; display: block; text-align: center;">میان‌تنه (cm):</label>
+        <input type="number" id="anthroTrunkInput" style="width: 100%; background: #0f172a; border: 1px solid #334155; color: #fff; padding: 4px; border-radius: 6px; font-size: 11px; text-align: center;" />
+      </div>
+      <div>
+        <label style="font-size: 10px; color: #94a3b8; display: block; text-align: center;">طول دست (cm):</label>
+        <input type="number" id="anthroWingspanInput" style="width: 100%; background: #0f172a; border: 1px solid #334155; color: #fff; padding: 4px; border-radius: 6px; font-size: 11px; text-align: center;" />
+      </div>
+    </div>
+
+    <div class="btnRow">
+      <button id="anthroScanBtn">📸 اسکن خودکار با دوربین</button>
+      <button id="anthroSaveBtn" class="secondary">💾 ثبت در پرونده ورزشکار</button>
     </div>
   </div>
 

@@ -7,9 +7,9 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>حرکت‌سنج</title>
-<meta name="description" content="سامانه اندازه‌گیری سرعت دو و ارتفاع پرش با پردازش تصویر و تشخیص ژست بدنی">
+<meta name="description" content="سامانه استعدادیابی ورزشی و ارزیابی بیومکانیک: آزمون‌های پرش عمودی و باسکو، دراز و نشست، شنا سوئدی، سرعت دو، پروفایل ورزشکاران، نمودار روند پیشرفت و خروجی رسمی PDF">
 <meta property="og:title" content="حرکت‌سنج">
-<meta property="og:description" content="سامانه اندازه‌گیری سرعت دو و ارتفاع پرش با پردازش تصویر و تشخیص ژست بدنی">
+<meta property="og:description" content="سامانه استعدادیابی ورزشی و ارزیابی بیومکانیک: آزمون‌های پرش عمودی و باسکو، دراز و نشست، شنا سوئدی، سرعت دو، پروفایل ورزشکاران، نمودار روند پیشرفت و خروجی رسمی PDF">
 
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0f172a">
@@ -479,6 +479,17 @@
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
   }
 
+  .boscoDurBtn, .situpDurBtn, .pushupDurBtn, .pushupTypeBtn {
+    transition: all 0.15s ease;
+  }
+  .boscoDurBtn.active, .situpDurBtn.active, .pushupDurBtn.active, .pushupTypeBtn.active {
+    background: #0284c7 !important;
+    border-color: #38bdf8 !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
+  }
+
   #gateControls.visible {
     display: flex;
     animation: panelSlideUpFade 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -531,14 +542,14 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: calc(100% - 32px);
-    max-width: 380px;
-    max-height: 65vh;
+    width: calc(100% - 24px);
+    max-width: 480px;
+    max-height: 85vh;
     z-index: 20;
     background: rgba(15, 23, 42, 0.98);
     border: 2px solid #334155;
     border-radius: 18px;
-    padding: 18px;
+    padding: 16px;
     color: #e2e8f0;
     display: none;
     text-align: center;
@@ -554,13 +565,13 @@
 
   #historyPanel h3 {
     font-size: 16px;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
   }
 
   #historyList {
     text-align: right;
-    margin: 10px 0;
-    max-height: 35vh;
+    margin: 8px 0;
+    max-height: 38vh;
     overflow-y: auto;
   }
 
@@ -576,6 +587,9 @@
     font-size: 11px;
     color: #94a3b8;
     margin-bottom: 3px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
   }
 
   .historyItem .data {
@@ -586,6 +600,374 @@
   .historyItem .data span {
     color: #4ade80;
     font-weight: 600;
+  }
+
+  .athleteBadgeTag {
+    font-size: 10px;
+    background: rgba(56, 189, 248, 0.2);
+    color: #38bdf8;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    border: 1px solid rgba(56, 189, 248, 0.35);
+  }
+
+  /* ================== HISTORY TABS & RECHARTS ================== */
+  .historyTabs {
+    display: flex;
+    gap: 6px;
+    margin: 8px 0 10px 0;
+    background: rgba(30, 41, 59, 0.8);
+    padding: 4px;
+    border-radius: 10px;
+    border: 1px solid #334155;
+  }
+  .historyTabBtn {
+    flex: 1;
+    background: transparent !important;
+    color: #94a3b8 !important;
+    border: none !important;
+    border-radius: 7px !important;
+    padding: 6px 8px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    min-height: auto !important;
+    margin: 0 !important;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .historyTabBtn.active {
+    background: #0284c7 !important;
+    color: #ffffff !important;
+  }
+  .historyFilterRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 11px;
+    color: #94a3b8;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 6px 10px;
+    margin-bottom: 8px;
+  }
+  .historyFilterRow select, .trendControlRow select {
+    background: #1e293b;
+    color: #38bdf8;
+    border: 1px solid #475569;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 11px;
+    direction: rtl;
+  }
+  .trendControlRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 11px;
+    color: #cbd5e1;
+    margin-bottom: 8px;
+  }
+  .trendSummaryCards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .trendCard {
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 6px 4px;
+    text-align: center;
+  }
+  .trendCardLabel {
+    font-size: 9px;
+    color: #94a3b8;
+    margin-bottom: 2px;
+  }
+  .trendCardVal {
+    font-size: 13px;
+    font-weight: bold;
+    color: #4ade80;
+  }
+
+  /* ================== GUIDED SETUP TOUR OVERLAY ================== */
+  #setupTourOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 350;
+    background: rgba(0, 0, 0, 0.72);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  #setupTourOverlay.visible {
+    display: flex;
+    animation: tourFadeIn 0.25s ease-out forwards;
+  }
+  @keyframes tourFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .tour-spotlight {
+    position: fixed;
+    border-radius: 12px;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.78), 0 0 24px rgba(56, 189, 248, 0.95);
+    border: 2px solid #38bdf8;
+    pointer-events: none;
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 351;
+  }
+  .tour-tooltip-card {
+    position: relative;
+    z-index: 352;
+    background: #0f172a;
+    border: 2px solid #38bdf8;
+    border-radius: 16px;
+    padding: 16px;
+    width: 100%;
+    max-width: 380px;
+    color: #e2e8f0;
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.8), 0 0 15px rgba(56, 189, 248, 0.3);
+    text-align: right;
+  }
+  .tour-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #334155;
+  }
+  .tour-step-badge {
+    background: rgba(56, 189, 248, 0.2);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    font-size: 11px;
+    font-weight: bold;
+    padding: 3px 10px;
+    border-radius: 9999px;
+  }
+  .tour-skip-btn {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    font-size: 12px;
+    cursor: pointer;
+    padding: 2px 6px;
+  }
+  .tour-skip-btn:hover { color: #f87171; }
+  .tour-content .tour-icon {
+    font-size: 30px;
+    margin-bottom: 4px;
+    text-align: center;
+  }
+  .tour-content .tour-title {
+    font-size: 14px;
+    font-weight: bold;
+    color: #38bdf8;
+    margin-bottom: 6px;
+    text-align: center;
+  }
+  .tour-content .tour-desc {
+    font-size: 12px;
+    color: #cbd5e1;
+    line-height: 1.6;
+    margin-bottom: 8px;
+  }
+  .tour-specs {
+    background: rgba(30, 41, 59, 0.7);
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 11px;
+    margin-bottom: 12px;
+    line-height: 1.6;
+  }
+  .tour-specs strong { color: #facc15; }
+  .tour-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+  .tour-btn {
+    padding: 8px 14px;
+    font-size: 12px;
+    font-weight: bold;
+    border-radius: 8px;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+  }
+  .tour-btn.primary { background: #0284c7; color: #fff; flex: 2; }
+  .tour-btn.primary:hover { background: #0369a1; }
+  .tour-btn.secondary { background: #1e293b; color: #94a3b8; border: 1px solid #475569; flex: 1; }
+  .tour-btn.secondary:disabled { opacity: 0.3; cursor: not-allowed; }
+  .tour-dots {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+  .tour-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #475569;
+    transition: all 0.2s;
+  }
+  .tour-dot.active {
+    background: #38bdf8;
+    width: 14px;
+    border-radius: 4px;
+  }
+
+  /* ================== ATHLETE PROFILE BADGE & MODAL ================== */
+  .athlete-badge-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(2, 132, 199, 0.2) !important;
+    border: 1px solid rgba(56, 189, 248, 0.4) !important;
+    color: #38bdf8 !important;
+    padding: 4px 8px !important;
+    border-radius: 8px !important;
+    font-size: 12px !important;
+    cursor: pointer;
+    font-weight: 500;
+  }
+  .athlete-badge-btn:hover {
+    background: rgba(2, 132, 199, 0.35) !important;
+  }
+  .athleteItem {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid #475569;
+    border-radius: 8px;
+    padding: 8px 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .athleteItem.active {
+    background: rgba(2, 132, 199, 0.25);
+    border-color: #38bdf8;
+  }
+  .athleteItem:hover {
+    border-color: #38bdf8;
+  }
+
+  /* ================== PDF REPORT STYLING & PRINT MEDIA ================== */
+  .pdfReportDoc {
+    background: #ffffff;
+    color: #0f172a;
+    border-radius: 10px;
+    padding: 16px;
+    text-align: right;
+    font-family: Tahoma, system-ui, sans-serif;
+    line-height: 1.5;
+    font-size: 12px;
+  }
+  .pdfHeader {
+    border-bottom: 2px solid #0284c7;
+    padding-bottom: 8px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .pdfAthleteGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 10px;
+    font-size: 11px;
+  }
+  .pdfAthleteGrid strong { color: #0284c7; }
+  .pdfMetricsRow {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .pdfMetricBox {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 6px 4px;
+    text-align: center;
+  }
+  .pdfMetricBox .title { font-size: 10px; color: #64748b; }
+  .pdfMetricBox .val { font-size: 13px; font-weight: bold; color: #0f172a; margin-top: 2px; }
+  .pdfTable {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10px;
+    margin-bottom: 10px;
+  }
+  .pdfTable th, .pdfTable td {
+    border: 1px solid #cbd5e1;
+    padding: 5px 3px;
+    text-align: center;
+  }
+  .pdfTable th { background: #e2e8f0; font-weight: bold; color: #1e293b; }
+  .pdfTable tr:nth-child(even) { background: #f8fafc; }
+  .pdfRecommendations {
+    background: #eff6ff;
+    border-right: 4px solid #0284c7;
+    padding: 8px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    margin-bottom: 12px;
+    line-height: 1.6;
+  }
+  .pdfSignatures {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 15px 0;
+    font-size: 11px;
+    border-top: 1px dashed #cbd5e1;
+    margin-top: 10px;
+  }
+
+  @media print {
+    body * {
+      visibility: hidden !important;
+    }
+    #pdfReportModal, #pdfReportDocument, #pdfReportDocument * {
+      visibility: visible !important;
+    }
+    #pdfReportModal {
+      position: absolute !important;
+      left: 0 !important;
+      top: 0 !important;
+      width: 100% !important;
+      max-width: none !important;
+      max-height: none !important;
+      background: #ffffff !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      border: none !important;
+      box-shadow: none !important;
+      display: block !important;
+    }
+    #pdfReportDocument {
+      padding: 12mm !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+    }
+    #pdfReportModal .btnRow, #pdfReportModal h3, #closePdfModalXBtn {
+      display: none !important;
+    }
   }
 
   #historyPanel button, #settingsPanel button {
@@ -1049,6 +1431,62 @@
     </div>
   </div>
 
+  <!-- Sit-up (دراز و نشست) HUD -->
+  <div id="situpHud" class="liveHud">
+    <div class="hudRow">
+      <div class="hudMetric">
+        <span class="hudLabel">⏱️ زمان باقیمانده</span>
+        <span class="hudVal warn" id="situpTimerVal">30.0s</span>
+      </div>
+      <div class="hudMetric">
+        <span class="hudLabel">🧘 تکرار صحیح</span>
+        <span class="hudVal accent" id="situpCountVal">0</span>
+      </div>
+      <div class="hudMetric">
+        <span class="hudLabel">📐 زاویه تنه-ران</span>
+        <span class="hudVal" id="situpAngleVal">--°</span>
+      </div>
+    </div>
+    <div class="hudRow">
+      <div class="hudMetric">
+        <span class="hudLabel">🚦 وضعیت حرکت</span>
+        <span class="hudVal" id="situpStatusVal">آماده باش</span>
+      </div>
+      <div class="hudMetric">
+        <span class="hudLabel">⚡ ریتم (تکرار/دقیقه)</span>
+        <span class="hudVal accent" id="situpCadenceVal">0</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Push-up (شنا سوئدی) HUD -->
+  <div id="pushupHud" class="liveHud">
+    <div class="hudRow">
+      <div class="hudMetric">
+        <span class="hudLabel">⏱️ زمان باقیمانده</span>
+        <span class="hudVal warn" id="pushupTimerVal">30.0s</span>
+      </div>
+      <div class="hudMetric">
+        <span class="hudLabel">💪 تکرار صحیح</span>
+        <span class="hudVal accent" id="pushupCountVal">0</span>
+      </div>
+      <div class="hudMetric">
+        <span class="hudLabel">📐 زاویه آرنج</span>
+        <span class="hudVal" id="pushupAngleVal">--°</span>
+      </div>
+    </div>
+    <div class="hudRow">
+      <div class="hudMetric">
+        <span class="hudLabel">🚦 وضعیت فرم و عمق</span>
+        <span class="hudVal" id="pushupStatusVal">آماده باش</span>
+      </div>
+      <div class="hudMetric">
+        <span class="hudLabel">📏 خط تنه و پلانک</span>
+        <span class="hudVal" id="pushupPlankVal">صاف</span>
+      </div>
+    </div>
+  </div>
+
   <!-- Floating Zoom Control for Multi-lens / Android -->
   <div id="cameraZoomControls" style="display: none;"></div>
 
@@ -1057,7 +1495,12 @@
     <!-- Action bar: icons + FPS -->
     <div id="actionBar">
       <div id="actionButtons">
-        <button id="historyBtn" title="تاریخچه">📊</button>
+        <button id="athleteProfileBtn" class="athlete-badge-btn" title="پروفایل و انتخاب ورزشکار">
+          <span>👤</span>
+          <span id="activeAthleteBtnName" style="max-width: 65px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">ورزشکار ۱</span>
+        </button>
+        <button id="guideTourBtn" title="تور راهنمای استقرار دوربین و کالیبراسیون">🎓</button>
+        <button id="historyBtn" title="تاریخچه و نمودار پیشرفت">📊</button>
         <button id="settingsBtn" title="تنظیمات">⚙️</button>
         <button id="orientationLockBtn" title="قفل جهت">🔓</button>
         <button id="cameraFitToggleBtn" title="تغییر کادر دوربین (دید کامل واید / تمام صفحه)">📐</button>
@@ -1073,7 +1516,9 @@
     <div id="modeBar" style="display:none;">
       <button id="modeRunBtn" class="modeBtn active">🏃 دو</button>
       <button id="modeJumpBtn" class="modeBtn">⤴️ پرش تک</button>
-      <button id="modeBoscoBtn" class="modeBtn">⏱️ پرش ۳۰ ثانیه</button>
+      <button id="modeBoscoBtn" class="modeBtn">⏱️ پرش متوالی</button>
+      <button id="modeSitupBtn" class="modeBtn">🧘 دراز و نشست</button>
+      <button id="modePushupBtn" class="modeBtn">💪 شنا سوئدی</button>
       <button id="modeWingspanBtn" class="modeBtn">📏 طول دست‌ها</button>
       <button id="modeDistanceBtn" class="modeBtn">📐 فاصله اجسام</button>
     </div>
@@ -1082,7 +1527,7 @@
   <div id="startOverlay">
     <h2>حرکت‌سنج</h2>
     <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin: 4px 0 12px 0;">
-      <span class="version" id="appVersionDisplay" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 2px 10px; border-radius: 9999px; font-size: 11px; border: 1px solid rgba(56, 189, 248, 0.3);">نسخه 1.5.3</span>
+      <span class="version" id="appVersionDisplay" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 2px 10px; border-radius: 9999px; font-size: 11px; border: 1px solid rgba(56, 189, 248, 0.3);">نسخه 1.7.0 (استعدادیابی و پروفایل)</span>
       <button type="button" id="clearCacheReloadBtn" style="background: rgba(255, 255, 255, 0.08); color: #cbd5e1; border: 1px solid #475569; border-radius: 8px; padding: 3px 10px; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 4px;" title="پاکسازی کش مرورگر و بارگذاری نسخه جدید">
         <span>🔄</span>
         <span>بروزرسانی کش</span>
@@ -1104,14 +1549,193 @@
     </div>
   </div>
 
+  <!-- Guided Setup Tour Overlay -->
+  <div id="setupTourOverlay">
+    <div id="tourSpotlight" class="tour-spotlight" style="display: none;"></div>
+    <div id="tourTooltipCard" class="tour-tooltip-card">
+      <div class="tour-card-header">
+        <span class="tour-step-badge" id="tourStepBadge">گام ۱ از ۷</span>
+        <button id="tourSkipBtn" class="tour-skip-btn">✕ رد شدن</button>
+      </div>
+      <div class="tour-content">
+        <div class="tour-icon" id="tourStepIcon">🎯</div>
+        <h4 class="tour-title" id="tourStepTitle">راهنمای استقرار و کالیبراسیون</h4>
+        <div class="tour-desc" id="tourStepDesc">توضیحات و نحوه آماده‌سازی سامانه</div>
+        <div class="tour-specs" id="tourStepSpecs"></div>
+      </div>
+      <div class="tour-footer">
+        <button id="tourPrevBtn" class="tour-btn secondary" disabled>قبلی</button>
+        <div class="tour-dots" id="tourDotsContainer"></div>
+        <button id="tourNextBtn" class="tour-btn primary">بعدی</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Athlete Profile Modal -->
+  <div id="athleteProfileModal" class="panel" style="display: none; max-width: 440px; max-height: 85vh; z-index: 50; overflow-y: auto; text-align: right;">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 8px; margin-bottom: 10px;">
+      <h3 style="margin: 0; color: #38bdf8; font-size: 16px;">👤 مدیریت و انتخاب پروفایل ورزشکار</h3>
+      <button id="closeAthleteModalXBtn" style="background: none; border: none; color: #94a3b8; font-size: 18px; cursor: pointer; padding: 0 4px; width: auto; min-height: auto;">✕</button>
+    </div>
+
+    <!-- Active Athlete Banner -->
+    <div id="activeAthleteCard" style="background: linear-gradient(135deg, rgba(2,132,199,0.25), rgba(15,23,42,0.85)); border: 1px solid rgba(56,189,248,0.4); border-radius: 12px; padding: 12px; margin-bottom: 12px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="font-size: 28px; background: rgba(56,189,248,0.2); width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid #38bdf8;">👤</div>
+        <div style="flex: 1;">
+          <div style="font-size: 15px; font-weight: bold; color: #fff;" id="activeProfileName">ورزشکار ۱</div>
+          <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;" id="activeProfileDetails">کد: ۱۰۱ • قد: ۱۷۵ سانتی‌متر • سن: ۱۶ سال</div>
+        </div>
+        <span style="font-size: 11px; background: #16a34a; color: #fff; padding: 3px 8px; border-radius: 9999px;">فعال</span>
+      </div>
+    </div>
+
+    <!-- Profiles List -->
+    <div style="font-size: 12px; color: #94a3b8; margin-bottom: 6px;">انتخاب ورزشکار جهت ثبت آزمون:</div>
+    <div id="athletesListContainer" style="max-height: 180px; overflow-y: auto; margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;"></div>
+
+    <!-- Add/Edit Athlete Section -->
+    <div style="border-top: 1px solid #334155; padding-top: 10px;">
+      <button type="button" id="toggleAddAthleteBtn" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 8px; font-size: 12px; padding: 7px 12px; width: 100%; cursor: pointer;">
+        ➕ افزودن ورزشکار جدید
+      </button>
+
+      <form id="addAthleteForm" style="display: none; margin-top: 10px; background: rgba(30,41,59,0.7); border: 1px solid #475569; border-radius: 10px; padding: 10px;">
+        <div style="display: flex; gap: 6px; margin-bottom: 6px;">
+          <div style="flex: 2;">
+            <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 2px;">نام و نام خانوادگی:</label>
+            <input type="text" id="newAthleteName" required placeholder="مثال: علی رضایی" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; font-size: 12px;">
+          </div>
+          <div style="flex: 1;">
+            <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 2px;">کد / شناسه:</label>
+            <input type="text" id="newAthleteCode" placeholder="۱۰۲" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; font-size: 12px;">
+          </div>
+        </div>
+        <div style="display: flex; gap: 6px; margin-bottom: 6px;">
+          <div style="flex: 1;">
+            <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 2px;">قد (cm):</label>
+            <input type="number" id="newAthleteHeight" min="100" max="230" value="175" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; font-size: 12px;">
+          </div>
+          <div style="flex: 1;">
+            <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 2px;">سن (سال):</label>
+            <input type="number" id="newAthleteAge" min="5" max="90" value="16" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; font-size: 12px;">
+          </div>
+          <div style="flex: 1;">
+            <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 2px;">جنسیت:</label>
+            <select id="newAthleteGender" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; font-size: 12px;">
+              <option value="male">پسر / آقا</option>
+              <option value="female">دختر / خانم</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-bottom: 8px;">
+          <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 2px;">رشته ورزشی (اختیاری):</label>
+          <input type="text" id="newAthleteSport" placeholder="مثال: بسکتبال، والیبال، دو و میدانی" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; font-size: 12px;">
+        </div>
+        <div style="display: flex; gap: 6px;">
+          <button type="submit" style="flex: 2; background: #22c55e; color: #052e16; font-size: 12px; padding: 7px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">ثبت ورزشکار</button>
+          <button type="button" id="cancelAddAthleteBtn" style="flex: 1; background: transparent; color: #94a3b8; border: 1px solid #475569; font-size: 12px; padding: 7px; border-radius: 6px; cursor: pointer;">انصراف</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="btnRow" style="margin-top: 12px;">
+      <button id="closeAthleteModalBtn" class="secondary">بستن</button>
+    </div>
+  </div>
+
   <!-- History Panel -->
   <div id="historyPanel">
-    <h3>📋 تاریخچه اندازه‌گیری‌ها</h3>
-    <div id="historyList"></div>
-    <div class="btnRow">
-      <button id="downloadCsvBtn" class="primary-blue">📥 دانلود فایل اکسل (CSV)</button>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+      <h3 style="margin: 0; color: #38bdf8;">📋 تاریخچه و تحلیل نتایج</h3>
+      <button id="historyCloseXBtn" style="background: none; border: none; color: #94a3b8; font-size: 18px; cursor: pointer; padding: 0 4px; min-height: auto; width: auto;">✕</button>
+    </div>
+
+    <!-- Tab navigation: Records List vs Progress Trend -->
+    <div class="historyTabs">
+      <button id="historyTabRecordsBtn" class="historyTabBtn active">📋 سوابق آزمون‌ها</button>
+      <button id="historyTabTrendBtn" class="historyTabBtn">📈 روند پیشرفت (Recharts)</button>
+    </div>
+
+    <!-- Filter row: Athlete selection filter -->
+    <div class="historyFilterRow">
+      <span>فیلتر ورزشکار:</span>
+      <select id="historyAthleteFilter">
+        <option value="all">👥 همه ورزشکاران</option>
+      </select>
+    </div>
+
+    <!-- View 1: Records list -->
+    <div id="historyRecordsView">
+      <div id="historyList"></div>
+    </div>
+
+    <!-- View 2: Progress Trend (Recharts) -->
+    <div id="historyTrendView" style="display: none; text-align: right;">
+      <div class="trendControlRow">
+        <label for="trendMetricSelect">شاخص آزمون:</label>
+        <select id="trendMetricSelect">
+          <option value="jump">⤴️ ارتفاع پرش تک (cm)</option>
+          <option value="bosco_jumps">⏱️ پرش متوالی Bosco (تعداد پرش)</option>
+          <option value="bosco_height">⏱️ پرش متوالی Bosco (بیشترین ارتفاع cm)</option>
+          <option value="situp">🧘 دراز و نشست (تعداد تکرار صحیح)</option>
+          <option value="pushup">💪 شنا سوئدی (تعداد تکرار)</option>
+          <option value="run">🏃 سرعت دویدن (متر بر ثانیه)</option>
+          <option value="wingspan">📏 طول دو دست (cm)</option>
+        </select>
+      </div>
+
+      <!-- Trend summary cards -->
+      <div id="trendSummaryCards" class="trendSummaryCards">
+        <div class="trendCard">
+          <div class="trendCardLabel">بهترین رکورد</div>
+          <div class="trendCardVal" id="trendCardBest">--</div>
+        </div>
+        <div class="trendCard">
+          <div class="trendCardLabel">میانگین کل</div>
+          <div class="trendCardVal" id="trendCardAvg">--</div>
+        </div>
+        <div class="trendCard">
+          <div class="trendCardLabel">آخرین جلسه</div>
+          <div class="trendCardVal" id="trendCardLatest">--</div>
+        </div>
+        <div class="trendCard">
+          <div class="trendCardLabel">روند و تغییر</div>
+          <div class="trendCardVal" id="trendCardChange">--</div>
+        </div>
+      </div>
+
+      <!-- Container for Recharts chart -->
+      <div id="rechartsRootContainer" style="width: 100%; height: 260px; min-height: 240px; margin-top: 8px;"></div>
+      <div id="trendNoDataMsg" style="display: none; color: #94a3b8; font-size: 12px; padding: 24px 10px; text-align: center; background: rgba(30,41,59,0.5); border-radius: 10px; margin-top: 8px;">
+        برای این شاخص حداقل ۲ آزمون ثبت‌شده نیاز است تا نمودار روند پیشرفت ترسیم شود.
+      </div>
+    </div>
+
+    <div class="btnRow" style="margin-top: 10px;">
+      <button id="exportPdfBtn" class="primary-blue" style="background: linear-gradient(135deg, #0284c7, #0369a1); font-weight: bold;">📄 خروجی گزارش رسمی (PDF)</button>
+      <button id="downloadCsvBtn" class="secondary">📥 دانلود فایل اکسل (CSV)</button>
       <button id="clearHistoryBtn" class="secondary">پاک کردن همه</button>
       <button id="closeHistoryBtn">بستن</button>
+    </div>
+  </div>
+
+  <!-- PDF Report Preview & Export Modal -->
+  <div id="pdfReportModal" class="panel" style="display: none; max-width: 520px; max-height: 88vh; z-index: 60; overflow-y: auto; text-align: right;">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 8px; margin-bottom: 10px;">
+      <h3 style="margin: 0; color: #38bdf8; font-size: 16px;">📄 گزارش رسمی ارزیابی و استعدادیابی (PDF)</h3>
+      <button id="closePdfModalXBtn" style="background: none; border: none; color: #94a3b8; font-size: 18px; cursor: pointer; padding: 0 4px; width: auto; min-height: auto;">✕</button>
+    </div>
+
+    <!-- Formatted Printable / Exportable Sheet -->
+    <div id="pdfReportDocument" class="pdfReportDoc">
+      <!-- Generated dynamically by renderPdfReport() -->
+    </div>
+
+    <div class="btnRow" style="margin-top: 14px;">
+      <button id="downloadPdfDirectBtn" class="primary-blue" style="font-weight: bold; background: #0284c7;">📥 دانلود مستقیم فایل PDF</button>
+      <button id="printPdfWindowBtn" class="secondary" style="border: 1px solid #38bdf8; color: #38bdf8;">🖨️ چاپ مستقیم / ذخیره با مرورگر (Print)</button>
+      <button id="closePdfReportBtn" class="secondary">بستن</button>
     </div>
   </div>
 
@@ -1149,15 +1773,18 @@
     </div>
 
     <!-- Scale Calibration with Reference Object (A4 / Ruler) Button in Settings -->
-    <div style="margin: 4px 0 8px 0;">
+    <div style="margin: 4px 0 8px 0; display: flex; flex-direction: column; gap: 6px;">
       <button type="button" id="startObjectCalibSettingsBtn" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; font-size: 11px; padding: 7px 12px; border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 8px; cursor: pointer; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px;">
         <span>📏 کالیبراسیون خودکار مقیاس با کاغذ A4 یا خط‌کش</span>
+      </button>
+      <button type="button" id="startGuidedTourSettingsBtn" style="background: rgba(168, 85, 247, 0.15); color: #c084fc; font-size: 11px; padding: 7px 12px; border: 1px solid rgba(168, 85, 247, 0.35); border-radius: 8px; cursor: pointer; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px;">
+        <span>🎓 بازکردن تور راهنمای استقرار دوربین و کالیبراسیون</span>
       </button>
     </div>
 
     <div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid #334155; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px;">
       <button type="button" id="openCameraSettingsBtn" style="background: rgba(56, 189, 248, 0.12); color: #38bdf8; font-size: 12px; padding: 7px 14px; border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; cursor: pointer; width: 100%;">📷 انتخاب دوربین و تعویض لنز (فوق‌عریض / زوم)</button>
-      <span style="font-size: 11px; color: #94a3b8;">نسخه فعلی: <strong style="color: #38bdf8;">1.5.4</strong></span>
+      <span style="font-size: 11px; color: #94a3b8;">نسخه فعلی: <strong style="color: #38bdf8;">1.7.0 (استعدادیابی و پروفایل)</strong></span>
       <button type="button" id="clearCacheFromSettingsBtn" style="background: rgba(239, 68, 68, 0.15); color: #fca5a5; font-size: 11px; padding: 6px 14px; border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; cursor: pointer;">🔄 پاکسازی کش و تازه‌سازی کامل</button>
     </div>
 
@@ -1292,16 +1919,34 @@
 
   <!-- Bosco continuous jump panels -->
   <div id="boscoStartPanel" class="panel">
-    <div style="font-weight: bold; font-size: 15px; color: #38bdf8;">⏱️ آزمون ۳۰ ثانیه پرش مداوم (بوسکو)</div>
+    <div style="font-weight: bold; font-size: 15px; color: #38bdf8;">⏱️ آزمون پرش متوالی (استعدادیابی توان و استقامت)</div>
     <p style="font-size: 11px; color: #94a3b8; margin: 6px 0; line-height: 1.6;">
-      در این آزمون، بازیکن ۳۰ ثانیه پرش‌های عمودی متوالی انجام می‌دهد (حداکثر ۳۰ پرش). زمان در هوا بودن، زمان لمس زمین، و توان ثبت می‌شود.
+      در این آزمون استعدادیابی، ورزشکار پرش‌های عمودی متوالی انجام می‌دهد. زمان در هوا بودن، زمان لمس زمین، ارتفاع و شاخص توان انفجاری ثبت می‌شود.
     </p>
+
+    <!-- Duration presets & custom input -->
+    <div style="background: rgba(15, 23, 42, 0.75); border: 1px solid #334155; border-radius: 12px; padding: 8px 10px; margin: 8px 0;">
+      <div style="font-size: 11px; color: #cbd5e1; margin-bottom: 6px; text-align: center;">انتخاب مدت زمان آزمون پرش:</div>
+      <div id="boscoDurationPresets" style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
+        <button type="button" class="boscoDurBtn" data-sec="5" style="flex: 1; min-width: 48px; padding: 6px 2px; font-size: 11px; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: #cbd5e1; cursor: pointer;">۵ ثانیه</button>
+        <button type="button" class="boscoDurBtn" data-sec="10" style="flex: 1; min-width: 48px; padding: 6px 2px; font-size: 11px; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: #cbd5e1; cursor: pointer;">۱۰ ثانیه</button>
+        <button type="button" class="boscoDurBtn" data-sec="15" style="flex: 1; min-width: 48px; padding: 6px 2px; font-size: 11px; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: #cbd5e1; cursor: pointer;">۱۵ ثانیه</button>
+        <button type="button" class="boscoDurBtn active" data-sec="30" style="flex: 1; min-width: 48px; padding: 6px 2px; font-size: 11px; border-radius: 8px; border: 1px solid #38bdf8; background: #0284c7; color: #ffffff; cursor: pointer;">۳۰ ثانیه</button>
+        <button type="button" class="boscoDurBtn" data-sec="60" style="flex: 1; min-width: 48px; padding: 6px 2px; font-size: 11px; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: #cbd5e1; cursor: pointer;">۶۰ ثانیه</button>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 8px;">
+        <span style="font-size: 11px; color: #94a3b8;">زمان دلخواه:</span>
+        <input type="number" id="boscoCustomSecInput" min="3" max="180" step="1" value="30" style="width: 60px; padding: 4px 6px; font-size: 12px; text-align: center; border-radius: 6px; border: 1px solid #475569; background: #1e293b; color: #fff;">
+        <span style="font-size: 11px; color: #94a3b8;">ثانیه</span>
+      </div>
+    </div>
+
     <button id="boscoStartBtn">شروع آزمون (با شمارش معکوس)</button>
     <button id="boscoCancelBtn" class="secondary">انصراف</button>
   </div>
 
   <div id="boscoResultPanel" class="panel" style="max-height: 65vh;">
-    <div style="font-weight: bold; font-size: 16px; color: #4ade80;">🏆 نتایج آزمون ۳۰ ثانیه پرش</div>
+    <div style="font-weight: bold; font-size: 16px; color: #4ade80;" id="boscoResultTitle">🏆 نتایج آزمون پرش متوالی</div>
     
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 8px 0; text-align: center; font-size: 11px;">
       <div style="background: rgba(30,41,59,0.7); padding: 6px; border-radius: 8px; border: 1px solid #334155;">
@@ -1349,6 +1994,139 @@
     <div class="btnRow">
       <button id="boscoAgainBtn">آزمون مجدد</button>
       <button id="boscoSaveBtn" class="secondary">ذخیره در تاریخچه</button>
+    </div>
+  </div>
+
+  <!-- Sit-up (دراز و نشست) panels -->
+  <div id="situpStartPanel" class="panel">
+    <div style="font-weight: bold; font-size: 15px; color: #38bdf8;">🧘 آزمون دراز و نشست (استعدادیابی آمادگی جسمانی)</div>
+    <p style="font-size: 11px; color: #94a3b8; margin: 6px 0; line-height: 1.6;">
+      این آزمون استقامت عضلانی شکم و کنترل ثبات تنه را می‌سنجد. به پشت دراز بکشید، زانوها را ۹۰ درجه خم کنید و دست‌ها را کنار سر یا سینه نگه دارید.
+    </p>
+
+    <div style="background: rgba(15, 23, 42, 0.75); border: 1px solid #334155; border-radius: 12px; padding: 8px 10px; margin: 8px 0;">
+      <div style="font-size: 11px; color: #cbd5e1; margin-bottom: 6px; text-align: center;">انتخاب مدت زمان آزمون دراز و نشست:</div>
+      <div id="situpDurationPresets" style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
+        <button type="button" class="situpDurBtn active" data-sec="30" style="flex: 1; min-width: 65px; padding: 6px 4px; font-size: 11px; border-radius: 8px; border: 1px solid #38bdf8; background: #0284c7; color: #ffffff; cursor: pointer;">۳۰ ثانیه (استاندارد)</button>
+        <button type="button" class="situpDurBtn" data-sec="60" style="flex: 1; min-width: 65px; padding: 6px 4px; font-size: 11px; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: #cbd5e1; cursor: pointer;">۶۰ ثانیه</button>
+        <button type="button" class="situpDurBtn" data-sec="0" style="flex: 1; min-width: 65px; padding: 6px 4px; font-size: 11px; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: #cbd5e1; cursor: pointer;">آزاد / تا خستگی</button>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 8px;">
+        <span style="font-size: 11px; color: #94a3b8;">زمان دلخواه:</span>
+        <input type="number" id="situpCustomSecInput" min="5" max="300" step="5" value="30" style="width: 60px; padding: 4px 6px; font-size: 12px; text-align: center; border-radius: 6px; border: 1px solid #475569; background: #1e293b; color: #fff;">
+        <span style="font-size: 11px; color: #94a3b8;">ثانیه</span>
+      </div>
+    </div>
+
+    <div style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; padding: 6px 8px; margin: 6px 0; font-size: 11px; color: #7dd3fc; text-align: right;">
+      💡 دوربین را در زاویه نیم‌رخ قرار دهید تا زاویه تنه، لگن و زانوها به وضوح دیده شوند.
+    </div>
+
+    <button id="situpStartBtn">شروع آزمون دراز و نشست</button>
+    <button id="situpCancelBtn" class="secondary">انصراف</button>
+  </div>
+
+  <div id="situpResultPanel" class="panel" style="max-height: 65vh;">
+    <div style="font-weight: bold; font-size: 16px; color: #4ade80;" id="situpResultTitle">🏆 نتایج آزمون دراز و نشست</div>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 8px 0; text-align: center; font-size: 11px;">
+      <div style="background: rgba(30,41,59,0.7); padding: 8px 6px; border-radius: 8px; border: 1px solid #334155;">
+        <span style="color: #94a3b8; display: block;">تعداد تکرار صحیح:</span>
+        <strong id="situpTotalReps" style="color: #4ade80; font-size: 22px;">0</strong>
+      </div>
+      <div style="background: rgba(30,41,59,0.7); padding: 8px 6px; border-radius: 8px; border: 1px solid #334155;">
+        <span style="color: #94a3b8; display: block;">مدت زمان آزمون:</span>
+        <strong id="situpTotalTime" style="color: #38bdf8; font-size: 18px;">30s</strong>
+      </div>
+      <div style="background: rgba(30,41,59,0.7); padding: 8px 6px; border-radius: 8px; border: 1px solid #334155;">
+        <span style="color: #94a3b8; display: block;">ریتم میانگین:</span>
+        <strong id="situpAvgCadence" style="color: #facc15; font-size: 15px;">0 تکرار/دقیقه</strong>
+      </div>
+      <div style="background: rgba(30,41,59,0.7); padding: 8px 6px; border-radius: 8px; border: 1px solid #334155;">
+        <span style="color: #94a3b8; display: block;">میانگین زمان هر تکرار:</span>
+        <strong id="situpAvgRepTime" style="color: #cbd5e1; font-size: 15px;">--</strong>
+      </div>
+    </div>
+
+    <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid #0284c7; border-radius: 10px; padding: 8px; margin: 8px 0; text-align: center;">
+      <div style="font-size: 11px; color: #94a3b8;">رتبه استعدادیابی استقامت تنه:</div>
+      <div id="situpTalentRating" style="font-size: 15px; font-weight: bold; color: #38bdf8; margin: 3px 0;">🌟 عالی (رتبه ممتاز)</div>
+      <div id="situpTalentDesc" style="font-size: 11px; color: #cbd5e1; line-height: 1.4;">عملکرد فوق‌العاده در ثبات عضلات مرکزی و آهنگ تکرارها.</div>
+    </div>
+
+    <div class="btnRow">
+      <button id="situpAgainBtn">آزمون مجدد</button>
+      <button id="situpSaveBtn" class="secondary">ذخیره در تاریخچه</button>
+    </div>
+  </div>
+
+  <!-- Push-up (شنا سوئدی) panels -->
+  <div id="pushupStartPanel" class="panel">
+    <div style="font-weight: bold; font-size: 15px; color: #38bdf8;">💪 آزمون شنا سوئدی (استعدادیابی بالاتنه)</div>
+    <p style="font-size: 11px; color: #94a3b8; margin: 6px 0; line-height: 1.6;">
+      این آزمون قدرت و استقامت عضلات سینه، پشت بازو و کمربند شانه را می‌سنجد. در وضعیت پلانک قرار بگیرید و در هر تکرار آرنج‌ها را تا ۹۰ درجه خم کنید.
+    </p>
+
+    <!-- Push-up Type (Standard vs Modified/Knees) -->
+    <div style="display: flex; gap: 6px; justify-content: center; margin: 6px 0;">
+      <button type="button" id="pushupTypeStdBtn" class="pushupTypeBtn active" data-type="standard" style="flex: 1; padding: 6px; font-size: 11px; border-radius: 8px; border: 1px solid #38bdf8; background: #0284c7; color: #ffffff; cursor: pointer;">شنا استاندارد (روی پنجه)</button>
+      <button type="button" id="pushupTypeModBtn" class="pushupTypeBtn" data-type="modified" style="flex: 1; padding: 6px; font-size: 11px; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: #cbd5e1; cursor: pointer;">شنا اصلاح‌شده (روی زانو)</button>
+    </div>
+
+    <!-- Duration presets & custom input -->
+    <div style="background: rgba(15, 23, 42, 0.75); border: 1px solid #334155; border-radius: 12px; padding: 8px 10px; margin: 8px 0;">
+      <div style="font-size: 11px; color: #cbd5e1; margin-bottom: 6px; text-align: center;">مدت زمان آزمون شنا سوئدی:</div>
+      <div id="pushupDurationPresets" style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
+        <button type="button" class="pushupDurBtn active" data-sec="30" style="flex: 1; min-width: 65px; padding: 6px 4px; font-size: 11px; border-radius: 8px; border: 1px solid #38bdf8; background: #0284c7; color: #ffffff; cursor: pointer;">۳۰ ثانیه (استاندارد)</button>
+        <button type="button" class="pushupDurBtn" data-sec="60" style="flex: 1; min-width: 65px; padding: 6px 4px; font-size: 11px; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: #cbd5e1; cursor: pointer;">۶۰ ثانیه</button>
+        <button type="button" class="pushupDurBtn" data-sec="0" style="flex: 1; min-width: 65px; padding: 6px 4px; font-size: 11px; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: #cbd5e1; cursor: pointer;">آزاد / تا خستگی</button>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 8px;">
+        <span style="font-size: 11px; color: #94a3b8;">زمان دلخواه:</span>
+        <input type="number" id="pushupCustomSecInput" min="5" max="300" step="5" value="30" style="width: 60px; padding: 4px 6px; font-size: 12px; text-align: center; border-radius: 6px; border: 1px solid #475569; background: #1e293b; color: #fff;">
+        <span style="font-size: 11px; color: #94a3b8;">ثانیه</span>
+      </div>
+    </div>
+
+    <div style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; padding: 6px 8px; margin: 6px 0; font-size: 11px; color: #7dd3fc; text-align: right;">
+      💡 دوربین را با زاویه ۴۵ تا ۹۰ درجه به صورت نیم‌رخ قرار دهید تا دست‌ها، شانه و خط تنه در تصویر باشند.
+    </div>
+
+    <button id="pushupStartBtn">شروع آزمون شنا سوئدی</button>
+    <button id="pushupCancelBtn" class="secondary">انصراف</button>
+  </div>
+
+  <div id="pushupResultPanel" class="panel" style="max-height: 65vh;">
+    <div style="font-weight: bold; font-size: 16px; color: #4ade80;" id="pushupResultTitle">🏆 نتایج آزمون شنا سوئدی</div>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 8px 0; text-align: center; font-size: 11px;">
+      <div style="background: rgba(30,41,59,0.7); padding: 8px 6px; border-radius: 8px; border: 1px solid #334155;">
+        <span style="color: #94a3b8; display: block;">تعداد تکرار صحیح:</span>
+        <strong id="pushupTotalReps" style="color: #4ade80; font-size: 22px;">0</strong>
+      </div>
+      <div style="background: rgba(30,41,59,0.7); padding: 8px 6px; border-radius: 8px; border: 1px solid #334155;">
+        <span style="color: #94a3b8; display: block;">مدت زمان آزمون:</span>
+        <strong id="pushupTotalTime" style="color: #38bdf8; font-size: 18px;">30s</strong>
+      </div>
+      <div style="background: rgba(30,41,59,0.7); padding: 8px 6px; border-radius: 8px; border: 1px solid #334155;">
+        <span style="color: #94a3b8; display: block;">ریتم میانگین:</span>
+        <strong id="pushupAvgCadence" style="color: #facc15; font-size: 15px;">0 تکرار/دقیقه</strong>
+      </div>
+      <div style="background: rgba(30,41,59,0.7); padding: 8px 6px; border-radius: 8px; border: 1px solid #334155;">
+        <span style="color: #94a3b8; display: block;">عمق میانگین آرنج:</span>
+        <strong id="pushupAvgDepth" style="color: #cbd5e1; font-size: 15px;">--°</strong>
+      </div>
+    </div>
+
+    <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid #0284c7; border-radius: 10px; padding: 8px; margin: 8px 0; text-align: center;">
+      <div style="font-size: 11px; color: #94a3b8;">رتبه استعدادیابی بالاتنه:</div>
+      <div id="pushupTalentRating" style="font-size: 15px; font-weight: bold; color: #38bdf8; margin: 3px 0;">🌟 عالی (آمادگی ممتاز بالاتنه)</div>
+      <div id="pushupTalentDesc" style="font-size: 11px; color: #cbd5e1; line-height: 1.4;">استقامت و ثبات کمربند شانه و بازو در شاخص‌های استعدادیابی ممتاز ثبت شد.</div>
+    </div>
+
+    <div class="btnRow">
+      <button id="pushupAgainBtn">آزمون مجدد</button>
+      <button id="pushupSaveBtn" class="secondary">ذخیره در تاریخچه</button>
     </div>
   </div>
 
@@ -1405,6 +2183,13 @@
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
 
-<script src="app.js?v=1.5.4&t=20260912g"></script>
+<!-- Libraries for Progress Trend (Recharts) and Official PDF Report -->
+<script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/recharts@2.12.7/umd/Recharts.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script src="app.js?v=1.7.0&t=20260913a"></script>
 </body>
 </html>

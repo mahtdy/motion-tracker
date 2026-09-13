@@ -1,6 +1,6 @@
 // Service Worker with advanced caching strategies
-const VERSION = '1.5.1';
-const CACHE_NAME = `motion-tracker-v31`;
+const VERSION = '1.5.4';
+const CACHE_NAME = `motion-tracker-v34`;
 const CORE_CACHE = `${CACHE_NAME}-core`;
 const CDN_CACHE = `${CACHE_NAME}-cdn`;
 const RUNTIME_CACHE = `${CACHE_NAME}-runtime`;
@@ -93,9 +93,9 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
-  // Strategy 1: Core app files - Cache First
+  // Strategy 1: Core app files - Network First (always fetch fresh code when online)
   if (url.origin === self.location.origin) {
-    event.respondWith(cacheFirst(request, CORE_CACHE));
+    event.respondWith(networkFirst(request, CORE_CACHE));
     return;
   }
   
@@ -356,6 +356,13 @@ self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     console.log('[SW] Received SKIP_WAITING message');
     self.skipWaiting();
+  } else if (event.data && event.data.type === 'CLEAR_ALL_CACHES') {
+    console.log('[SW] Received CLEAR_ALL_CACHES message');
+    caches.keys().then((keys) => {
+      return Promise.all(keys.map((k) => caches.delete(k)));
+    }).then(() => {
+      console.log('[SW] All caches deleted by request');
+    });
   }
 });
 

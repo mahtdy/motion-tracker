@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>حرکت‌سنج</title>
 <meta name="description" content="سامانه اندازه‌گیری سرعت دو و ارتفاع پرش با پردازش تصویر و تشخیص ژست بدنی">
 <meta property="og:title" content="حرکت‌سنج">
@@ -46,8 +49,14 @@
     left: 0;
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
     transition: object-fit 0.2s ease;
+  }
+
+  /* Fit cover mode: fullscreen cropped view when user chooses */
+  #stage.fit-cover video,
+  #stage.fit-cover canvas {
+    object-fit: cover !important;
   }
 
   /* Fit contain mode: full uncropped sensor view (essential for Android & sports field) */
@@ -1072,7 +1081,13 @@
 
   <div id="startOverlay">
     <h2>حرکت‌سنج</h2>
-    <p class="version">نسخه 1.5.1</p>
+    <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin: 4px 0 12px 0;">
+      <span class="version" id="appVersionDisplay" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 2px 10px; border-radius: 9999px; font-size: 11px; border: 1px solid rgba(56, 189, 248, 0.3);">نسخه 1.5.3</span>
+      <button type="button" id="clearCacheReloadBtn" style="background: rgba(255, 255, 255, 0.08); color: #cbd5e1; border: 1px solid #475569; border-radius: 8px; padding: 3px 10px; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 4px;" title="پاکسازی کش مرورگر و بارگذاری نسخه جدید">
+        <span>🔄</span>
+        <span>بروزرسانی کش</span>
+      </button>
+    </div>
     <p id="hint">برای شروع، اجازهٔ دسترسی به دوربین رو بده. مدل تشخیص بدن کاملاً روی گوشی اجرا می‌شه.</p>
     <button id="startBtn">شروع</button>
   </div>
@@ -1133,6 +1148,19 @@
       <button type="button" id="startHeightCalibBtn" class="secondary" style="margin: 0; padding: 6px 12px; font-size: 11px; white-space: nowrap; border: 1px solid #38bdf8; color: #38bdf8; border-radius: 8px; cursor: pointer; background: rgba(56, 189, 248, 0.12);">🎯 کالیبراسیون با دیوار</button>
     </div>
 
+    <!-- Scale Calibration with Reference Object (A4 / Ruler) Button in Settings -->
+    <div style="margin: 4px 0 8px 0;">
+      <button type="button" id="startObjectCalibSettingsBtn" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; font-size: 11px; padding: 7px 12px; border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 8px; cursor: pointer; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px;">
+        <span>📏 کالیبراسیون خودکار مقیاس با کاغذ A4 یا خط‌کش</span>
+      </button>
+    </div>
+
+    <div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid #334155; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+      <button type="button" id="openCameraSettingsBtn" style="background: rgba(56, 189, 248, 0.12); color: #38bdf8; font-size: 12px; padding: 7px 14px; border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; cursor: pointer; width: 100%;">📷 انتخاب دوربین و تعویض لنز (فوق‌عریض / زوم)</button>
+      <span style="font-size: 11px; color: #94a3b8;">نسخه فعلی: <strong style="color: #38bdf8;">1.5.4</strong></span>
+      <button type="button" id="clearCacheFromSettingsBtn" style="background: rgba(239, 68, 68, 0.15); color: #fca5a5; font-size: 11px; padding: 6px 14px; border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; cursor: pointer;">🔄 پاکسازی کش و تازه‌سازی کامل</button>
+    </div>
+
     <button id="closeSettingsBtn">ذخیره و بستن</button>
   </div>
 
@@ -1166,9 +1194,55 @@
     </div>
   </div>
 
+  <!-- Object-Based Auto-Calibration (A4 Paper / Ruler / Card) Panel -->
+  <div id="objectCalibPanel" class="panel" style="display: none; max-width: 380px; z-index: 105;">
+    <div style="font-weight: bold; font-size: 15px; color: #38bdf8; display: flex; align-items: center; justify-content: space-between;">
+      <span>📏 کالیبراسیون خودکار با شیء مرجع</span>
+      <span style="font-size: 10px; background: rgba(56, 189, 248, 0.2); color: #38bdf8; padding: 2px 7px; border-radius: 9999px;">دقت سانتیمتر</span>
+    </div>
+    <p id="objCalibHint" style="font-size: 11px; color: #cbd5e1; margin: 6px 0; line-height: 1.5;">
+      شیء مشخص (مثل برگه A4 یا خط‌کش) را جلوی دوربین بگیرید. کادر راهنما را روی لبه‌های آن قرار دهید یا دکمه <strong>تشخیص خودکار</strong> را بزنید.
+    </p>
+
+    <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid #334155; border-radius: 10px; padding: 8px; margin: 8px 0;">
+      <div style="font-size: 11px; color: #94a3b8; margin-bottom: 5px;">نوع شیء مرجع:</div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px;" id="objCalibPresets">
+        <button type="button" class="objPresetBtn active" data-type="a4-v" data-size="29.7" style="padding: 5px 6px; font-size: 11px; border-radius: 6px; border: 1px solid #38bdf8; background: #0284c7; color: #fff; cursor: pointer;">📄 A4 عمودی (۲۹.۷ cm)</button>
+        <button type="button" class="objPresetBtn" data-type="a4-h" data-size="21.0" style="padding: 5px 6px; font-size: 11px; border-radius: 6px; border: 1px solid #475569; background: #1e293b; color: #94a3b8; cursor: pointer;">📄 A4 افقی (۲۱.۰ cm)</button>
+        <button type="button" class="objPresetBtn" data-type="ruler30" data-size="30.0" style="padding: 5px 6px; font-size: 11px; border-radius: 6px; border: 1px solid #475569; background: #1e293b; color: #94a3b8; cursor: pointer;">📏 خط‌کش ۳۰ سانتیمتر</button>
+        <button type="button" class="objPresetBtn" data-type="card" data-size="8.5" style="padding: 5px 6px; font-size: 11px; border-radius: 6px; border: 1px solid #475569; background: #1e293b; color: #94a3b8; cursor: pointer;">💳 کارت بانکی (۸.۵ cm)</button>
+      </div>
+
+      <div style="margin-top: 6px; display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 11px; color: #94a3b8;">
+        <span>طول مشخص شیء:</span>
+        <div style="display: flex; align-items: center; gap: 4px;">
+          <input id="objCalibCustomCm" type="number" step="0.1" value="29.7" style="width: 70px; padding: 3px; text-align: center; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #f8fafc; font-size: 12px;">
+          <span>cm</span>
+        </div>
+      </div>
+
+      <div style="background: rgba(30, 41, 59, 0.75); border-radius: 8px; padding: 6px 8px; margin-top: 7px; text-align: center;">
+        <div style="font-size: 10px; color: #94a3b8;">اندازه در تصویر و مقیاس محاسبه‌شده:</div>
+        <div style="font-size: 16px; font-weight: bold; color: #4ade80; margin: 2px 0;" id="objCalibReadout">-- px • -- cm/px</div>
+        <div style="font-size: 10px; color: #38bdf8;" id="objCalibRatioReadout">مقیاس پیکسلی: -- px/m</div>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 5px; margin-bottom: 6px;">
+      <button type="button" id="objCalibAutoDetectBtn" style="flex: 1; background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); padding: 7px; font-size: 11px; border-radius: 8px; cursor: pointer;">🔍 تشخیص خودکار شیء</button>
+      <button type="button" id="objCalibResetBoxBtn" class="secondary" style="flex: 1; padding: 7px; font-size: 11px; margin: 0;">🔄 تنظیم مجدد کادر</button>
+    </div>
+
+    <div class="btnRow">
+      <button type="button" id="objCalibConfirmBtn" style="flex: 2; background: #16a34a;">✅ تأیید و اعمال مقیاس</button>
+      <button type="button" id="objCalibCancelBtn" class="secondary" style="flex: 1;">انصراف</button>
+    </div>
+  </div>
+
   <!-- Run mode: gate calibration controls (allows correcting a mis-tapped point) -->
   <div id="gateControls">
     <div id="gateHint">روی تصویر ضربه بزن</div>
+    <button id="gateA4CalibBtn" type="button" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 8px; padding: 6px 10px; font-size: 11px; cursor: pointer; flex-shrink: 0; white-space: nowrap;" title="کالیبراسیون مقیاس با شیء مرجع">📏 کالیبره با A4/خط‌کش</button>
     <button id="gateSpeakBtn" style="display:none; background: #0284c7; color: #ffffff; border: none; border-radius: 8px; padding: 6px 10px; font-size: 12px; cursor: pointer; flex-shrink: 0;" title="خواندن صوتی فاصله">🔊 بگو</button>
     <div class="btnRow">
       <button id="gateBackBtn" class="secondary" style="display:none;">بازگشت</button>
@@ -1182,7 +1256,10 @@
     <div id="autoDistBox" style="background: rgba(14, 116, 144, 0.25); border: 1px solid #0284c7; border-radius: 12px; padding: 8px 12px; margin: 8px 0; text-align: center;">
       <div style="font-size: 11px; color: #38bdf8;">فاصله تخمینی خودکار بین دو مانع:</div>
       <div style="font-size: 16px; font-weight: bold; color: #4ade80; margin: 4px 0;" id="autoDistText">-- متر و -- سانتی‌متر</div>
-      <button id="distPanelSpeakBtn" type="button" style="background: #0284c7; color: #fff; border: none; padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; width: auto; margin: 2px auto 0 auto;">🔊 خواندن صوتی فاصله</button>
+      <div style="display: flex; gap: 6px; justify-content: center; margin-top: 5px; flex-wrap: wrap;">
+        <button id="distPanelSpeakBtn" type="button" style="background: #0284c7; color: #fff; border: none; padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; width: auto; margin: 0;">🔊 خواندن صوتی فاصله</button>
+        <button id="distPanelA4CalibBtn" type="button" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; width: auto; margin: 0;">📏 کالیبره با کاغذ A4 یا خط‌کش</button>
+      </div>
     </div>
     <div style="font-size: 11px; color: #94a3b8; margin: 6px 0 2px 0;">فاصلهٔ نهایی جهت زمان‌گیری (قابل ویرایش):</div>
     <div class="input-row">
@@ -1312,6 +1389,7 @@
         <input id="refDistanceInput" type="number" value="100" step="1" inputmode="numeric" style="width: 65px;">
         <button id="applyCalibScaleBtn" style="padding: 4px 10px; font-size: 11px; min-height: 32px; width: auto; margin: 0;">اعمال مقیاس</button>
       </div>
+      <button type="button" id="distObjA4CalibBtn" style="margin-top: 5px; background: rgba(56, 189, 248, 0.18); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 6px; padding: 5px 8px; font-size: 11px; cursor: pointer; width: 100%;">📏 کالیبراسیون خودکار با کاغذ A4 یا خط‌کش</button>
     </div>
 
     <div class="btnRow">
@@ -1327,6 +1405,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
 
-<script src="app.js?v=1.5.1&t=20260910b"></script>
+<script src="app.js?v=1.5.4&t=20260912g"></script>
 </body>
 </html>

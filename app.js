@@ -247,8 +247,9 @@ function isPoseInFrame(keypoints) {
     bottom: canvas.height * (1 - FRAME_TRACKING_SETTINGS.edgeMargin)
   };
   
+  const minCheckScore = Math.min(currentConfidenceThreshold, 0.2);
   for (const kp of keypoints) {
-    if (kp.score > currentConfidenceThreshold) {
+    if ((kp.score || 0) >= minCheckScore) {
       // Check if keypoint is within frame with margin
       if (kp.x >= margin.left && kp.x <= margin.right &&
           kp.y >= margin.top && kp.y <= margin.bottom) {
@@ -684,19 +685,62 @@ function resetLightDetection() {
 }
 
 // ================== SKELETON DRAWING SETUP ==================
+// Comprehensive full-body anatomical connections for BlazePose / MediaPipe Pose
 const CONNECTIONS = [
+  // Head & Facial connections
+  ['nose', 'left_eye'],
+  ['nose', 'right_eye'],
+  ['left_eye', 'left_ear'],
+  ['right_eye', 'right_ear'],
+  ['left_eye_inner', 'left_eye'],
+  ['left_eye', 'left_eye_outer'],
+  ['right_eye_inner', 'right_eye'],
+  ['right_eye', 'right_eye_outer'],
+  ['mouth_left', 'mouth_right'],
+  ['nose', 'mouth_left'],
+  ['nose', 'mouth_right'],
+
+  // Neck & Head to Torso
+  ['nose', 'left_shoulder'],
+  ['nose', 'right_shoulder'],
+  ['left_ear', 'left_shoulder'],
+  ['right_ear', 'right_shoulder'],
+
+  // Torso / Shoulder Girdle & Pelvis
   ['left_shoulder', 'right_shoulder'],
+  ['left_shoulder', 'left_hip'],
+  ['right_shoulder', 'right_hip'],
+  ['left_hip', 'right_hip'],
+
+  // Arms
   ['left_shoulder', 'left_elbow'],
   ['left_elbow', 'left_wrist'],
   ['right_shoulder', 'right_elbow'],
   ['right_elbow', 'right_wrist'],
-  ['left_shoulder', 'left_hip'],
-  ['right_shoulder', 'right_hip'],
-  ['left_hip', 'right_hip'],
+
+  // Hands & Fingers
+  ['left_wrist', 'left_pinky'],
+  ['left_wrist', 'left_index'],
+  ['left_wrist', 'left_thumb'],
+  ['left_pinky', 'left_index'],
+  ['right_wrist', 'right_pinky'],
+  ['right_wrist', 'right_index'],
+  ['right_wrist', 'right_thumb'],
+  ['right_pinky', 'right_index'],
+
+  // Legs
   ['left_hip', 'left_knee'],
   ['left_knee', 'left_ankle'],
   ['right_hip', 'right_knee'],
   ['right_knee', 'right_ankle'],
+
+  // Feet & Toes
+  ['left_ankle', 'left_heel'],
+  ['left_heel', 'left_foot_index'],
+  ['left_ankle', 'left_foot_index'],
+  ['right_ankle', 'right_heel'],
+  ['right_heel', 'right_foot_index'],
+  ['right_ankle', 'right_foot_index'],
 ];
 
 const video = document.getElementById('video');
@@ -793,6 +837,23 @@ const heightCalibResult = document.getElementById('heightCalibResult');
 const heightCalibConfirmBtn = document.getElementById('heightCalibConfirmBtn');
 const heightCalibResetBtn = document.getElementById('heightCalibResetBtn');
 const heightCalibCancelBtn = document.getElementById('heightCalibCancelBtn');
+
+// Object-Based Auto-Calibration Elements
+const objectCalibPanel = document.getElementById('objectCalibPanel');
+const objCalibHint = document.getElementById('objCalibHint');
+const objCalibPresets = document.getElementById('objCalibPresets');
+const objCalibCustomCm = document.getElementById('objCalibCustomCm');
+const objCalibReadout = document.getElementById('objCalibReadout');
+const objCalibRatioReadout = document.getElementById('objCalibRatioReadout');
+const objCalibAutoDetectBtn = document.getElementById('objCalibAutoDetectBtn');
+const objCalibResetBoxBtn = document.getElementById('objCalibResetBoxBtn');
+const objCalibConfirmBtn = document.getElementById('objCalibConfirmBtn');
+const objCalibCancelBtn = document.getElementById('objCalibCancelBtn');
+
+const gateA4CalibBtn = document.getElementById('gateA4CalibBtn');
+const distPanelA4CalibBtn = document.getElementById('distPanelA4CalibBtn');
+const distObjA4CalibBtn = document.getElementById('distObjA4CalibBtn');
+const startObjectCalibSettingsBtn = document.getElementById('startObjectCalibSettingsBtn');
 
 const gateSpeakBtn = document.getElementById('gateSpeakBtn');
 const autoDistBox = document.getElementById('autoDistBox');
@@ -1067,7 +1128,7 @@ let currentCameraId = null;
 let currentCameraInfo = null;
 let cameraSwitcherBtn = null;
 let currentCameraZoom = 1.0;
-let cameraFitMode = localStorage.getItem('cameraFitMode') || 'cover';
+let cameraFitMode = localStorage.getItem('cameraFitMode') || 'contain';
 
 /**
  * Initialize camera switcher
@@ -1080,7 +1141,7 @@ async function initCameraSwitcher() {
     // Get list of cameras without disruptive getUserMedia calls
     await refreshAvailableCameras();
 
-    // Initialize camera fit mode (contain vs cover)
+    // Initialize camera fit mode (contain vs cover) - defaults to contain for full sensor view
     applyCameraFitMode(cameraFitMode, false);
 
     console.log('[Camera Switcher] Initialization complete');
@@ -1095,17 +1156,11 @@ async function initCameraSwitcher() {
 async function refreshAvailableCameras() {
   try {
     availableCameras = await enumerateDevices();
-    console.log(`📷 Found ${availableCameras.length} camera(s)`);
+    console.log(`📷 Found ${availableCameras.length} camera(s):`, availableCameras.map(c => `${c.persianLabel} [${c.originalLabel || c.deviceId.slice(0, 8)}]`));
 
     if (cameraSwitcherBtn) {
-      if (availableCameras.length > 1) {
-        cameraSwitcherBtn.disabled = false;
-        cameraSwitcherBtn.style.opacity = '1';
-      } else {
-        // Keep accessible so user can check or re-probe
-        cameraSwitcherBtn.disabled = false;
-        cameraSwitcherBtn.style.opacity = '0.75';
-      }
+      cameraSwitcherBtn.disabled = false;
+      cameraSwitcherBtn.style.opacity = '1';
     }
 
     // Sync currentCameraInfo if currentCameraId is set
@@ -1114,6 +1169,10 @@ async function refreshAvailableCameras() {
       if (match) {
         currentCameraInfo = match;
       }
+    } else if (availableCameras.length > 0) {
+      // Default to the recommended/widest camera
+      const recommended = availableCameras.find(c => c.isWidest) || availableCameras[0];
+      currentCameraInfo = recommended;
     }
 
     updateCameraInfoDisplay();
@@ -1123,31 +1182,29 @@ async function refreshAvailableCameras() {
 }
 
 /**
- * Enumerate all video input devices reliably and without blocking streams
+ * Enumerate ALL video input devices without filtering any out
+ * Displays every physical lens and hardware camera sensor
  */
 async function enumerateDevices() {
   try {
     const devices = await navigator.mediaDevices.enumerateDevices();
     const videoDevices = devices.filter(device => device.kind === 'videoinput');
 
-    // Deduplicate by deviceId and remove duplicates
-    const seenIds = new Set();
-    const uniqueDevices = [];
-    for (const d of videoDevices) {
-      if (!d.deviceId && uniqueDevices.length > 0) continue;
-      if (seenIds.has(d.deviceId)) continue;
-      seenIds.add(d.deviceId);
-      uniqueDevices.push(d);
+    if (videoDevices.length === 0) {
+      return [];
     }
 
-    // Determine count of back & front cameras
+    // Process EVERY video device - do not filter out any device
+    const preAnalyzed = videoDevices.map((device, idx) => {
+      const typeInfo = detectCameraType(device.label, idx);
+      return { device, typeInfo, originalIndex: idx };
+    });
+
     let backCount = 0;
     let frontCount = 0;
-    const preAnalyzed = uniqueDevices.map((device, idx) => {
-      const typeInfo = detectCameraType(device.label, idx);
-      if (typeInfo.position === 'back') backCount++;
+    preAnalyzed.forEach(item => {
+      if (item.typeInfo.position === 'back') backCount++;
       else frontCount++;
-      return { device, typeInfo };
     });
 
     let currentBackIdx = 0;
@@ -1166,17 +1223,19 @@ async function enumerateDevices() {
       const info = {
         deviceId: device.deviceId,
         label: device.label || `دوربین ${i + 1}`,
-        originalLabel: device.label,
+        originalLabel: device.label || `سنسور ${i + 1}`,
         groupId: device.groupId,
         type: typeInfo.type,
         position: typeInfo.position,
         zoomRatio: typeInfo.zoomRatio,
-        icon: typeInfo.icon
+        wideScore: typeInfo.wideScore,
+        icon: typeInfo.icon,
+        isWidest: false
       };
 
       info.persianLabel = formatCameraLabel(info, subIdx, backCount, frontCount);
 
-      // If this device is the currently active camera, read settings & capabilities with ZERO overhead
+      // Inspect capabilities if this device is the currently active camera
       if (currentCameraStream) {
         const activeTrack = currentCameraStream.getVideoTracks()[0];
         if (activeTrack) {
@@ -1185,25 +1244,42 @@ async function enumerateDevices() {
             const caps = activeTrack.getCapabilities ? activeTrack.getCapabilities() : {};
             info.capabilities = caps;
             if (settings.width && settings.height) {
-              info.resolution = `${settings.width}x${settings.height}`;
+              info.resolution = `${settings.width}×${settings.height}`;
             }
           }
         }
       }
 
       if (!info.resolution) {
-        info.resolution = info.position === 'front' ? 'سلفی' : (info.type === 'wide' ? 'فوق‌عریض (واید)' : 'استاندارد');
+        info.resolution = info.position === 'front' ? 'سلفی' : (info.type === 'ultrawide' ? 'فوق‌عریض (واید)' : (info.type === 'wide' ? 'عریض' : 'استاندارد'));
       }
 
       camerasWithInfo.push(info);
     }
 
-    // Sort: back cameras first, wide lens first, then standard, then tele, then front
+    // Find the back camera with the highest wideScore and flag it as the widest
+    const backCameras = camerasWithInfo.filter(c => c.position === 'back');
+    if (backCameras.length > 0) {
+      let bestWideCam = backCameras[0];
+      for (const cam of backCameras) {
+        if (cam.wideScore > bestWideCam.wideScore) {
+          bestWideCam = cam;
+        }
+      }
+      bestWideCam.isWidest = true;
+      bestWideCam.isRecommended = true;
+    }
+
+    // Sort order for UI presentation:
+    // 1. Ultra-wide and widest back cameras first
+    // 2. Standard back cameras
+    // 3. Telephoto / secondary back cameras
+    // 4. Front cameras
     camerasWithInfo.sort((a, b) => {
       if (a.position !== b.position) {
         return a.position === 'back' ? -1 : 1;
       }
-      return (a.zoomRatio || 1) - (b.zoomRatio || 1);
+      return (b.wideScore || 0) - (a.wideScore || 0);
     });
 
     return camerasWithInfo;
@@ -1214,76 +1290,119 @@ async function enumerateDevices() {
 }
 
 /**
- * Detect camera type and lens optics from device label & index
+ * Detect camera type, optics, and wide angle ranking from label & hardware index
+ * Prioritizes Android Camera2 conventions and optical zoom indicators
  */
 function detectCameraType(label, index) {
   const lower = (label || '').toLowerCase();
+  const isAndroid = /Android/i.test(navigator.userAgent);
   
   let type = 'normal';
   let position = 'back';
   let zoomRatio = 1;
   let icon = '📸';
+  let wideScore = 50; // 0 to 100 ranking
   
   // 1. Position detection
   if (lower.includes('front') || lower.includes('face') || lower.includes('user') || lower.includes('selfie') || lower.includes('جلو')) {
     position = 'front';
     icon = '🤳';
+    wideScore = 10;
   } else if (lower.includes('back') || lower.includes('rear') || lower.includes('environment') || lower.includes('عقب')) {
     position = 'back';
     icon = '📸';
+    wideScore = 50;
   } else {
-    // Standard heuristic: camera index 1 is usually front, 0 is back
+    // Default heuristic: Camera index 1 is usually front, 0 or 2 is back
     position = index === 1 ? 'front' : 'back';
     icon = position === 'front' ? '🤳' : '📸';
+    wideScore = position === 'front' ? 10 : 50;
   }
   
-  // 2. Lens & Zoom detection
-  if (lower.includes('ultra') || lower.includes('wide') || lower.includes('0.5') || lower.includes('0.6') || lower.includes('واید')) {
-    type = 'wide';
+  // 2. Ultra-wide & Wide keyword detection (covers Samsung, Xiaomi, Pixel, iPhone, etc.)
+  const isUltraWideKeyword = lower.includes('ultra') || lower.includes('0.5') || lower.includes('0.6') || lower.includes('super wide') || lower.includes('ultrawide') || lower.includes('فوق‌عریض');
+  const isWideKeyword = lower.includes('wide') || lower.includes('0.7') || lower.includes('عریض');
+  const isTeleKeyword = lower.includes('tele') || lower.includes('zoom') || lower.includes('2x') || lower.includes('3x') || lower.includes('5x') || lower.includes('10x') || lower.includes('تله');
+  const isMacro = lower.includes('macro') || lower.includes('ماکرو') || lower.includes('depth') || lower.includes('عمق');
+
+  if (isUltraWideKeyword) {
+    type = 'ultrawide';
     zoomRatio = 0.5;
     icon = position === 'front' ? '🤳' : '🌐';
-  } else if (lower.includes('tele') || lower.includes('zoom') || lower.includes('2x') || lower.includes('3x') || lower.includes('تله')) {
+    wideScore = position === 'back' ? 100 : 30;
+  } else if (isWideKeyword && !lower.includes('tele')) {
+    type = 'wide';
+    zoomRatio = 0.6;
+    icon = position === 'front' ? '🤳' : '🌐';
+    wideScore = position === 'back' ? 95 : 25;
+  } else if (isTeleKeyword) {
     type = 'telephoto';
     zoomRatio = lower.includes('3x') ? 3 : 2;
     icon = '🔭';
-  } else if (lower.includes('macro') || lower.includes('ماکرو')) {
+    wideScore = 20;
+  } else if (isMacro) {
     type = 'macro';
     icon = '🔍';
+    wideScore = 15;
   } else if (position === 'back') {
-    // Android Camera2 naming: "camera2 0, facing back" (main 1x), "camera2 2, facing back" (wide)
+    // 3. Android Camera2 multi-camera parsing:
+    // "camera2 0, facing back" => Main 1x
+    // "camera2 1, facing front" => Front selfie
+    // "camera2 2, facing back" => Ultra-wide 0.5x on standard Qualcomm/MediaTek Android devices!
+    // "camera2 3, facing back" => Telephoto or Secondary
     const match = lower.match(/camera2?\s*(\d+)/);
     if (match) {
       const camNum = parseInt(match[1], 10);
-      if (camNum === 0) {
+      if (camNum === 2) {
+        // Ultra-wide lens on almost all Android phones
+        type = 'ultrawide';
+        zoomRatio = 0.5;
+        icon = '🌐';
+        wideScore = 96;
+      } else if (camNum === 0) {
         type = 'main';
         zoomRatio = 1;
         icon = '📸';
-      } else if (camNum === 2) {
-        type = 'wide';
+        wideScore = 60;
+      } else if (camNum === 3) {
+        type = 'secondary';
+        zoomRatio = 2;
+        icon = '📷';
+        wideScore = 40;
+      } else {
+        type = 'auxiliary';
+        icon = '📷';
+        wideScore = 35;
+      }
+    } else {
+      // If back camera with no specific label on Android, index 2 or 1 may be ultra-wide
+      if (index === 2 && isAndroid) {
+        type = 'ultrawide';
         zoomRatio = 0.5;
         icon = '🌐';
-      } else {
-        type = 'secondary';
-        icon = '📷';
+        wideScore = 92;
       }
     }
   }
   
-  return { type, position, zoomRatio, icon };
+  return { type, position, zoomRatio, icon, wideScore };
 }
 
 /**
- * Format camera label in descriptive Persian
+ * Format camera label in clear, descriptive Persian with lens classification
  */
 function formatCameraLabel(info, subIdx, backCount, frontCount) {
   if (info.position === 'front') {
-    if (info.type === 'wide') return 'دوربین جلو (سلفی عریض 🌐)';
+    if (info.type === 'ultrawide' || info.type === 'wide') return 'دوربین سلفی عریض (Wide 🌐)';
     return frontCount > 1 ? `دوربین جلو ${subIdx + 1} (سلفی 🤳)` : 'دوربین جلو (سلفی 🤳)';
   }
 
   // Back cameras
+  if (info.type === 'ultrawide') {
+    return `دوربین فوق‌عریض عقب (${info.zoomRatio || '0.5'}x Ultra-Wide 🌐)`;
+  }
   if (info.type === 'wide') {
-    return `دوربین فوق‌عریض عقب (${info.zoomRatio || '0.5'}x 🌐)`;
+    return `دوربین عریض عقب (${info.zoomRatio || '0.6'}x Wide 🌐)`;
   }
   if (info.type === 'telephoto') {
     return `دوربین تله‌فوتو عقب (${info.zoomRatio || '2'}x 🔭)`;
@@ -1292,18 +1411,18 @@ function formatCameraLabel(info, subIdx, backCount, frontCount) {
     return 'دوربین ماکرو عقب 🔍';
   }
   if (info.type === 'main' || subIdx === 0) {
-    return 'دوربین اصلی عقب (1x 📸)';
+    return 'دوربین اصلی عقب (1x Standard 📸)';
   }
 
   if (backCount > 1) {
-    return `دوربین عقب (لنز ${subIdx + 1} 📷)`;
+    return `دوربین عقب (سنسور ${subIdx + 1} 📷)`;
   }
 
   return 'دوربین اصلی عقب (📸)';
 }
 
 /**
- * Show camera switcher modal with live refresh
+ * Show camera switcher modal displaying ALL available cameras without any filtering
  */
 async function showCameraSwitcherModal() {
   if ((mode === 'run' && runPhase === 'timing') || 
@@ -1328,39 +1447,43 @@ async function showCameraSwitcherModal() {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 20px;
+    padding: 16px;
     overflow-y: auto;
   `;
 
   const cameraCards = (availableCameras.length > 0 ? availableCameras : [
-    { deviceId: '', icon: '📸', persianLabel: 'دوربین اصلی عقب', position: 'back', resolution: 'استاندارد' }
+    { deviceId: '', icon: '📸', persianLabel: 'دوربین اصلی عقب', position: 'back', resolution: 'استاندارد', type: 'main' }
   ]).map((camera) => {
     const isActive = camera.deviceId === currentCameraId || (!currentCameraId && camera.position === 'back');
-    const borderColor = isActive ? '#22c55e' : '#475569';
-    const bgColor = isActive ? 'rgba(34, 197, 94, 0.15)' : 'rgba(30, 41, 59, 0.7)';
+    const isRecommended = camera.isWidest && camera.position === 'back';
+    const borderColor = isActive ? '#22c55e' : (isRecommended ? '#38bdf8' : '#334155');
+    const bgColor = isActive ? 'rgba(34, 197, 94, 0.14)' : (isRecommended ? 'rgba(56, 189, 248, 0.10)' : 'rgba(30, 41, 59, 0.7)');
 
     return `
       <div class="camera-card" data-device-id="${camera.deviceId || ''}" style="
         background: ${bgColor};
         border: 2px solid ${borderColor};
         border-radius: 12px;
-        padding: 14px;
+        padding: 12px 14px;
         margin-bottom: 10px;
         cursor: pointer;
         transition: all 0.2s;
       ">
         <div style="display: flex; align-items: center; gap: 14px;">
-          <div style="font-size: 30px;">${camera.icon}</div>
+          <div style="font-size: 28px; line-height: 1;">${camera.icon}</div>
           <div style="flex: 1;">
-            <div style="color: #e2e8f0; font-weight: bold; font-size: 15px; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="color: #f1f5f9; font-weight: bold; font-size: 14px; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px;">
               <span>${camera.persianLabel}</span>
-              ${isActive ? '<span style="color: #22c55e; font-size: 13px; font-weight: 900;">✓ فعال</span>' : ''}
+              <div style="display: flex; gap: 6px; align-items: center;">
+                ${isRecommended ? '<span style="background: rgba(56, 189, 248, 0.2); color: #38bdf8; font-size: 11px; padding: 2px 8px; border-radius: 9999px; border: 1px solid rgba(56, 189, 248, 0.4); font-weight: bold;">🌟 پیشنهادی برای ورزش</span>' : ''}
+                ${isActive ? '<span style="color: #22c55e; font-size: 12px; font-weight: 900;">✓ فعال</span>' : ''}
+              </div>
             </div>
-            <div style="color: #94a3b8; font-size: 12px; line-height: 1.4;">
-              ${camera.originalLabel ? `<span style="font-family: monospace; font-size: 11px; opacity: 0.8;">${camera.originalLabel}</span><br/>` : ''}
-              ${camera.position === 'front' ? 'سلفی' : 'عقب'} • 
-              ${camera.resolution || 'کیفیت استاندارد'}
-              ${camera.zoomRatio && camera.zoomRatio !== 1 ? ` • ${camera.zoomRatio}x` : ''}
+            <div style="color: #94a3b8; font-size: 11px; line-height: 1.5;">
+              ${camera.originalLabel ? `<span style="font-family: monospace; font-size: 10px; color: #cbd5e1; opacity: 0.85;">شناسه: ${camera.originalLabel}</span><br/>` : ''}
+              موقعیت: ${camera.position === 'front' ? 'جلو (سلفی)' : 'عقب'} • 
+              نوع لنز: ${camera.type === 'ultrawide' ? 'فوق‌عریض (0.5x)' : (camera.type === 'wide' ? 'عریض' : (camera.type === 'telephoto' ? 'تله‌فوتو' : 'استاندارد'))}
+              ${camera.resolution ? ` • ${camera.resolution}` : ''}
             </div>
           </div>
         </div>
@@ -1373,40 +1496,69 @@ async function showCameraSwitcherModal() {
       background: #1e293b;
       border: 2px solid #334155;
       border-radius: 20px;
-      padding: 20px;
-      max-width: 420px;
+      padding: 18px;
+      max-width: 440px;
       width: 100%;
-      max-height: 85vh;
+      max-height: 90vh;
       overflow-y: auto;
-      box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);
+      box-shadow: 0 20px 25px -5px rgba(0,0,0,0.6);
     ">
-      <h3 style="color: #4ade80; margin-bottom: 6px; font-size: 18px; text-align: center;">
-        📷 انتخاب دوربین و لنز
-      </h3>
-      <p style="color: #94a3b8; font-size: 12px; text-align: center; margin-bottom: 14px;">
-        لنز مورد نظر را انتخاب کنید. در صورت عدم پشتیبانی سخت‌افزار، دوربین فعال بازگردانده می‌شود.
-      </p>
-      <div id="cameraList">
+      <div style="text-align: center; margin-bottom: 12px;">
+        <h3 style="color: #38bdf8; margin-bottom: 4px; font-size: 17px;">
+          📷 انتخاب سنسور دوربین (${availableCameras.length} سنسور یافت شد)
+        </h3>
+        <p style="color: #94a3b8; font-size: 11px; line-height: 1.5; margin: 0;">
+          برای حل مشکل زوم زیاد در فضاهای بسته و فیلم‌برداری ورزشی، دوربین <strong>فوق‌عریض (0.5x)</strong> به صورت پیش‌فرض فعال می‌شود.
+        </p>
+      </div>
+
+      <div id="cameraList" style="max-height: 50vh; overflow-y: auto; padding: 2px;">
         ${cameraCards}
       </div>
-      <button id="closeCameraSwitcher" style="
-        background: transparent;
-        color: #94a3b8;
-        border: 2px solid #475569;
-        padding: 12px 24px;
-        font-size: 14px;
-        font-weight: bold;
-        border-radius: 999px;
-        cursor: pointer;
-        width: 100%;
-        min-height: 44px;
-        margin-top: 8px;
-      ">بستن</button>
+
+      <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 8px;">
+        <button id="modalToggleFitBtn" type="button" style="
+          background: rgba(56, 189, 248, 0.12);
+          color: #38bdf8;
+          border: 1px solid rgba(56, 189, 248, 0.35);
+          padding: 8px 14px;
+          font-size: 12px;
+          border-radius: 10px;
+          cursor: pointer;
+        ">
+          📐 حالت کادر: ${cameraFitMode === 'contain' ? 'دید کامل بدون برش (Contain) ✓' : 'تمام‌صفحه با برش (Cover)'} (کلیک برای تغییر)
+        </button>
+
+        <button id="modalRescanBtn" type="button" style="
+          background: rgba(255, 255, 255, 0.08);
+          color: #cbd5e1;
+          border: 1px solid #475569;
+          padding: 8px 14px;
+          font-size: 12px;
+          border-radius: 10px;
+          cursor: pointer;
+        ">
+          🔄 اسکن مجدد تمام سنسورهای دوربین
+        </button>
+
+        <button id="closeCameraSwitcher" style="
+          background: transparent;
+          color: #94a3b8;
+          border: 1px solid #475569;
+          padding: 10px 20px;
+          font-size: 13px;
+          font-weight: bold;
+          border-radius: 999px;
+          cursor: pointer;
+          width: 100%;
+        ">بستن</button>
+      </div>
     </div>
   `;
 
   document.body.appendChild(modal);
 
+  // Click handler to select camera
   modal.querySelectorAll('.camera-card').forEach(card => {
     card.addEventListener('click', async () => {
       const deviceId = card.getAttribute('data-device-id');
@@ -1416,6 +1568,27 @@ async function showCameraSwitcherModal() {
       }
     });
   });
+
+  // Toggle fit mode button
+  const toggleFitBtn = modal.querySelector('#modalToggleFitBtn');
+  if (toggleFitBtn) {
+    toggleFitBtn.addEventListener('click', () => {
+      toggleCameraFitMode();
+      toggleFitBtn.textContent = `📐 حالت کادر: ${cameraFitMode === 'contain' ? 'دید کامل بدون برش (Contain) ✓' : 'تمام‌صفحه با برش (Cover)'} (کلیک برای تغییر)`;
+    });
+  }
+
+  // Rescan devices button
+  const rescanBtn = modal.querySelector('#modalRescanBtn');
+  if (rescanBtn) {
+    rescanBtn.addEventListener('click', async () => {
+      rescanBtn.disabled = true;
+      rescanBtn.textContent = 'در حال اسکن...';
+      await refreshAvailableCameras();
+      modal.remove();
+      showCameraSwitcherModal();
+    });
+  }
 
   document.getElementById('closeCameraSwitcher').onclick = () => {
     modal.remove();
@@ -1457,7 +1630,7 @@ async function switchCamera(deviceId) {
     console.error('Failed to switch camera:', error);
     logError('switchCamera', error, { deviceId, camera });
 
-    setStatus('⚠️ این لنز توسط اندروید قفل است. بازگشت به دوربین قبلی...');
+    setStatus('⚠️ این لنز توسط دستگاه قفل است. بازگشت به دوربین قبلی...');
 
     // Safe recovery: Never leave the screen black!
     try {
@@ -2898,6 +3071,497 @@ document.querySelectorAll('.wallDistBtn').forEach(btn => {
   });
 });
 
+// ================== OBJECT-BASED AUTO-CALIBRATION (A4 / Ruler / Custom) ==================
+let isObjectCalibrating = false;
+let calibObjectBox = { x: 0.35, y: 0.30, w: 0.30, h: 0.40 }; // Relative to canvas width and height
+let calibObjectRealCm = 29.7; // default A4 vertical
+let calibObjectType = 'a4-v'; // 'a4-v' | 'a4-h' | 'ruler30' | 'card' | 'custom'
+let isDraggingObjBox = false;
+let objDragMode = null; // 'move' | 'tl' | 'tr' | 'bl' | 'br' | 'top' | 'bottom' | 'left' | 'right'
+let objDragStart = { x: 0, y: 0, box: null };
+let objCalibPreviousMode = null;
+
+const OBJ_PRESETS = {
+  'a4-v': { name: 'A4 عمودی', size: 29.7, aspect: 21.0 / 29.7, isVertical: true },
+  'a4-h': { name: 'A4 افقی', size: 21.0, aspect: 29.7 / 21.0, isVertical: false },
+  'ruler30': { name: 'خط‌کش ۳۰ سانتیمتر', size: 30.0, aspect: 0.15, isVertical: true },
+  'card': { name: 'کارت بانکی', size: 8.5, aspect: 8.5 / 5.4, isVertical: false }
+};
+
+function startObjectCalibration(initialType = 'a4-v') {
+  objCalibPreviousMode = mode;
+  if (settingsPanel) settingsPanel.classList.remove('visible');
+  hideAllPanels();
+  isObjectCalibrating = true;
+  calibObjectType = initialType;
+  
+  const preset = OBJ_PRESETS[initialType] || OBJ_PRESETS['a4-v'];
+  calibObjectRealCm = preset.size;
+  if (objCalibCustomCm) objCalibCustomCm.value = calibObjectRealCm;
+
+  // Initialize centered box with appropriate aspect ratio
+  if (preset.isVertical) {
+    calibObjectBox = { x: 0.38, y: 0.25, w: 0.24, h: 0.50 };
+  } else {
+    calibObjectBox = { x: 0.28, y: 0.35, w: 0.44, h: 0.30 };
+  }
+
+  // Update preset buttons visual state
+  if (objCalibPresets) {
+    objCalibPresets.querySelectorAll('.objPresetBtn').forEach(b => {
+      const active = b.dataset.type === initialType;
+      b.style.borderColor = active ? '#38bdf8' : '#475569';
+      b.style.background = active ? '#0284c7' : '#1e293b';
+      b.style.color = active ? '#ffffff' : '#94a3b8';
+    });
+  }
+
+  if (objectCalibPanel) {
+    objectCalibPanel.style.display = 'block';
+    objectCalibPanel.classList.add('visible');
+  }
+
+  updateObjectCalibUI();
+  setStatus('کالیبراسیون با شیء مرجع: کاغذ A4 یا خط‌کش را جلوی دوربین نگه دارید 📏');
+  speakText('شیء مرجع را جلوی دوربین نگه دارید و کادر را روی لبه‌های آن تنظیم کنید', 'Hold reference object in front of camera');
+}
+
+function exitObjectCalibration() {
+  isObjectCalibrating = false;
+  isDraggingObjBox = false;
+  objDragMode = null;
+  if (objectCalibPanel) {
+    objectCalibPanel.style.display = 'none';
+    objectCalibPanel.classList.remove('visible');
+  }
+  // Restore appropriate previous panel if returning to run or distance mode
+  if (objCalibPreviousMode === 'run') {
+    if (runPhase === 'calibrate1' || runPhase === 'calibrate2') {
+      if (gateControls) gateControls.classList.add('visible');
+    } else if (distPanel && gatePoints[0] && gatePoints[1]) {
+      distPanel.classList.add('visible');
+    }
+  } else if (objCalibPreviousMode === 'distance') {
+    if (distanceMeasurePanel) distanceMeasurePanel.classList.add('visible');
+  }
+}
+
+function updateObjectCalibUI() {
+  if (!objCalibReadout) return;
+  const cw = canvas.width || 640;
+  const ch = canvas.height || 480;
+  const pxW = calibObjectBox.w * cw;
+  const pxH = calibObjectBox.h * ch;
+  
+  const preset = OBJ_PRESETS[calibObjectType];
+  const isVertical = preset ? preset.isVertical : (pxH >= pxW);
+  const measuredPx = isVertical ? pxH : pxW;
+
+  if (measuredPx > 8 && calibObjectRealCm > 0) {
+    const scale = calibObjectRealCm / measuredPx; // cm per pixel
+    const pxPerMeter = 100 / scale;
+    objCalibReadout.textContent = `${Math.round(measuredPx)} px • هر پیکسل = ${scale.toFixed(3)} cm`;
+    if (objCalibRatioReadout) {
+      objCalibRatioReadout.textContent = `معادل: ${Math.round(pxPerMeter)} px/m (دقت: فوق‌العاده بالا)`;
+    }
+    if (objCalibConfirmBtn) objCalibConfirmBtn.disabled = false;
+  } else {
+    objCalibReadout.textContent = '-- px • -- cm/px';
+    if (objCalibConfirmBtn) objCalibConfirmBtn.disabled = true;
+  }
+}
+
+/**
+ * Computer Vision Edge & Luminance Detector for bright white reference objects (e.g., A4 sheet)
+ */
+function autoDetectObjectInBox() {
+  try {
+    if (!video || video.readyState < 2) {
+      setStatus('دوربین هنوز آماده نیست، لطفاً شکیبا باشید');
+      return false;
+    }
+    const w = 320, h = 240;
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = w;
+    tempCanvas.height = h;
+    const tctx = tempCanvas.getContext('2d', { willReadFrequently: true });
+    tctx.drawImage(video, 0, 0, w, h);
+
+    const bx = Math.max(0, Math.floor(calibObjectBox.x * w));
+    const by = Math.max(0, Math.floor(calibObjectBox.y * h));
+    const bw = Math.min(w - bx, Math.floor(calibObjectBox.w * w));
+    const bh = Math.min(h - by, Math.floor(calibObjectBox.h * h));
+
+    if (bw < 15 || bh < 15) return false;
+
+    const imgData = tctx.getImageData(bx, by, bw, bh);
+    const data = imgData.data;
+
+    let minX = bw, maxX = 0, minY = bh, maxY = 0;
+    let brightPixelCount = 0;
+
+    // Scan for bright white/high-contrast paper pixels (Y = 0.299R + 0.587G + 0.114B > 165)
+    for (let y = 0; y < bh; y++) {
+      for (let x = 0; x < bw; x++) {
+        const idx = (y * bw + x) * 4;
+        const r = data[idx];
+        const g = data[idx + 1];
+        const b = data[idx + 2];
+        const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+
+        // White paper detection: high luminance and balanced color
+        if (lum > 160 && Math.abs(r - g) < 32 && Math.abs(r - b) < 32) {
+          brightPixelCount++;
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+
+    const detectedW = maxX - minX;
+    const detectedH = maxY - minY;
+
+    if (brightPixelCount > (bw * bh * 0.04) && detectedW > 15 && detectedH > 15) {
+      // Smoothly expand slightly for full paper edge coverage (5% margin)
+      const marginX = Math.round(detectedW * 0.03);
+      const marginY = Math.round(detectedH * 0.03);
+      const finalMinX = Math.max(0, minX - marginX);
+      const finalMaxX = Math.min(bw, maxX + marginX);
+      const finalMinY = Math.max(0, minY - marginY);
+      const finalMaxY = Math.min(bh, maxY + marginY);
+
+      calibObjectBox.x = (bx + finalMinX) / w;
+      calibObjectBox.y = (by + finalMinY) / h;
+      calibObjectBox.w = (finalMaxX - finalMinX) / w;
+      calibObjectBox.h = (finalMaxY - finalMinY) / h;
+
+      updateObjectCalibUI();
+      playChime(880, 'triangle', 0.2);
+      speakText('لبه‌های شیء مرجع با موفقیت شناسایی شد', 'Object detected');
+      setStatus('لبه‌های شیء مرجع با پردازش تصویر منطبق شد ✅');
+      return true;
+    } else {
+      setStatus('شیء با کنتراست مشخص در کادر یافت نشد؛ برگه سفید را مقابل پس‌زمینه نگه دارید یا کادر را دستی بکشید');
+      playChime(350, 'sawtooth', 0.15);
+      return false;
+    }
+  } catch (err) {
+    console.warn('autoDetectObjectInBox error:', err);
+    return false;
+  }
+}
+
+/**
+ * Draw interactive overlay on canvas during object calibration
+ */
+function objectCalibDrawOverlay() {
+  if (!isObjectCalibrating) return;
+  const cw = canvas.width;
+  const ch = canvas.height;
+
+  const bx = calibObjectBox.x * cw;
+  const by = calibObjectBox.y * ch;
+  const bw = calibObjectBox.w * cw;
+  const bh = calibObjectBox.h * ch;
+
+  ctx.save();
+
+  // 1. Dim background outside calibration box
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.55)';
+  ctx.beginPath();
+  ctx.rect(0, 0, cw, ch);
+  ctx.rect(bx, by, bw, bh);
+  ctx.fill('evenodd');
+
+  // 2. High-contrast glowing calibration rectangle
+  ctx.shadowColor = '#00e5ff';
+  ctx.shadowBlur = 10;
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(bx, by, bw, bh);
+  ctx.shadowBlur = 0;
+
+  // 3. Thick distinctive corner brackets
+  const cornerLen = Math.min(26, Math.min(bw, bh) * 0.3);
+  ctx.strokeStyle = '#4ade80'; // Emerald corner brackets
+  ctx.lineWidth = 5;
+  ctx.lineCap = 'square';
+
+  // Top-Left
+  ctx.beginPath();
+  ctx.moveTo(bx, by + cornerLen);
+  ctx.lineTo(bx, by);
+  ctx.lineTo(bx + cornerLen, by);
+  ctx.stroke();
+
+  // Top-Right
+  ctx.beginPath();
+  ctx.moveTo(bx + bw - cornerLen, by);
+  ctx.lineTo(bx + bw, by);
+  ctx.lineTo(bx + bw, by + cornerLen);
+  ctx.stroke();
+
+  // Bottom-Left
+  ctx.beginPath();
+  ctx.moveTo(bx, by + bh - cornerLen);
+  ctx.lineTo(bx, by + bh);
+  ctx.lineTo(bx + cornerLen, by + bh);
+  ctx.stroke();
+
+  // Bottom-Right
+  ctx.beginPath();
+  ctx.moveTo(bx + bw - cornerLen, by + bh);
+  ctx.lineTo(bx + bw, by + bh);
+  ctx.lineTo(bx + bw, by + bh - cornerLen);
+  ctx.stroke();
+
+  // 4. Caliper measurement dimension lines with arrows
+  const preset = OBJ_PRESETS[calibObjectType];
+  const isVertical = preset ? preset.isVertical : (bh >= bw);
+
+  if (isVertical) {
+    // Vertical measurement caliper on right edge
+    const calX = bx + bw + 18;
+    ctx.strokeStyle = '#facc15'; // Amber gold caliper
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(bx + bw + 6, by);
+    ctx.lineTo(calX, by);
+    ctx.lineTo(calX, by + bh);
+    ctx.lineTo(bx + bw + 6, by + bh);
+    ctx.stroke();
+
+    // Arrows
+    ctx.fillStyle = '#facc15';
+    ctx.beginPath();
+    ctx.moveTo(calX, by); ctx.lineTo(calX - 4, by + 9); ctx.lineTo(calX + 4, by + 9); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(calX, by + bh); ctx.lineTo(calX - 4, by + bh - 9); ctx.lineTo(calX + 4, by + bh - 9); ctx.fill();
+
+    // Center Dimension Label Tag
+    const midY = by + bh / 2;
+    const labelText = `📏 ${calibObjectRealCm} cm (${Math.round(bh)} px)`;
+    ctx.font = 'bold 12px Vazirmatn, sans-serif';
+    const tm = ctx.measureText(labelText);
+    const tw = tm.width;
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+    ctx.fillRect(calX + 8, midY - 12, tw + 14, 24);
+    ctx.strokeStyle = '#facc15';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(calX + 8, midY - 12, tw + 14, 24);
+    ctx.fillStyle = '#fef08a';
+    ctx.fillText(labelText, calX + 15, midY + 5);
+  } else {
+    // Horizontal measurement caliper on bottom edge
+    const calY = by + bh + 18;
+    ctx.strokeStyle = '#facc15';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(bx, by + bh + 6);
+    ctx.lineTo(bx, calY);
+    ctx.lineTo(bx + bw, calY);
+    ctx.lineTo(bx + bw, by + bh + 6);
+    ctx.stroke();
+
+    // Arrows
+    ctx.fillStyle = '#facc15';
+    ctx.beginPath();
+    ctx.moveTo(bx, calY); ctx.lineTo(bx + 9, calY - 4); ctx.lineTo(bx + 9, calY + 4); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(bx + bw, calY); ctx.lineTo(bx + bw - 9, calY - 4); ctx.lineTo(bx + bw - 9, calY + 4); ctx.fill();
+
+    // Center Dimension Label Tag
+    const midX = bx + bw / 2;
+    const labelText = `📏 ${calibObjectRealCm} cm (${Math.round(bw)} px)`;
+    ctx.font = 'bold 12px Vazirmatn, sans-serif';
+    const tm = ctx.measureText(labelText);
+    const tw = tm.width;
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+    ctx.fillRect(midX - tw / 2 - 8, calY + 8, tw + 16, 24);
+    ctx.strokeStyle = '#facc15';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(midX - tw / 2 - 8, calY + 8, tw + 16, 24);
+    ctx.fillStyle = '#fef08a';
+    ctx.fillText(labelText, midX - tw / 2, calY + 25);
+  }
+
+  // 5. Center Touch/Drag Reticle
+  ctx.fillStyle = 'rgba(56, 189, 248, 0.25)';
+  ctx.beginPath();
+  ctx.arc(bx + bw / 2, by + bh / 2, 16, 0, 2 * Math.PI);
+  ctx.fill();
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // 6. Top Instructional Banner
+  const topText = 'شیء مرجع (کاغذ A4 / خط‌کش) را در کادر قرار داده و لبه‌ها را تنظیم کنید';
+  ctx.font = 'bold 13px Vazirmatn, sans-serif';
+  const topTm = ctx.measureText(topText);
+  ctx.fillStyle = 'rgba(2, 132, 199, 0.9)';
+  ctx.fillRect(cw / 2 - topTm.width / 2 - 14, 14, topTm.width + 28, 30);
+  ctx.strokeStyle = '#7dd3fc';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(cw / 2 - topTm.width / 2 - 14, 14, topTm.width + 28, 30);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(topText, cw / 2 - topTm.width / 2, 34);
+
+  ctx.restore();
+}
+
+// Preset button handlers
+if (objCalibPresets) {
+  objCalibPresets.querySelectorAll('.objPresetBtn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      objCalibPresets.querySelectorAll('.objPresetBtn').forEach(b => {
+        b.classList.remove('active');
+        b.style.borderColor = '#475569';
+        b.style.background = '#1e293b';
+        b.style.color = '#94a3b8';
+      });
+      btn.classList.add('active');
+      btn.style.borderColor = '#38bdf8';
+      btn.style.background = '#0284c7';
+      btn.style.color = '#fff';
+
+      calibObjectType = btn.dataset.type;
+      calibObjectRealCm = parseFloat(btn.dataset.size) || 29.7;
+      if (objCalibCustomCm) objCalibCustomCm.value = calibObjectRealCm;
+
+      const preset = OBJ_PRESETS[calibObjectType];
+      if (preset && preset.isVertical) {
+        calibObjectBox.w = 0.24;
+        calibObjectBox.h = 0.50;
+      } else {
+        calibObjectBox.w = 0.44;
+        calibObjectBox.h = 0.30;
+      }
+      updateObjectCalibUI();
+    });
+  });
+}
+
+if (objCalibCustomCm) {
+  objCalibCustomCm.addEventListener('input', () => {
+    const val = parseFloat(objCalibCustomCm.value);
+    if (val > 0) {
+      calibObjectRealCm = val;
+      updateObjectCalibUI();
+    }
+  });
+}
+
+if (objCalibAutoDetectBtn) {
+  objCalibAutoDetectBtn.addEventListener('click', () => {
+    autoDetectObjectInBox();
+  });
+}
+
+if (objCalibResetBoxBtn) {
+  objCalibResetBoxBtn.addEventListener('click', () => {
+    const preset = OBJ_PRESETS[calibObjectType] || OBJ_PRESETS['a4-v'];
+    if (preset.isVertical) {
+      calibObjectBox = { x: 0.38, y: 0.25, w: 0.24, h: 0.50 };
+    } else {
+      calibObjectBox = { x: 0.28, y: 0.35, w: 0.44, h: 0.30 };
+    }
+    updateObjectCalibUI();
+    setStatus('کادر کالیبراسیون به حالت پیش‌فرض بازگشت');
+  });
+}
+
+if (objCalibCancelBtn) {
+  objCalibCancelBtn.addEventListener('click', () => {
+    exitObjectCalibration();
+    setStatus('کالیبراسیون با شیء مرجع لغو شد');
+  });
+}
+
+if (objCalibConfirmBtn) {
+  objCalibConfirmBtn.addEventListener('click', () => {
+    const cw = canvas.width || 640;
+    const ch = canvas.height || 480;
+    const pxW = calibObjectBox.w * cw;
+    const pxH = calibObjectBox.h * ch;
+    const preset = OBJ_PRESETS[calibObjectType];
+    const isVertical = preset ? preset.isVertical : (pxH >= pxW);
+    const measuredPx = isVertical ? pxH : pxW;
+
+    if (measuredPx <= 5 || calibObjectRealCm <= 0) {
+      setStatus('کادر بسیار کوچک است؛ اندازه شیء را مشخص کنید');
+      return;
+    }
+
+    const scale = calibObjectRealCm / measuredPx; // cm per pixel
+    distCmPerPx = scale;
+    currentEstimatedScaleCmPerPx = scale;
+
+    try {
+      localStorage.setItem('calibratedScaleCmPerPx', scale.toString());
+      localStorage.setItem('calibratedObjectInfo', JSON.stringify({
+        type: calibObjectType,
+        realCm: calibObjectRealCm,
+        pixels: measuredPx,
+        timestamp: new Date().toISOString()
+      }));
+    } catch (e) {
+      console.warn('Could not save to localStorage:', e);
+    }
+
+    // If gatePoints are set in run mode, update the obstacle distance immediately!
+    if (gatePoints[0] && gatePoints[1]) {
+      const dx = gatePoints[1].x - gatePoints[0].x;
+      const dy = gatePoints[1].y - gatePoints[0].y;
+      const pxDist = Math.hypot(dx, dy);
+      const totalM = (pxDist * distCmPerPx) / 100;
+      if (distInput) distInput.value = totalM.toFixed(2);
+      if (autoDistText) {
+        const meters = Math.floor(totalM);
+        const cm = Math.round((totalM % 1) * 100);
+        autoDistText.textContent = `${meters} متر و ${cm} سانتی‌متر (با دقت برگه مرجع)`;
+      }
+    }
+
+    // If in distance mode, update calculation
+    if (typeof updateDistanceCalculation === 'function') {
+      updateDistanceCalculation();
+    }
+
+    playChime(880, 'triangle', 0.25);
+    speakText(`مقیاس با شیء مرجع کالیبره شد. هر پیکسل معادل ${scale.toFixed(2)} سانتی‌متر است`, 'Scale calibrated successfully');
+    setStatus(`کالیبراسیون مقیاس با شیء مرجع با موفقیت اعمال شد: هر پیکسل = ${scale.toFixed(3)} cm ✅`);
+    exitObjectCalibration();
+  });
+}
+
+// Trigger button event bindings
+if (gateA4CalibBtn) {
+  gateA4CalibBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    startObjectCalibration('a4-v');
+  });
+}
+
+if (distPanelA4CalibBtn) {
+  distPanelA4CalibBtn.addEventListener('click', () => {
+    startObjectCalibration('a4-v');
+  });
+}
+
+if (distObjA4CalibBtn) {
+  distObjA4CalibBtn.addEventListener('click', () => {
+    startObjectCalibration('a4-v');
+  });
+}
+
+if (startObjectCalibSettingsBtn) {
+  startObjectCalibSettingsBtn.addEventListener('click', () => {
+    startObjectCalibration('a4-v');
+  });
+}
+
 // ================== GUIDE SYSTEM ==================
 function showGuide(icon, title, text) {
   guideIcon.textContent = icon;
@@ -2924,6 +3588,11 @@ function hideAllPanels() {
     heightCalibPanel.classList.remove('visible');
   }
   isCalibratingHeight = false;
+  if (objectCalibPanel) {
+    objectCalibPanel.style.display = 'none';
+    objectCalibPanel.classList.remove('visible');
+  }
+  isObjectCalibrating = false;
   if (boscoHud) boscoHud.style.display = 'none';
   if (wingspanHud) wingspanHud.style.display = 'none';
   if (distanceHud) distanceHud.style.display = 'none';
@@ -4341,8 +5010,42 @@ function distanceDrawOverlay() {
   ctx.restore();
 }
 
-// Distance touch / drag handling on canvas
+// Pointer handling on canvas (Object Calibration and Distance Measurement)
 document.getElementById('stage').addEventListener('pointerdown', (e) => {
+  if (isObjectCalibrating) {
+    if (e.target.closest && (e.target.closest('#objectCalibPanel') || e.target.closest('#headerContainer'))) return;
+    const pt = clientToCanvasCoords(e.clientX, e.clientY);
+    const cw = canvas.width || 640;
+    const ch = canvas.height || 480;
+    const bx = calibObjectBox.x * cw;
+    const by = calibObjectBox.y * ch;
+    const bw = calibObjectBox.w * cw;
+    const bh = calibObjectBox.h * ch;
+    
+    // Check corner handles (hit radius 35px for responsive touch)
+    const hitR = 35;
+    if (Math.hypot(pt.x - bx, pt.y - by) < hitR) {
+      objDragMode = 'tl';
+    } else if (Math.hypot(pt.x - (bx + bw), pt.y - by) < hitR) {
+      objDragMode = 'tr';
+    } else if (Math.hypot(pt.x - bx, pt.y - (by + bh)) < hitR) {
+      objDragMode = 'bl';
+    } else if (Math.hypot(pt.x - (bx + bw), pt.y - (by + bh)) < hitR) {
+      objDragMode = 'br';
+    } else if (pt.x >= bx - 10 && pt.x <= bx + bw + 10 && pt.y >= by - 10 && pt.y <= by + bh + 10) {
+      objDragMode = 'move';
+    } else {
+      // Tap outside centers the box on tap
+      calibObjectBox.x = Math.max(0.04, Math.min(0.96 - calibObjectBox.w, (pt.x - bw / 2) / cw));
+      calibObjectBox.y = Math.max(0.04, Math.min(0.96 - calibObjectBox.h, (pt.y - bh / 2) / ch));
+      objDragMode = 'move';
+    }
+    isDraggingObjBox = true;
+    objDragStart = { x: pt.x, y: pt.y, box: { ...calibObjectBox } };
+    updateObjectCalibUI();
+    return;
+  }
+
   if (mode !== 'distance') return;
   if (e.target.closest && (e.target.closest('#distanceMeasurePanel') || e.target.closest('#headerContainer') || e.target.closest('#distanceHud'))) return;
   const pt = clientToCanvasCoords(e.clientX, e.clientY);
@@ -4370,6 +5073,42 @@ document.getElementById('stage').addEventListener('pointerdown', (e) => {
 });
 
 window.addEventListener('pointermove', (e) => {
+  if (isObjectCalibrating && isDraggingObjBox && objDragMode) {
+    const pt = clientToCanvasCoords(e.clientX, e.clientY);
+    const cw = canvas.width || 640;
+    const ch = canvas.height || 480;
+    const dx = (pt.x - objDragStart.x) / cw;
+    const dy = (pt.y - objDragStart.y) / ch;
+    const ob = objDragStart.box;
+
+    if (objDragMode === 'move') {
+      calibObjectBox.x = Math.max(0.02, Math.min(0.98 - ob.w, ob.x + dx));
+      calibObjectBox.y = Math.max(0.02, Math.min(0.98 - ob.h, ob.y + dy));
+    } else if (objDragMode === 'br') {
+      calibObjectBox.w = Math.max(0.08, Math.min(0.98 - ob.x, ob.w + dx));
+      calibObjectBox.h = Math.max(0.08, Math.min(0.98 - ob.y, ob.h + dy));
+    } else if (objDragMode === 'tl') {
+      const newX = Math.max(0.02, Math.min(ob.x + ob.w - 0.08, ob.x + dx));
+      const newY = Math.max(0.02, Math.min(ob.y + ob.h - 0.08, ob.y + dy));
+      calibObjectBox.w = ob.w + (ob.x - newX);
+      calibObjectBox.h = ob.h + (ob.y - newY);
+      calibObjectBox.x = newX;
+      calibObjectBox.y = newY;
+    } else if (objDragMode === 'tr') {
+      const newY = Math.max(0.02, Math.min(ob.y + ob.h - 0.08, ob.y + dy));
+      calibObjectBox.w = Math.max(0.08, Math.min(0.98 - ob.x, ob.w + dx));
+      calibObjectBox.h = ob.h + (ob.y - newY);
+      calibObjectBox.y = newY;
+    } else if (objDragMode === 'bl') {
+      const newX = Math.max(0.02, Math.min(ob.x + ob.w - 0.08, ob.x + dx));
+      calibObjectBox.w = ob.w + (ob.x - newX);
+      calibObjectBox.h = Math.max(0.08, Math.min(0.98 - ob.y, ob.h + dy));
+      calibObjectBox.x = newX;
+    }
+    updateObjectCalibUI();
+    return;
+  }
+
   if (mode !== 'distance' || !isDraggingDist || !draggingDistPoint) return;
   const pt = clientToCanvasCoords(e.clientX, e.clientY);
   if (draggingDistPoint === 'A') {
@@ -4381,6 +5120,10 @@ window.addEventListener('pointermove', (e) => {
 });
 
 window.addEventListener('pointerup', () => {
+  if (isDraggingObjBox) {
+    isDraggingObjBox = false;
+    objDragMode = null;
+  }
   isDraggingDist = false;
   draggingDistPoint = null;
 });
@@ -4526,7 +5269,7 @@ function clientToCanvasCoords(clientX, clientY) {
 
 // ================== Camera + model setup ==================
 /**
- * Get list of available video devices
+ * Get list of available video devices without filtering
  */
 async function getAvailableCameras() {
   try {
@@ -4539,55 +5282,63 @@ async function getAvailableCameras() {
 }
 
 /**
- * Find the best wide-angle camera
- * Prefers back camera with ultra-wide or wide-angle
+ * Select the best camera according to user preference and Android wide-angle priority
+ * On Android, automatically defaults to the widest (0.5x / ultra-wide) camera sensor
  */
 async function selectBestCamera(preferredDeviceId = null) {
   if (preferredDeviceId) {
     return preferredDeviceId;
   }
 
-  const cameras = await getAvailableCameras();
-  if (cameras.length === 0) {
+  // Refresh available cameras to ensure latest hardware list
+  await refreshAvailableCameras();
+
+  if (availableCameras.length === 0) {
     return null;
   }
 
-  // Check for saved camera preference
-  const savedId = loadSavedCamera();
+  // 1. Check for saved camera preference explicitly selected by the user
+  const savedId = localStorage.getItem('selectedCameraId') || loadSavedCamera();
   if (savedId) {
-    const saved = cameras.find(c => c.deviceId === savedId);
+    const saved = availableCameras.find(c => c.deviceId === savedId);
     if (saved) {
-      console.log('✅ Using saved camera:', saved.label || saved.deviceId);
+      console.log('✅ Using user saved camera preference:', saved.persianLabel || saved.deviceId);
       currentCameraId = saved.deviceId;
+      currentCameraInfo = saved;
       return saved.deviceId;
     }
   }
 
-  // Try to find back camera with wide-angle indicators in label
-  const wideAngleKeywords = ['wide', 'ultra', '0.5', '0.6', '0.7'];
-  const backCameras = cameras.filter(camera => {
-    const label = (camera.label || '').toLowerCase();
-    return label.includes('back') || label.includes('rear') || label.includes('environment') || label.includes('عقب');
-  });
+  const isAndroid = /Android/i.test(navigator.userAgent);
 
-  // Among back cameras, prefer ones with ultra-wide keywords
-  const wideBackCamera = backCameras.find(camera => {
-    const label = (camera.label || '').toLowerCase();
-    return wideAngleKeywords.some(keyword => label.includes(keyword));
-  });
+  // 2. Android / Mobile default: Prioritize the camera with highest wideScore (Ultra-wide 0.5x)
+  const backCameras = availableCameras.filter(c => c.position === 'back');
 
-  if (wideBackCamera) {
-    console.log('✅ Selected wide-angle back camera:', wideBackCamera.label || wideBackCamera.deviceId);
-    currentCameraId = wideBackCamera.deviceId;
-    return wideBackCamera.deviceId;
-  }
-
-  // Fall back to first back camera
   if (backCameras.length > 0) {
+    // Sort back cameras by wideScore descending
+    const sortedByWide = [...backCameras].sort((a, b) => (b.wideScore || 0) - (a.wideScore || 0));
+    const widestCam = sortedByWide[0];
+
+    // On Android, if an ultra-wide or wide camera is detected (wideScore >= 80), prefer it immediately
+    if (widestCam && widestCam.wideScore >= 80) {
+      console.log(`✅ [Android Wide Default] Automatically selected widest camera: ${widestCam.persianLabel} (${widestCam.originalLabel}) with score ${widestCam.wideScore}`);
+      currentCameraId = widestCam.deviceId;
+      currentCameraInfo = widestCam;
+      return widestCam.deviceId;
+    }
+
+    // Otherwise use first back camera
+    console.log(`✅ Selected back camera: ${backCameras[0].persianLabel}`);
+    currentCameraId = backCameras[0].deviceId;
+    currentCameraInfo = backCameras[0];
     return backCameras[0].deviceId;
   }
 
-  return null;
+  // 3. Fallback to first available camera
+  console.log(`✅ Selected default camera: ${availableCameras[0].persianLabel}`);
+  currentCameraId = availableCameras[0].deviceId;
+  currentCameraInfo = availableCameras[0];
+  return availableCameras[0].deviceId;
 }
 
 /**
@@ -4978,8 +5729,163 @@ async function refreshCanvasForOrientation() {
   }
 }
 
+// ================== KALMAN FILTERS FOR POSE DETECTION & SENSOR STABILITY ==================
 /**
- * Load AI model with comprehensive error handling and retry logic
+ * 1D Kalman Filter for smooth scalar tracking (e.g. runnerX, hip height, time)
+ */
+class KalmanFilter1D {
+  constructor(q = 0.008, r = 0.05, initialVal = null) {
+    this.q = q; // Process noise covariance
+    this.r = r; // Measurement noise covariance
+    this.x = initialVal; // State estimate
+    this.p = 1.0; // Estimate error covariance
+    this.k = 0;   // Kalman gain
+  }
+
+  reset(initialVal = null) {
+    this.x = initialVal;
+    this.p = 1.0;
+  }
+
+  update(measurement) {
+    if (measurement == null || isNaN(measurement)) return this.x;
+    if (this.x == null) {
+      this.x = measurement;
+      this.p = 1.0;
+      return this.x;
+    }
+    // Prediction update
+    this.p = this.p + this.q;
+    // Measurement update
+    this.k = this.p / (this.p + this.r);
+    this.x = this.x + this.k * (measurement - this.x);
+    this.p = (1 - this.k) * this.p;
+    return this.x;
+  }
+}
+
+/**
+ * 2D Kalman Filter with position and velocity states for smooth joint tracking
+ * Incorporates dynamic confidence-based noise scaling to prevent knee/ankle jitter
+ */
+class PointKalmanFilter2D {
+  constructor(name = '') {
+    this.name = name;
+    this.isLowerLimb = name.includes('knee') || name.includes('ankle') || name.includes('heel') || name.includes('foot');
+    this.q = this.isLowerLimb ? 0.003 : 0.006; // Lower process noise for knees and ankles
+    this.baseR = this.isLowerLimb ? 0.08 : 0.05;
+    this.x = null;
+    this.y = null;
+    this.vx = 0;
+    this.vy = 0;
+    this.px = 1.0;
+    this.py = 1.0;
+    this.lastTime = 0;
+  }
+
+  reset() {
+    this.x = null;
+    this.y = null;
+    this.vx = 0;
+    this.vy = 0;
+    this.px = 1.0;
+    this.py = 1.0;
+    this.lastTime = 0;
+  }
+
+  update(rawX, rawY, score = 0.8) {
+    if (rawX == null || rawY == null || isNaN(rawX) || isNaN(rawY)) {
+      return { x: this.x, y: this.y };
+    }
+
+    const now = performance.now();
+    const dt = this.lastTime ? Math.min(0.1, Math.max(0.01, (now - this.lastTime) / 1000)) : 0.033;
+    this.lastTime = now;
+
+    if (this.x == null || this.y == null) {
+      this.x = rawX;
+      this.y = rawY;
+      this.vx = 0;
+      this.vy = 0;
+      return { x: this.x, y: this.y };
+    }
+
+    // Dynamic measurement noise: lower score => higher measurement noise (trust motion model more)
+    const safeScore = Math.max(0.05, Math.min(1.0, score));
+    const r = this.baseR / (safeScore * safeScore);
+
+    // Non-physical jump rejection: if point jumped > 140px in a single frame, heavily damp it
+    const distSq = (rawX - this.x) * (rawX - this.x) + (rawY - this.y) * (rawY - this.y);
+    const maxJumpPx = this.isLowerLimb ? 120 : 160;
+    let effectiveX = rawX;
+    let effectiveY = rawY;
+    if (distSq > maxJumpPx * maxJumpPx) {
+      const dist = Math.sqrt(distSq);
+      effectiveX = this.x + ((rawX - this.x) / dist) * maxJumpPx;
+      effectiveY = this.y + ((rawY - this.y) / dist) * maxJumpPx;
+    }
+
+    // Predict state with velocity
+    const predX = this.x + this.vx * dt;
+    const predY = this.y + this.vy * dt;
+    const predPx = this.px + this.q;
+    const predPy = this.py + this.q;
+
+    // Kalman Gain
+    const kx = predPx / (predPx + r);
+    const ky = predPy / (predPy + r);
+
+    // Update state
+    const newX = predX + kx * (effectiveX - predX);
+    const newY = predY + ky * (effectiveY - predY);
+
+    // Update velocity
+    this.vx = (newX - this.x) / dt;
+    this.vy = (newY - this.y) / dt;
+
+    this.x = newX;
+    this.y = newY;
+    this.px = (1 - kx) * predPx;
+    this.py = (1 - ky) * predPy;
+
+    return { x: this.x, y: this.y };
+  }
+}
+
+// Global registry of keypoint Kalman filters
+const poseKalmanFilters = {};
+const runnerXKalmanFilter = new KalmanFilter1D(0.012, 0.04);
+let lastPoseDetectionTime = 0;
+
+function applyPoseKalmanFilter(keypoints) {
+  if (!keypoints || !keypoints.length) return;
+  const now = performance.now();
+  // If no poses detected for > 600ms, reset filters to prevent trailing lag
+  if (now - lastPoseDetectionTime > 600) {
+    resetPoseKalmanFilters();
+  }
+  lastPoseDetectionTime = now;
+
+  for (const pt of keypoints) {
+    if (!pt || !pt.name) continue;
+    if (!poseKalmanFilters[pt.name]) {
+      poseKalmanFilters[pt.name] = new PointKalmanFilter2D(pt.name);
+    }
+    const filtered = poseKalmanFilters[pt.name].update(pt.x, pt.y, pt.score || 0.5);
+    pt.x = filtered.x;
+    pt.y = filtered.y;
+  }
+}
+
+function resetPoseKalmanFilters() {
+  for (const key in poseKalmanFilters) {
+    poseKalmanFilters[key].reset();
+  }
+  runnerXKalmanFilter.reset();
+}
+
+/**
+ * Load AI model with comprehensive error handling, enhanced smoothing, and fallback logic
  */
 async function loadModel() {
   const maxRetries = 3;
@@ -4994,16 +5900,34 @@ async function loadModel() {
         throw new Error('TensorFlow.js libraries not loaded. Check your internet connection.');
       }
 
-      detector = await poseDetection.createDetector(
-        poseDetection.SupportedModels.BlazePose,
-        {
-          runtime: 'mediapipe',
-          modelType: 'lite',
-          solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404',
-        }
-      );
+      // Try 'full' model for higher joint precision on non-low-power devices, fallback to 'lite'
+      const preferredType = (performanceMode !== 'low-power' && attempt === 1) ? 'full' : 'lite';
+      console.log(`Attempting BlazePose (${preferredType})...`);
 
-      console.log('✅ Model loaded successfully');
+      try {
+        detector = await poseDetection.createDetector(
+          poseDetection.SupportedModels.BlazePose,
+          {
+            runtime: 'mediapipe',
+            modelType: preferredType,
+            enableSmoothing: true,
+            solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404',
+          }
+        );
+      } catch (fullModelErr) {
+        console.warn('BlazePose full model load failed, falling back to lite model:', fullModelErr);
+        detector = await poseDetection.createDetector(
+          poseDetection.SupportedModels.BlazePose,
+          {
+            runtime: 'mediapipe',
+            modelType: 'lite',
+            enableSmoothing: true,
+            solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404',
+          }
+        );
+      }
+
+      console.log('✅ Model loaded successfully with keypoint stabilization');
       return; // Success!
 
     } catch (error) {
@@ -5030,7 +5954,8 @@ async function loadModel() {
 
 // ================== Drawing / main loop ==================
 /**
- * Draw pose with error handling
+ * Draw pose with thicker high-visibility skeleton, distinctive color-coded joints,
+ * and real-time active tracking reticle
  */
 function drawPose(poses) {
   try {
@@ -5048,70 +5973,281 @@ function drawPose(poses) {
     if (mode === 'wingspan') wingspanDrawOverlay();
     if (mode === 'distance') distanceDrawOverlay();
     if (isCalibratingHeight) heightCalibDrawOverlay();
+    if (isObjectCalibrating) objectCalibDrawOverlay();
 
     if (!poses || !poses.length) return;
     const kp = {};
     for (const point of poses[0].keypoints) kp[point.name] = point;
 
-    // Essential keypoints for performance mode
-    const essentialKeypoints = [
-      'left_hip', 'right_hip',
-      'left_knee', 'right_knee',
-      'left_ankle', 'right_ankle'
-    ];
-    
-    // Essential connections for performance mode
-    const essentialConnections = [
-      ['left_hip', 'right_hip'],
-      ['left_hip', 'left_knee'],
-      ['left_knee', 'left_ankle'],
-      ['right_hip', 'right_knee'],
-      ['right_knee', 'right_ankle']
-    ];
+    // Rendering confidence threshold (uses 0.15 baseline so far-away/fast limbs do not snap out)
+    const minRenderScore = 0.15;
+    const isLowPower = performanceMode === 'low-power';
 
-    // Choose connections based on performance mode
-    const connectionsToRender = performanceMode === 'low-power' 
-      ? essentialConnections 
-      : CONNECTIONS;
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
 
-    // Use dynamic confidence threshold based on light level
-    const confidenceThreshold = currentConfidenceThreshold;
+    // 1. Render all anatomical connections with thicker, high-contrast lines
+    for (const [a, b] of CONNECTIONS) {
+      // In low-power mode, skip micro facial/finger details to preserve FPS, but KEEP full skeleton
+      if (isLowPower && (
+        a.includes('eye_inner') || a.includes('eye_outer') || 
+        a.includes('pinky') || a.includes('thumb') || a.includes('index')
+      )) {
+        continue;
+      }
 
-    ctx.strokeStyle = '#38bdf8';
-    ctx.lineWidth = performanceMode === 'low-power' ? 2 : 3;
-    
-    for (const [a, b] of connectionsToRender) {
       const pa = kp[a], pb = kp[b];
-      if (pa && pb && pa.score > confidenceThreshold && pb.score > confidenceThreshold) {
+      if (pa && pb && (pa.score || 0) >= minRenderScore && (pb.score || 0) >= minRenderScore) {
+        const pairScore = Math.min(pa.score || 0, pb.score || 0);
+
+        // Group by anatomical region
+        const isLegOrFoot = a.includes('knee') || b.includes('knee') || a.includes('ankle') || b.includes('ankle') || a.includes('heel') || b.includes('heel') || a.includes('foot') || b.includes('foot');
+        const isSpineOrHip = (a.includes('shoulder') && b.includes('shoulder')) || (a.includes('hip') && b.includes('hip')) || (a.includes('shoulder') && b.includes('hip'));
+        const isHeadOrFace = a.includes('nose') || b.includes('nose') || a.includes('eye') || b.includes('eye') || a.includes('ear') || b.includes('ear') || a.includes('mouth') || b.includes('mouth');
+
+        let strokeColor;
+        let strokeW;
+        const alpha = pairScore >= 0.35 ? 0.95 : Math.max(0.40, pairScore * 2.2);
+
+        if (isLegOrFoot) {
+          // Lower limbs: High-visibility Emerald Green
+          strokeColor = `rgba(34, 197, 94, ${alpha})`;
+          strokeW = isLowPower ? 4.5 : 6.0;
+        } else if (isSpineOrHip) {
+          // Core / Spine: Vivid Electric Cyan
+          strokeColor = `rgba(56, 189, 248, ${alpha})`;
+          strokeW = isLowPower ? 4.5 : 6.5;
+        } else if (isHeadOrFace) {
+          // Head / Face: Amber Gold
+          strokeColor = `rgba(251, 191, 36, ${alpha})`;
+          strokeW = isLowPower ? 2.5 : 3.5;
+        } else {
+          // Upper limbs / Arms: Bright Indigo / Sky
+          strokeColor = `rgba(129, 140, 248, ${alpha})`;
+          strokeW = isLowPower ? 3.5 : 5.0;
+        }
+
+        // Dark outline for maximum contrast against any floor or outdoor background
+        ctx.strokeStyle = 'rgba(15, 23, 42, 0.75)';
+        ctx.lineWidth = strokeW + (isLowPower ? 2 : 3);
+        ctx.beginPath();
+        ctx.moveTo(pa.x, pa.y);
+        ctx.lineTo(pb.x, pb.y);
+        ctx.stroke();
+
+        // Main colored anatomical bone
+        ctx.strokeStyle = strokeColor;
+        ctx.lineWidth = strokeW;
         ctx.beginPath();
         ctx.moveTo(pa.x, pa.y);
         ctx.lineTo(pb.x, pb.y);
         ctx.stroke();
       }
     }
-    
-    ctx.fillStyle = '#4ade80';
-    
-    // Draw only essential keypoints in low-power mode
-    if (performanceMode === 'low-power') {
-      for (const keypointName of essentialKeypoints) {
-        const point = kp[keypointName];
-        if (point && point.score > confidenceThreshold) {
-          ctx.beginPath();
-          ctx.arc(point.x, point.y, 4, 0, 2 * Math.PI);
-          ctx.fill();
-        }
+
+    // 2. Anatomical Spine & Neck Centerlines with reinforced contrast
+    const ls = kp['left_shoulder'], rs = kp['right_shoulder'];
+    const lh = kp['left_hip'], rh = kp['right_hip'];
+    const nose = kp['nose'];
+
+    if (ls && rs && (ls.score || 0) >= minRenderScore && (rs.score || 0) >= minRenderScore) {
+      const midShoulder = { x: (ls.x + rs.x) / 2, y: (ls.y + rs.y) / 2 };
+
+      // Central Spine (Mid-Shoulder to Mid-Hip)
+      if (lh && rh && (lh.score || 0) >= minRenderScore && (rh.score || 0) >= minRenderScore) {
+        const midHip = { x: (lh.x + rh.x) / 2, y: (lh.y + rh.y) / 2 };
+        const spineScore = (ls.score + rs.score + lh.score + rh.score) / 4;
+        const spineAlpha = spineScore >= 0.35 ? 0.95 : Math.max(0.4, spineScore * 2);
+
+        // Spine Dark backing
+        ctx.strokeStyle = 'rgba(15, 23, 42, 0.75)';
+        ctx.lineWidth = isLowPower ? 6.5 : 8.5;
+        ctx.beginPath();
+        ctx.moveTo(midShoulder.x, midShoulder.y);
+        ctx.lineTo(midHip.x, midHip.y);
+        ctx.stroke();
+
+        // Spine Cyan core
+        ctx.strokeStyle = `rgba(56, 189, 248, ${spineAlpha})`;
+        ctx.lineWidth = isLowPower ? 4.5 : 6.0;
+        ctx.beginPath();
+        ctx.moveTo(midShoulder.x, midShoulder.y);
+        ctx.lineTo(midHip.x, midHip.y);
+        ctx.stroke();
       }
-    } else {
-      // Draw all keypoints in normal mode
-      for (const point of poses[0].keypoints) {
-        if (point.score > confidenceThreshold) {
-          ctx.beginPath();
-          ctx.arc(point.x, point.y, 5, 0, 2 * Math.PI);
-          ctx.fill();
-        }
+
+      // Neck Connection (Mid-Shoulder to Nose/Chin)
+      if (nose && (nose.score || 0) >= minRenderScore) {
+        const neckAlpha = Math.min(nose.score || 0, (ls.score + rs.score) / 2) >= 0.35 ? 0.95 : 0.55;
+        ctx.strokeStyle = 'rgba(15, 23, 42, 0.75)';
+        ctx.lineWidth = isLowPower ? 4.5 : 6.0;
+        ctx.beginPath();
+        ctx.moveTo(midShoulder.x, midShoulder.y);
+        ctx.lineTo(nose.x, nose.y);
+        ctx.stroke();
+
+        ctx.strokeStyle = `rgba(251, 191, 36, ${neckAlpha})`;
+        ctx.lineWidth = isLowPower ? 2.5 : 3.8;
+        ctx.beginPath();
+        ctx.moveTo(midShoulder.x, midShoulder.y);
+        ctx.lineTo(nose.x, nose.y);
+        ctx.stroke();
       }
     }
+
+    // 3. Render all detected anatomical keypoints / joints with distinctive coloring and double-rings
+    for (const point of poses[0].keypoints) {
+      const score = point.score || 0;
+      if (score < minRenderScore) continue;
+
+      const name = point.name || '';
+      // Skip micro facial/finger nodes in low power mode to save canvas cycles
+      if (isLowPower && (
+        name.includes('eye_inner') || name.includes('eye_outer') || 
+        name.includes('pinky') || name.includes('thumb') || name.includes('index')
+      )) {
+        continue;
+      }
+
+      const isKnee = name.includes('knee');
+      const isAnkleOrFoot = name.includes('ankle') || name.includes('heel') || name.includes('foot');
+      const isHip = name.includes('hip');
+      const isShoulder = name.includes('shoulder');
+      const isElbowOrWrist = name.includes('elbow') || name.includes('wrist');
+      const isHeadOrFace = name.includes('nose') || name.includes('eye') || name.includes('ear') || name.includes('mouth');
+
+      // Distinctive color-coding for each major joint type
+      let color;
+      let radius;
+      let hasAccentRing = false;
+
+      if (isKnee) {
+        color = '#22c55e'; // Emerald Green
+        radius = isLowPower ? 7.5 : 9.5;
+        hasAccentRing = true;
+      } else if (isAnkleOrFoot) {
+        color = '#eab308'; // Bright Yellow Gold
+        radius = isLowPower ? 7.0 : 9.0;
+        hasAccentRing = true;
+      } else if (isHip) {
+        color = '#ec4899'; // Magenta / Pink Pelvic Hub
+        radius = isLowPower ? 7.5 : 9.5;
+      } else if (isShoulder) {
+        color = '#0284c7'; // Deep Sky Blue
+        radius = isLowPower ? 7.0 : 8.5;
+      } else if (isElbowOrWrist) {
+        color = '#a855f7'; // Purple / Violet
+        radius = isLowPower ? 5.5 : 7.5;
+      } else if (isHeadOrFace) {
+        color = '#fbbf24'; // Amber
+        radius = isLowPower ? 3.0 : 4.5;
+      } else {
+        color = '#38bdf8'; // Cyan
+        radius = isLowPower ? 4.5 : 6.0;
+      }
+
+      // Outer accent pulsing ring for Knees and Ankles (shows user the critical measurement joints)
+      if (hasAccentRing && !isLowPower) {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, radius + 4.5, 0, 2 * Math.PI);
+        ctx.stroke();
+      }
+
+      // Dark joint border
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+      ctx.beginPath();
+      ctx.arc(point.x, point.y, radius + 2, 0, 2 * Math.PI);
+      ctx.fill();
+
+      // Outer colored joint marker
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(point.x, point.y, radius, 0, 2 * Math.PI);
+      ctx.fill();
+
+      // High-contrast white center for major joints
+      if (!isHeadOrFace && !isLowPower) {
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, radius * 0.42, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+    }
+
+    // 4. Active Tracking HUD Reticle (نشانگر ردیابی فعال ورزشکار)
+    if (mode === 'run') {
+      const runnerX = getRunnerX(kp);
+      if (runnerX != null && ls && rs) {
+        const torsoY = ((ls.y + rs.y) / 2 + (lh && rh ? (lh.y + rh.y) / 2 : (ls.y + rs.y) / 2 + 50)) / 2;
+        
+        // Vertical dashed tracking laser
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
+        ctx.setLineDash([6, 6]);
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(runnerX, 0);
+        ctx.lineTo(runnerX, canvas.height);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Active Crosshair Reticle
+        ctx.strokeStyle = '#00e5ff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(runnerX, torsoY, 18, 0, 2 * Math.PI);
+        ctx.stroke();
+
+        ctx.fillStyle = '#00e5ff';
+        ctx.beginPath();
+        ctx.arc(runnerX, torsoY, 3, 0, 2 * Math.PI);
+        ctx.fill();
+
+        // Status Badge
+        const tagText = '🎯 ردیابی بالاتنه دونده';
+        ctx.font = 'bold 11px Vazirmatn, sans-serif';
+        const tagW = ctx.measureText(tagText).width;
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+        ctx.fillRect(runnerX - tagW / 2 - 6, torsoY - 32, tagW + 12, 20);
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(runnerX - tagW / 2 - 6, torsoY - 32, tagW + 12, 20);
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillText(tagText, runnerX - tagW / 2, torsoY - 18);
+      }
+    } else if (mode === 'jump' || mode === 'bosco') {
+      if (lh && rh) {
+        const hipX = (lh.x + rh.x) / 2;
+        const hipY = (lh.y + rh.y) / 2;
+        
+        // Pelvis center of gravity reticle
+        ctx.strokeStyle = '#ec4899';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(hipX, hipY, 18, 0, 2 * Math.PI);
+        ctx.stroke();
+
+        ctx.fillStyle = '#ec4899';
+        ctx.beginPath();
+        ctx.arc(hipX, hipY, 3.5, 0, 2 * Math.PI);
+        ctx.fill();
+
+        const tagText = '🎯 مرکز ثقل پرش (لگن)';
+        ctx.font = 'bold 11px Vazirmatn, sans-serif';
+        const tagW = ctx.measureText(tagText).width;
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+        ctx.fillRect(hipX - tagW / 2 - 6, hipY - 30, tagW + 12, 20);
+        ctx.strokeStyle = '#ec4899';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(hipX - tagW / 2 - 6, hipY - 30, tagW + 12, 20);
+        ctx.fillStyle = '#f472b6';
+        ctx.fillText(tagText, hipX - tagW / 2, hipY - 16);
+      }
+    }
+
+    ctx.restore();
 
     // Dynamically calibrate scale from detected human pose
     updateEstimatedScaleFromPose(kp);
@@ -5135,14 +6271,19 @@ function getRunnerX(kp) {
   const la = kp['left_ankle'], ra = kp['right_ankle'];
   
   const torso = [ls, rs, lh, rh].filter(p => p && p.score > currentConfidenceThreshold);
+  let rawX = null;
   if (torso.length >= 2) {
-    return torso.reduce((sum, p) => sum + p.x, 0) / torso.length;
+    rawX = torso.reduce((sum, p) => sum + p.x, 0) / torso.length;
+  } else {
+    const ankles = [la, ra].filter(p => p && p.score > currentConfidenceThreshold);
+    if (ankles.length > 0) {
+      rawX = ankles.reduce((sum, p) => sum + p.x, 0) / ankles.length;
+    }
   }
-  const ankles = [la, ra].filter(p => p && p.score > currentConfidenceThreshold);
-  if (ankles.length > 0) {
-    return ankles.reduce((sum, p) => sum + p.x, 0) / ankles.length;
-  }
-  return null;
+
+  if (rawX == null) return null;
+  // Smooth runner X through Kalman filter to eliminate gate jitter
+  return runnerXKalmanFilter.update(rawX);
 }
 
 function getAnkleX(kp) {
@@ -5150,7 +6291,7 @@ function getAnkleX(kp) {
 }
 
 /**
- * Main detection loop with error handling
+ * Main detection loop with error handling and Kalman stabilization
  */
 let consecutiveErrors = 0;
 const MAX_CONSECUTIVE_ERRORS = 10;
@@ -5170,6 +6311,10 @@ async function detectLoop() {
       }
       
       const poses = await detector.estimatePoses(video, { flipHorizontal: false });
+      if (poses && poses.length > 0 && poses[0].keypoints) {
+        // Apply 2D Kalman smoothing across keypoints (especially knees and ankles)
+        applyPoseKalmanFilter(poses[0].keypoints);
+      }
       drawPose(poses);
       consecutiveErrors = 0; // Reset on success
     }
@@ -5269,8 +6414,19 @@ async function start() {
 
     console.log('✅ Application started successfully');
     
-    // Initialize camera switcher after everything is ready
-    initCameraSwitcher().catch(error => {
+    // Initialize camera switcher and discover all lenses
+    initCameraSwitcher().then(async () => {
+      // If on Android/Mobile and user hasn't explicitly saved a camera preference:
+      const savedUserPref = localStorage.getItem('selectedCameraId');
+      const isAndroid = /Android/i.test(navigator.userAgent);
+      if (!savedUserPref && isAndroid && availableCameras.length > 1) {
+        const widestBackCam = availableCameras.find(c => c.isWidest && c.position === 'back');
+        if (widestBackCam && widestBackCam.deviceId && widestBackCam.deviceId !== currentCameraId) {
+          console.log('🌐 Auto-switching Android camera to ultra-wide lens:', widestBackCam.persianLabel);
+          await switchCamera(widestBackCam.deviceId);
+        }
+      }
+    }).catch(error => {
       console.warn('Camera switcher initialization failed:', error);
     });
 
@@ -5285,29 +6441,95 @@ startBtn.addEventListener('click', () => {
   start();
 });
 
+// Hook up camera selection button in settings panel
+const openCameraSettingsBtn = document.getElementById('openCameraSettingsBtn');
+if (openCameraSettingsBtn) {
+  openCameraSettingsBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Close settings panel if open
+    const settingsPanel = document.getElementById('settingsPanel');
+    if (settingsPanel) settingsPanel.style.display = 'none';
+    showCameraSwitcherModal();
+  });
+}
+
 // ================== VERSION CHECK ==================
-console.log('%c🚀 Motion Tracker v1.5.1', 'color: #22c55e; font-size: 16px; font-weight: bold');
-console.log('%c✨ Cards: Tighter spacing, compact layout', 'color: #3b82f6; font-size: 12px');
+const APP_VERSION = '1.5.3';
+console.log(`%c🚀 Motion Tracker v${APP_VERSION}`, 'color: #22c55e; font-size: 16px; font-weight: bold');
+console.log('%c✨ Wide-Angle Default & Complete Human Body Skeleton Enabled', 'color: #38bdf8; font-size: 12px');
+
+// Global cache purge and hard reload utility
+window.forceAppReloadAndClearCache = async function() {
+  try {
+    if ('serviceWorker' in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      for (const reg of registrations) {
+        if (reg.active) {
+          reg.active.postMessage({ type: 'CLEAR_ALL_CACHES' });
+        }
+        await reg.unregister();
+      }
+    }
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+  } catch (err) {
+    console.warn('Cache clearing error:', err);
+  }
+  // Hard reload with cache-busting param
+  window.location.href = window.location.pathname + '?v=' + APP_VERSION + '&ts=' + Date.now();
+};
+
+// Wire clear cache buttons
+const clearCacheReloadBtn = document.getElementById('clearCacheReloadBtn');
+if (clearCacheReloadBtn) {
+  clearCacheReloadBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    clearCacheReloadBtn.innerHTML = '<span>⏳</span><span>در حال تازه‌سازی...</span>';
+    window.forceAppReloadAndClearCache();
+  });
+}
+
+const clearCacheFromSettingsBtn = document.getElementById('clearCacheFromSettingsBtn');
+if (clearCacheFromSettingsBtn) {
+  clearCacheFromSettingsBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    clearCacheFromSettingsBtn.textContent = '⏳ در حال پاکسازی و بارگذاری...';
+    window.forceAppReloadAndClearCache();
+  });
+}
 
 // ================== SERVICE WORKER & UPDATE MANAGEMENT ==================
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js')
+  navigator.serviceWorker.register(`sw.js?v=${APP_VERSION}`)
     .then((registration) => {
       console.log('✅ Service Worker registered');
       
-      // Check for updates every 60 seconds
+      // If a worker is waiting, activate it immediately
+      if (registration.waiting) {
+        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      }
+
+      // Check for updates
+      registration.update();
       setInterval(() => {
         registration.update();
-      }, 60000);
+      }, 30000);
       
       // Listen for updates
       registration.addEventListener('updatefound', () => {
         const newWorker = registration.installing;
+        if (!newWorker) return;
         console.log('🔄 Service Worker update found');
         
         newWorker.addEventListener('statechange', () => {
           if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            console.log('✨ New Service Worker installed, showing update notification');
+            console.log('✨ New Service Worker installed, auto-activating...');
+            newWorker.postMessage({ type: 'SKIP_WAITING' });
             showUpdateNotification(newWorker);
           }
         });
@@ -5315,8 +6537,16 @@ if ('serviceWorker' in navigator) {
     })
     .catch((error) => {
       console.warn('⚠️ Service Worker registration failed:', error);
-      // Non-critical, don't show error modal
     });
+
+  let isRefreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!isRefreshing) {
+      isRefreshing = true;
+      console.log('🔄 Controller changed to new version, refreshing...');
+      window.location.reload();
+    }
+  });
   
   // Listen for messages from service worker
   navigator.serviceWorker.addEventListener('message', (event) => {

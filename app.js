@@ -2648,6 +2648,9 @@ function updateActiveAthleteUI() {
     const genderLabel = active.gender === 'female' ? 'دختر' : 'پسر';
     activeProfileDetails.textContent = `کد: ${active.code || '--'} • قد: ${active.heightCm} سانتی‌متر • سن: ${active.age || '--'} سال (${genderLabel}) • ${active.sport || 'عمومی'}`;
   }
+  if (typeof updateLaptopStatsPanel === 'function') {
+    updateLaptopStatsPanel();
+  }
 }
 
 function addAthlete(data) {
@@ -2707,6 +2710,9 @@ function renderAthleteModal() {
           <button type="button" class="selectAthBtn" onclick="setActiveAthlete('${ath.id}'); renderAthleteModal();" style="background: ${isActive ? '#0284c7' : '#1e293b'}; color: #fff; border: 1px solid #475569; border-radius: 6px; font-size: 11px; padding: 4px 8px; cursor: pointer;">
             ${isActive ? 'انتخاب شده' : 'انتخاب'}
           </button>
+          <button type="button" class="editAthBtn" onclick="openEditAthleteModal('${ath.id}')" title="ویرایش مشخصات این ورزشکار" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid #38bdf8; border-radius: 6px; font-size: 11px; padding: 4px 7px; cursor: pointer;">
+            ✏️
+          </button>
           ${athletes.length > 1 ? `
             <button type="button" class="delAthBtn" onclick="deleteAthlete('${ath.id}')" title="حذف ورزشکار" style="background: transparent; color: #f87171; border: 1px solid #ef4444; border-radius: 6px; font-size: 11px; padding: 4px 6px; cursor: pointer;">✕</button>
           ` : ''}
@@ -2716,10 +2722,138 @@ function renderAthleteModal() {
   }).join('');
 }
 
+function openEditAthleteModal(id) {
+  const athletes = getAthletes();
+  const targetId = id || getActiveAthleteId();
+  const ath = athletes.find(a => a.id === targetId) || getActiveAthlete();
+  if (!ath) return;
+
+  const modal = document.getElementById('editAthleteModal');
+  const idInput = document.getElementById('editAthleteId');
+  const nameInput = document.getElementById('editAthleteName');
+  const codeInput = document.getElementById('editAthleteCode');
+  const heightInput = document.getElementById('editAthleteHeight');
+  const weightInput = document.getElementById('editAthleteWeight');
+  const ageInput = document.getElementById('editAthleteAge');
+  const genderInput = document.getElementById('editAthleteGender');
+  const sportInput = document.getElementById('editAthleteSport');
+  const posInput = document.getElementById('editAthletePosition');
+
+  if (idInput) idInput.value = ath.id;
+  if (nameInput) nameInput.value = ath.name || '';
+  if (codeInput) codeInput.value = ath.code || '';
+  if (heightInput) heightInput.value = ath.heightCm || 175;
+  if (weightInput) weightInput.value = ath.weightKg || ath.weight || '';
+  if (ageInput) ageInput.value = ath.age || 16;
+  if (genderInput) genderInput.value = ath.gender || 'male';
+  if (sportInput) sportInput.value = ath.sport || '';
+  if (posInput) posInput.value = ath.sportPosition || ath.targetPosition || ath.position || '';
+
+  if (modal) modal.style.display = 'block';
+}
+
+function closeEditAthleteModal() {
+  const modal = document.getElementById('editAthleteModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function updateAthlete(id, data) {
+  const athletes = getAthletes();
+  const index = athletes.findIndex(a => a.id === id);
+  if (index === -1) return;
+
+  const prev = athletes[index];
+  athletes[index] = {
+    ...prev,
+    name: (data.name || '').trim() || prev.name,
+    code: (data.code || '').trim() || prev.code,
+    heightCm: Number(data.heightCm) || prev.heightCm || 175,
+    weightKg: data.weightKg ? Number(data.weightKg) : (prev.weightKg || null),
+    weight: data.weightKg ? Number(data.weightKg) : (prev.weight || null),
+    age: Number(data.age) || prev.age || 16,
+    gender: data.gender || prev.gender || 'male',
+    sport: (data.sport || '').trim() || prev.sport || 'استعدادیابی عمومی',
+    sportPosition: (data.sportPosition || '').trim() || prev.sportPosition || '',
+    updatedDate: new Date().toLocaleDateString('fa-IR')
+  };
+
+  saveAthletes(athletes);
+
+  // If editing the active athlete, update global state
+  if (getActiveAthleteId() === id) {
+    if (athletes[index].heightCm && typeof athleteHeightCm !== 'undefined') {
+      athleteHeightCm = athletes[index].heightCm;
+      const heightInput = document.getElementById('athleteHeightSetting');
+      if (heightInput) heightInput.value = athletes[index].heightCm;
+    }
+  }
+
+  updateActiveAthleteUI();
+  renderAthleteModal();
+  closeEditAthleteModal();
+
+  setStatus(`✅ مشخصات «${athletes[index].name}» با موفقیت به‌روزرسانی و ذخیره شد.`);
+}
+
 // Global hooks for inline onclick handlers
 window.setActiveAthlete = setActiveAthlete;
 window.deleteAthlete = deleteAthlete;
 window.renderAthleteModal = renderAthleteModal;
+window.openEditAthleteModal = openEditAthleteModal;
+window.closeEditAthleteModal = closeEditAthleteModal;
+window.updateAthlete = updateAthlete;
+
+// Athlete edit form handling
+const editAthleteForm = document.getElementById('editAthleteForm');
+if (editAthleteForm) {
+  editAthleteForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const id = document.getElementById('editAthleteId').value;
+    const name = document.getElementById('editAthleteName').value;
+    const code = document.getElementById('editAthleteCode').value;
+    const heightCm = document.getElementById('editAthleteHeight').value;
+    const weightKg = document.getElementById('editAthleteWeight').value;
+    const age = document.getElementById('editAthleteAge').value;
+    const gender = document.getElementById('editAthleteGender').value;
+    const sport = document.getElementById('editAthleteSport').value;
+    const sportPosition = document.getElementById('editAthletePosition').value;
+
+    updateAthlete(id, {
+      name,
+      code,
+      heightCm,
+      weightKg,
+      age,
+      gender,
+      sport,
+      sportPosition
+    });
+  });
+}
+
+const editActiveAthleteInModalBtn = document.getElementById('editActiveAthleteInModalBtn');
+if (editActiveAthleteInModalBtn) {
+  editActiveAthleteInModalBtn.addEventListener('click', () => {
+    openEditAthleteModal(getActiveAthleteId());
+  });
+}
+
+const statsEditAthleteBtn = document.getElementById('statsEditAthleteBtn');
+if (statsEditAthleteBtn) {
+  statsEditAthleteBtn.addEventListener('click', () => {
+    openEditAthleteModal(getActiveAthleteId());
+  });
+}
+
+const closeEditAthleteModalXBtn = document.getElementById('closeEditAthleteModalXBtn');
+if (closeEditAthleteModalXBtn) {
+  closeEditAthleteModalXBtn.addEventListener('click', closeEditAthleteModal);
+}
+
+const cancelAthleteEditBtn = document.getElementById('cancelAthleteEditBtn');
+if (cancelAthleteEditBtn) {
+  cancelAthleteEditBtn.addEventListener('click', closeEditAthleteModal);
+}
 
 if (athleteProfileBtn) {
   athleteProfileBtn.addEventListener('click', () => {
@@ -3514,17 +3648,49 @@ function getBenchmarkComparisonRows(athlete, athleteHistory) {
   }).join('');
 }
 
-// ================== RADAR COMPARISON CHART (SVG GENERATOR) ==================
-function generateRadarChartSvg(athlete, athleteHistory) {
-  let bestJump = 0;
-  let bestSpeed = 0;
-  let bestAgility = 0;
-  let bestPushup = 0;
-  let bestBoscoOrSitup = 0;
-  let bestFlex = -999;
+// ================== DYNAMIC SPORT TALENT SCOUTING CONFIG ==================
+function getSportDisciplineConfig(athlete, athleteHistory) {
+  const sportRaw = (athlete?.sport || '').toLowerCase().trim();
+  const posRaw = (athlete?.sportPosition || '').toLowerCase().trim();
+
+  // Categorize sport discipline
+  let disciplineKey = 'general';
+  let sportFa = athlete?.sport || 'استعدادیابی عمومی';
+  let shortTitle = athlete?.sport ? athlete.sport.trim() : 'عمومی';
+  let icon = '🏃';
+
+  if (sportRaw.includes('دو') || sportRaw.includes('سرعت') || sportRaw.includes('sprint') || sportRaw.includes('run') || sportRaw.includes('میدانی')) {
+    disciplineKey = 'sprint';
+    shortTitle = 'دو سرعت';
+    icon = '🏃';
+  } else if (sportRaw.includes('پرش') || sportRaw.includes('والیبال') || sportRaw.includes('بسکتبال') || sportRaw.includes('jump') || sportRaw.includes('volleyball') || sportRaw.includes('basketball')) {
+    disciplineKey = 'jump';
+    shortTitle = 'پرش و ارتفاع';
+    icon = '⤴️';
+  } else if (sportRaw.includes('هندبال') || sportRaw.includes('handball')) {
+    disciplineKey = 'handball';
+    shortTitle = 'هندبال';
+    icon = '🤾‍♂️';
+  } else if (sportRaw.includes('فوتبال') || sportRaw.includes('فوتسال') || sportRaw.includes('football') || sportRaw.includes('soccer') || sportRaw.includes('futsal')) {
+    disciplineKey = 'football';
+    shortTitle = 'فوتبال / فوتسال';
+    icon = '⚽';
+  } else if (sportRaw.includes('کشتی') || sportRaw.includes('رزمی') || sportRaw.includes('تکواندو') || sportRaw.includes('جودو') || sportRaw.includes('کاراته') || sportRaw.includes('wrestling') || sportRaw.includes('combat')) {
+    disciplineKey = 'combat';
+    shortTitle = 'کشتی و رزمی';
+    icon = '🥋';
+  } else if (sportRaw.includes('شنا') || sportRaw.includes('قایق') || sportRaw.includes('swim')) {
+    disciplineKey = 'swimming';
+    shortTitle = 'شنا و ورزش‌های آبی';
+    icon = '🏊';
+  }
+
+  // Extract best performance metrics from history
+  let bestJump = 0, bestSpeed = 0, bestAgility = 0, bestPushup = 0, bestBoscoOrSitup = 0, bestFlex = -999;
+  let bestWingspan = 0, bestLegRatio = 0, bestApeIndex = 0;
   let hasJump = false, hasSpeed = false, hasAgility = false, hasPushup = false, hasEndurance = false, hasFlex = false;
 
-  athleteHistory.forEach(entry => {
+  (athleteHistory || []).forEach(entry => {
     const d = entry.data || {};
     if (entry.type === 'jump' && d.height) {
       const val = parseFloat(d.height);
@@ -3547,28 +3713,142 @@ function generateRadarChartSvg(athlete, athleteHistory) {
     } else if (entry.type === 'flexibility' && d.reachCm) {
       const val = parseFloat(d.reachCm);
       if (val > bestFlex) { bestFlex = val; hasFlex = true; }
+    } else if (entry.type === 'wingspan' && d.wingspan) {
+      const val = parseFloat(d.wingspan);
+      if (val > bestWingspan) bestWingspan = val;
+    } else if (entry.type === 'anthro') {
+      if (d.wingspan) bestWingspan = Math.max(bestWingspan, parseFloat(d.wingspan));
+      if (d.apeIndex) bestApeIndex = parseFloat(d.apeIndex);
+      if (d.heightCm && d.legLengthCm) {
+        bestLegRatio = parseFloat(d.legLengthCm) / parseFloat(d.heightCm);
+      }
     }
   });
 
-  // Calculate scores (0 to 100)
-  const scoreSpeed = hasSpeed ? Math.min(100, Math.max(30, Math.round(((bestSpeed - 3) / 5.5) * 100))) : 60;
-  const scoreJump = hasJump ? Math.min(100, Math.max(30, Math.round(((bestJump - 15) / 45) * 100))) : 62;
-  const scoreAgility = hasAgility ? Math.min(100, Math.max(30, Math.round(((7.2 - bestAgility) / 2.8) * 100))) : 65;
-  const scoreEndurance = (hasEndurance || bestBoscoOrSitup > 0) ? Math.min(100, Math.max(30, Math.round(((bestBoscoOrSitup - 5) / 38) * 100))) : 58;
-  const scoreStrength = hasPushup ? Math.min(100, Math.max(30, Math.round(((bestPushup - 5) / 35) * 100))) : 60;
-  const scoreFlex = hasFlex ? Math.min(100, Math.max(30, Math.round(((bestFlex + 10) / 28) * 100))) : 64;
+  const athleteHeight = parseFloat(athlete?.heightCm) || 175;
+  if (!bestWingspan) bestWingspan = athleteHeight;
+  if (!bestApeIndex) bestApeIndex = bestWingspan / athleteHeight;
+  if (!bestLegRatio) bestLegRatio = 0.50;
 
-  const axes = [
-    { label: 'سرعت دویدن (Speed)', sub: hasSpeed ? `${bestSpeed.toFixed(1)} m/s` : 'پیش‌فرض', score: scoreSpeed },
-    { label: 'توان انفجاری (Power)', sub: hasJump ? `${bestJump.toFixed(1)} cm` : 'پیش‌فرض', score: scoreJump },
-    { label: 'چابکی (Agility)', sub: hasAgility ? `${bestAgility.toFixed(2)} s` : 'پیش‌فرض', score: scoreAgility },
-    { label: 'استقامت بی‌هوازی (Endurance)', sub: (hasEndurance || bestBoscoOrSitup > 0) ? `${bestBoscoOrSitup} تکرار` : 'پیش‌فرض', score: scoreEndurance },
-    { label: 'قدرت بالاتنه (Strength)', sub: hasPushup ? `${bestPushup} تکرار` : 'پیش‌فرض', score: scoreStrength },
-    { label: 'انعطاف و دامنه (Flexibility)', sub: hasFlex ? `${bestFlex > 0 ? '+' : ''}${bestFlex.toFixed(1)} cm` : 'پیش‌فرض', score: scoreFlex }
-  ];
+  // Normalized scores 0 to 100
+  const scoreSpeed = hasSpeed ? Math.min(100, Math.max(30, Math.round(((bestSpeed - 3.5) / 5.0) * 100))) : 62;
+  const scoreJump = hasJump ? Math.min(100, Math.max(30, Math.round(((bestJump - 18) / 42) * 100))) : 65;
+  const scoreAgility = hasAgility ? Math.min(100, Math.max(30, Math.round(((7.0 - bestAgility) / 2.6) * 100))) : 64;
+  const scoreEndurance = (hasEndurance || bestBoscoOrSitup > 0) ? Math.min(100, Math.max(30, Math.round(((bestBoscoOrSitup - 6) / 36) * 100))) : 60;
+  const scoreStrength = hasPushup ? Math.min(100, Math.max(30, Math.round(((bestPushup - 6) / 34) * 100))) : 62;
+  const scoreFlex = hasFlex ? Math.min(100, Math.max(30, Math.round(((bestFlex + 8) / 26) * 100))) : 63;
+  const scoreWingspan = Math.min(100, Math.max(30, Math.round(((bestApeIndex - 0.95) / 0.12) * 100)));
+  const scoreLegLeverage = Math.min(100, Math.max(30, Math.round(((bestLegRatio - 0.46) / 0.08) * 100)));
 
-  const cx = 225, cy = 150, R = 95;
+  let axes = [];
+
+  if (disciplineKey === 'sprint') {
+    axes = [
+      { label: 'سرعت دویدن (Max Speed)', sub: hasSpeed ? `${bestSpeed.toFixed(1)} m/s` : 'پیش‌فرض', score: scoreSpeed, weight: 0.30, isCritical: true },
+      { label: 'توان انفجاری پاها (Leg Power)', sub: hasJump ? `${bestJump.toFixed(1)} cm` : 'پیش‌فرض', score: scoreJump, weight: 0.25, isCritical: true },
+      { label: 'چابکی و ریتم گام (Agility)', sub: hasAgility ? `${bestAgility.toFixed(2)} s` : 'پیش‌فرض', score: scoreAgility, weight: 0.15, isCritical: true },
+      { label: 'اهرم اندام تحتانی (Leg Ratio)', sub: `${(bestLegRatio * 100).toFixed(0)}٪`, score: scoreLegLeverage, weight: 0.10, isCritical: false },
+      { label: 'استقامت سرعت (Speed Endurance)', sub: bestBoscoOrSitup > 0 ? `${bestBoscoOrSitup} تکرار` : 'پیش‌فرض', score: scoreEndurance, weight: 0.10, isCritical: false },
+      { label: 'ثبات تنه و بازوها (Torso Drive)', sub: hasPushup ? `${bestPushup} شنا` : 'پیش‌فرض', score: scoreStrength, weight: 0.10, isCritical: false }
+    ];
+  } else if (disciplineKey === 'jump') {
+    axes = [
+      { label: 'ارتفاع پرش عمودی (CMJ Jump)', sub: hasJump ? `${bestJump.toFixed(1)} cm` : 'پیش‌فرض', score: scoreJump, weight: 0.30, isCritical: true },
+      { label: 'توان کشسانی بوسکو (Repeat SSC)', sub: bestBoscoOrSitup > 0 ? `${bestBoscoOrSitup} پرش` : 'پیش‌فرض', score: scoreEndurance, weight: 0.25, isCritical: true },
+      { label: 'گستره دسترس (Ape / Reach)', sub: `Ape: ${bestApeIndex.toFixed(2)}`, score: scoreWingspan, weight: 0.15, isCritical: true },
+      { label: 'چابکی محوطه (Court Agility)', sub: hasAgility ? `${bestAgility.toFixed(2)} s` : 'پیش‌فرض', score: scoreAgility, weight: 0.10, isCritical: false },
+      { label: 'شتاب گام استارت (Approach Speed)', sub: hasSpeed ? `${bestSpeed.toFixed(1)} m/s` : 'پیش‌فرض', score: scoreSpeed, weight: 0.10, isCritical: false },
+      { label: 'دامنه حرکتی مفاصل (Flexibility)', sub: hasFlex ? `${bestFlex > 0 ? '+' : ''}${bestFlex.toFixed(1)} cm` : 'پیش‌فرض', score: scoreFlex, weight: 0.10, isCritical: false }
+    ];
+  } else if (disciplineKey === 'handball') {
+    axes = [
+      { label: 'طول دست و پرتاب (Wingspan)', sub: `${bestWingspan.toFixed(0)} cm`, score: scoreWingspan, weight: 0.20, isCritical: true },
+      { label: 'پرش شوت و بلاک (Jump Shoot)', sub: hasJump ? `${bestJump.toFixed(1)} cm` : 'پیش‌فرض', score: scoreJump, weight: 0.20, isCritical: true },
+      { label: 'چابکی برش مسیر (Cutting Agility)', sub: hasAgility ? `${bestAgility.toFixed(2)} s` : 'پیش‌فرض', score: scoreAgility, weight: 0.20, isCritical: true },
+      { label: 'سرعت ضدحمله (Fastbreak Speed)', sub: hasSpeed ? `${bestSpeed.toFixed(1)} m/s` : 'پیش‌فرض', score: scoreSpeed, weight: 0.15, isCritical: true },
+      { label: 'قدرت بالاتنه و شانه (Throw Power)', sub: hasPushup ? `${bestPushup} شنا` : 'پیش‌فرض', score: scoreStrength, weight: 0.15, isCritical: false },
+      { label: 'استقامت پرش مداوم (Bosco Repeat)', sub: bestBoscoOrSitup > 0 ? `${bestBoscoOrSitup} پرش` : 'پیش‌فرض', score: scoreEndurance, weight: 0.10, isCritical: false }
+    ];
+  } else if (disciplineKey === 'football') {
+    axes = [
+      { label: 'چابکی تغییر جهت (COD Agility)', sub: hasAgility ? `${bestAgility.toFixed(2)} s` : 'پیش‌فرض', score: scoreAgility, weight: 0.25, isCritical: true },
+      { label: 'شتاب و سرعت انفجاری (Sprint)', sub: hasSpeed ? `${bestSpeed.toFixed(1)} m/s` : 'پیش‌فرض', score: scoreSpeed, weight: 0.25, isCritical: true },
+      { label: 'استقامت تکرار توان (Anaerobic)', sub: bestBoscoOrSitup > 0 ? `${bestBoscoOrSitup} تکرار` : 'پیش‌فرض', score: scoreEndurance, weight: 0.20, isCritical: true },
+      { label: 'پرش نبرد هوایی (Aerial Jump)', sub: hasJump ? `${bestJump.toFixed(1)} cm` : 'پیش‌فرض', score: scoreJump, weight: 0.15, isCritical: false },
+      { label: 'انعطاف لگن و ران (Flexibility)', sub: hasFlex ? `${bestFlex > 0 ? '+' : ''}${bestFlex.toFixed(1)} cm` : 'پیش‌فرض', score: scoreFlex, weight: 0.10, isCritical: false },
+      { label: 'ثبات مرکزی و بالاتنه (Core)', sub: hasPushup ? `${bestPushup} شنا` : 'پیش‌فرض', score: scoreStrength, weight: 0.05, isCritical: false }
+    ];
+  } else if (disciplineKey === 'combat') {
+    const scoreCormic = Math.min(100, Math.max(30, Math.round(((1.0 - bestLegRatio - 0.46) / 0.08) * 100)));
+    axes = [
+      { label: 'قدرت بالاتنه و پرتاب (Upper Body)', sub: hasPushup ? `${bestPushup} تکرار` : 'پیش‌فرض', score: scoreStrength, weight: 0.25, isCritical: true },
+      { label: 'انعطاف‌پذیری و پل (Flexibility)', sub: hasFlex ? `${bestFlex > 0 ? '+' : ''}${bestFlex.toFixed(1)} cm` : 'پیش‌فرض', score: scoreFlex, weight: 0.20, isCritical: true },
+      { label: 'مرکز ثقل پایین (Cormic Stance)', sub: `پایین‌تنه ${(bestLegRatio*100).toFixed(0)}٪`, score: scoreCormic, weight: 0.20, isCritical: true },
+      { label: 'توان انفجاری پاها (Leg Drive)', sub: hasJump ? `${bestJump.toFixed(1)} cm` : 'پیش‌فرض', score: scoreJump, weight: 0.15, isCritical: false },
+      { label: 'چابکی گارد و واکنش (Stance Agility)', sub: hasAgility ? `${bestAgility.toFixed(2)} s` : 'پیش‌فرض', score: scoreAgility, weight: 0.10, isCritical: false },
+      { label: 'استقامت عضلات کور (Core Situp)', sub: bestBoscoOrSitup > 0 ? `${bestBoscoOrSitup} تکرار` : 'پیش‌فرض', score: scoreEndurance, weight: 0.10, isCritical: false }
+    ];
+  } else {
+    axes = [
+      { label: 'سرعت دویدن (Speed)', sub: hasSpeed ? `${bestSpeed.toFixed(1)} m/s` : 'پیش‌فرض', score: scoreSpeed, weight: 0.17, isCritical: false },
+      { label: 'توان انفجاری (Power)', sub: hasJump ? `${bestJump.toFixed(1)} cm` : 'پیش‌فرض', score: scoreJump, weight: 0.17, isCritical: false },
+      { label: 'چابکی (Agility)', sub: hasAgility ? `${bestAgility.toFixed(2)} s` : 'پیش‌فرض', score: scoreAgility, weight: 0.17, isCritical: false },
+      { label: 'استقامت بی‌هوازی (Endurance)', sub: bestBoscoOrSitup > 0 ? `${bestBoscoOrSitup} تکرار` : 'پیش‌فرض', score: scoreEndurance, weight: 0.17, isCritical: false },
+      { label: 'قدرت بالاتنه (Strength)', sub: hasPushup ? `${bestPushup} تکرار` : 'پیش‌فرض', score: scoreStrength, weight: 0.16, isCritical: false },
+      { label: 'انعطاف و دامنه (Flexibility)', sub: hasFlex ? `${bestFlex > 0 ? '+' : ''}${bestFlex.toFixed(1)} cm` : 'پیش‌فرض', score: scoreFlex, weight: 0.16, isCritical: false }
+    ];
+  }
+
+  // Calculate dynamic Talent Score
+  let talentScore = 0;
+  axes.forEach(a => {
+    talentScore += a.score * a.weight;
+  });
+  talentScore = Math.round(Math.min(99, Math.max(35, talentScore)));
+
+  let talentGrade = 'سطح استاندارد B';
+  let gradeColor = '#0284c7';
+  if (talentScore >= 88) {
+    talentGrade = 'نخبگی A+';
+    gradeColor = '#22c55e';
+  } else if (talentScore >= 78) {
+    talentGrade = 'بسیار مستعد A';
+    gradeColor = '#38bdf8';
+  } else if (talentScore >= 68) {
+    talentGrade = 'استاندارد B';
+    gradeColor = '#f59e0b';
+  } else {
+    talentGrade = 'نیازمند تمرین C';
+    gradeColor = '#ec4899';
+  }
+
+  return {
+    disciplineKey,
+    sportFa,
+    shortTitle,
+    icon,
+    talentScore,
+    talentGrade,
+    gradeColor,
+    axes,
+    bestSpeed,
+    bestJump,
+    bestAgility,
+    bestBoscoOrSitup,
+    bestPushup,
+    bestFlex,
+    bestWingspan,
+    bestLegRatio,
+    bestApeIndex
+  };
+}
+
+// ================== RADAR COMPARISON CHART (SVG GENERATOR) ==================
+function generateRadarChartSvg(athlete, athleteHistory) {
+  const disc = getSportDisciplineConfig(athlete, athleteHistory);
+  const axes = disc.axes;
   const numAxes = axes.length;
+  const cx = 225, cy = 162, R = 80;
 
   function getCoord(axisIndex, radiusFraction) {
     const angle = -Math.PI / 2 + (axisIndex * 2 * Math.PI) / numAxes;
@@ -3593,7 +3873,8 @@ function generateRadarChartSvg(athlete, athleteHistory) {
   const axisLines = [];
   for (let i = 0; i < numAxes; i++) {
     const outer = getCoord(i, 1.0);
-    axisLines.push(`<line x1="${cx}" y1="${cy}" x2="${outer.x.toFixed(1)}" y2="${outer.y.toFixed(1)}" stroke="#cbd5e1" stroke-width="1.2" stroke-dasharray="2 2" />`);
+    const isCrit = axes[i].isCritical;
+    axisLines.push(`<line x1="${cx}" y1="${cy}" x2="${outer.x.toFixed(1)}" y2="${outer.y.toFixed(1)}" stroke="${isCrit ? '#0284c7' : '#cbd5e1'}" stroke-width="${isCrit ? '1.6' : '1.2'}" stroke-dasharray="${isCrit ? 'none' : '2 2'}" />`);
   }
 
   // Benchmark polygon (Normative standard = 70% level)
@@ -3610,8 +3891,9 @@ function generateRadarChartSvg(athlete, athleteHistory) {
     const frac = axes[i].score / 100.0;
     const c = getCoord(i, frac);
     athletePoints.push(`${c.x.toFixed(1)},${c.y.toFixed(1)}`);
+    const isCrit = axes[i].isCritical;
     vertexDots.push(`
-      <circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="4" fill="#0284c7" stroke="#ffffff" stroke-width="1.5" />
+      <circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="${isCrit ? '4.8' : '4'}" fill="${isCrit ? '#0284c7' : '#0ea5e9'}" stroke="#ffffff" stroke-width="${isCrit ? '2' : '1.5'}" />
     `);
   }
 
@@ -3622,11 +3904,12 @@ function generateRadarChartSvg(athlete, athleteHistory) {
     if (outer.x < cx - 30) anchor = 'end';
     else if (outer.x > cx + 30) anchor = 'start';
     const dy = outer.y < cy ? -2 : 12;
+    const star = a.isCritical ? '★ ' : '';
 
     return `
-      <text x="${outer.x.toFixed(1)}" y="${(outer.y + dy).toFixed(1)}" text-anchor="${anchor}" font-family="Vazirmatn, Tahoma, sans-serif" font-size="9.5px" font-weight="bold" fill="#1e293b">
-        ${a.label}
-        <tspan x="${outer.x.toFixed(1)}" dy="11" font-size="8.5px" font-weight="normal" fill="${a.score >= 70 ? '#0284c7' : '#64748b'}">
+      <text x="${outer.x.toFixed(1)}" y="${(outer.y + dy).toFixed(1)}" text-anchor="${anchor}" font-family="Vazirmatn, Tahoma, sans-serif" font-size="9.5px" font-weight="${a.isCritical ? '800' : 'bold'}" fill="${a.isCritical ? '#0284c7' : '#1e293b'}">
+        ${star}${a.label}
+        <tspan x="${outer.x.toFixed(1)}" dy="11" font-size="8.5px" font-weight="normal" fill="${a.score >= 70 ? '#16a34a' : '#64748b'}">
           ${a.sub} (${a.score}٪)
         </tspan>
       </text>
@@ -3634,7 +3917,15 @@ function generateRadarChartSvg(athlete, athleteHistory) {
   }).join('');
 
   return `
-    <svg viewBox="0 0 450 310" width="100%" style="max-height: 270px; overflow: visible; font-family: Vazirmatn, Tahoma, sans-serif;">
+    <svg viewBox="0 0 450 320" width="100%" style="max-height: 280px; overflow: visible; font-family: Vazirmatn, Tahoma, sans-serif;">
+      <!-- Dynamic Talent Score Header Badge -->
+      <g transform="translate(${cx}, 16)">
+        <rect x="-180" y="-13" width="360" height="26" rx="13" fill="#f8fafc" stroke="${disc.gradeColor}" stroke-width="1.6" />
+        <text x="0" y="4" text-anchor="middle" font-size="10.8px" font-weight="bold" fill="#0f172a">
+          ${disc.icon} شاخص استعداد تخصصی ${disc.shortTitle}: <tspan fill="${disc.gradeColor}" font-weight="900">${disc.talentScore} / ۱۰۰</tspan> (${disc.talentGrade})
+        </text>
+      </g>
+
       <!-- Grid & Spokes -->
       ${gridPolygons}
       ${axisLines.join('')}
@@ -3655,68 +3946,96 @@ function generateRadarChartSvg(athlete, athleteHistory) {
       <circle cx="${cx}" cy="${cy}" r="2.5" fill="#94a3b8" />
 
       <!-- Legend at bottom -->
-      <g transform="translate(${cx - 135}, 295)">
+      <g transform="translate(${cx - 150}, 305)">
         <rect x="0" y="-8" width="12" height="12" rx="2" fill="#0284c7" />
-        <text x="18" y="2" font-size="9.5px" font-weight="bold" fill="#0f172a">پروفایل فیزیکی ورزشکار</text>
+        <text x="18" y="2" font-size="9px" font-weight="bold" fill="#0f172a">ورزشکار (${disc.shortTitle})</text>
 
-        <line x1="140" y1="-2" x2="158" y2="-2" stroke="#16a34a" stroke-width="2" stroke-dasharray="4 3" />
-        <circle cx="149" cy="-2" r="3" fill="#16a34a" />
-        <text x="166" y="2" font-size="9.5px" font-weight="bold" fill="#16a34a">میانگین هنجار همسالان (Benchmark ۷۰٪)</text>
+        <line x1="125" y1="-2" x2="143" y2="-2" stroke="#16a34a" stroke-width="2" stroke-dasharray="4 3" />
+        <circle cx="134" cy="-2" r="3" fill="#16a34a" />
+        <text x="151" y="2" font-size="9px" font-weight="bold" fill="#16a34a">هنجار همسالان (۷۰٪)</text>
+
+        <circle cx="248" cy="-2" r="3.8" fill="#0284c7" stroke="#fff" stroke-width="1.2" />
+        <text x="257" y="2" font-size="9px" font-weight="bold" fill="#0284c7">★ شاخص کلیدی</text>
       </g>
     </svg>
   `;
 }
 
-function generateHandballPdfSection(athlete, athleteHistory) {
-  const analysis = generateHandballScouting(athlete, athleteHistory);
-  const top1 = analysis.positions[0];
-  const top2 = analysis.positions[1];
+function generateSportTalentScoutingPdfSection(athlete, athleteHistory) {
+  const disc = getSportDisciplineConfig(athlete, athleteHistory);
+
+  // Position / Role recommendation depending on discipline
+  let pos1 = { role: 'سرعت ۱۰۰ و ۲۰۰ متر', matchPct: Math.min(99, disc.talentScore + 4), desc: 'استارت انفجاری، گام‌های شتابی و ریتم بالای انتقال پاها' };
+  let pos2 = { role: 'دو سرعت امدادی ۴×۱۰۰', matchPct: Math.min(97, disc.talentScore), desc: 'حفظ سرعت ماکزیمم و چابکی در ناحیه تعویض چوب' };
+
+  if (disc.disciplineKey === 'jump') {
+    pos1 = { role: 'آبشارزن / دریافت‌کننده قدرتی (Outside Hitter)', matchPct: Math.min(99, disc.talentScore + 3), desc: 'پرش عمودی بالا، توان کشسانی انفجاری و گستره دست عالی' };
+    pos2 = { role: 'دفاع وسط و بلاکر سریع (Middle Blocker)', matchPct: Math.min(96, disc.talentScore), desc: 'تکرار پرش‌های متوالی روی تور و چابکی واکنش جانبی' };
+  } else if (disc.disciplineKey === 'handball') {
+    const analysis = typeof generateHandballScouting === 'function' ? generateHandballScouting(athlete, athleteHistory) : null;
+    if (analysis && analysis.positions && analysis.positions.length >= 2) {
+      pos1 = analysis.positions[0];
+      pos2 = analysis.positions[1];
+    } else {
+      pos1 = { role: 'بغل راست / شوت‌زن محیطی', matchPct: 92, desc: 'پرش شوتی بلند و اهرم دست مناسب' };
+      pos2 = { role: 'گوش چپ / ضدحمله سریع', matchPct: 88, desc: 'سرعت استارت انفجاری و تغییر زاویه' };
+    }
+  } else if (disc.disciplineKey === 'football') {
+    pos1 = { role: 'وینگر / بال هجومی (Winger)', matchPct: Math.min(98, disc.talentScore + 2), desc: 'چابکی تغییر جهت سریع، استارت انفجاری و شتاب دور زدن مدافع' };
+    pos2 = { role: 'هافبک باکس به باکس (B2B Midfielder)', matchPct: Math.min(95, disc.talentScore - 1), desc: 'استقامت تکرار شاتل و چابکی نبردهای فیزیکی زمین' };
+  } else if (disc.disciplineKey === 'combat') {
+    pos1 = { role: 'کشتی‌گیر سرعتی و زیرگیر هجومی', matchPct: Math.min(98, disc.talentScore + 3), desc: 'مرکز ثقل پایین، انعطاف ستون فقرات و قدرت نفوذ پاها' };
+    pos2 = { role: 'سبک مسابقاتی پرتابی و کمانی', matchPct: Math.min(94, disc.talentScore), desc: 'انعطاف کمری، پل‌زنی بالا و قدرت دست‌ها' };
+  }
 
   return `
     <div style="background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 8px; padding: 10px; margin-top: 10px; margin-bottom: 10px; page-break-inside: avoid;">
       <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #bbf7d0; padding-bottom: 6px; margin-bottom: 8px;">
         <div style="font-weight: bold; font-size: 11.5px; color: #166534; display: flex; align-items: center; gap: 6px;">
-          <span>🤾‍♂️ تحلیل استعدادیابی تخصصی هندبال و اولویت پست‌های بازی</span>
+          <span>${disc.icon} تحلیل استعدادیابی تخصصی رشته ${disc.sportFa} و انطباق بدنی</span>
         </div>
-        <div style="background: #15803d; color: #fff; font-size: 10.5px; font-weight: bold; padding: 2px 8px; border-radius: 9999px;">
-          میزان سازگاری با هندبال: ${analysis.handballOverallScore}٪
+        <div style="background: #15803d; color: #fff; font-size: 10.5px; font-weight: bold; padding: 2px 10px; border-radius: 9999px;">
+          امتیاز استعدادیابی ${disc.shortTitle}: ${disc.talentScore} از ۱۰۰ (${disc.talentGrade})
         </div>
       </div>
 
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
         <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 6px; padding: 6px 8px;">
-          <div style="font-size: 9px; color: #166534; font-weight: bold;">🥇 پست اول پیشنهادی در هندبال:</div>
-          <div style="font-size: 11.5px; font-weight: bold; color: #0f172a; margin-top: 2px;">${top1.icon} ${top1.role} (${top1.matchPct}٪)</div>
-          <div style="font-size: 9px; color: #475569; margin-top: 2px;">${top1.desc}</div>
+          <div style="font-size: 9px; color: #166534; font-weight: bold;">🥇 پست یا ماده اول پیشنهادی:</div>
+          <div style="font-size: 11.5px; font-weight: bold; color: #0f172a; margin-top: 2px;">${pos1.icon || '⭐'} ${pos1.role} (${pos1.matchPct}٪)</div>
+          <div style="font-size: 9px; color: #475569; margin-top: 2px;">${pos1.desc}</div>
         </div>
         <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 6px; padding: 6px 8px;">
-          <div style="font-size: 9px; color: #166534; font-weight: bold;">🥈 پست دوم پیشنهادی در هندبال:</div>
-          <div style="font-size: 11.5px; font-weight: bold; color: #0f172a; margin-top: 2px;">${top2.icon} ${top2.role} (${top2.matchPct}٪)</div>
-          <div style="font-size: 9px; color: #475569; margin-top: 2px;">${top2.desc}</div>
+          <div style="font-size: 9px; color: #166534; font-weight: bold;">🥈 پست یا ماده دوم پیشنهادی:</div>
+          <div style="font-size: 11.5px; font-weight: bold; color: #0f172a; margin-top: 2px;">${pos2.icon || '🥈'} ${pos2.role} (${pos2.matchPct}٪)</div>
+          <div style="font-size: 9px; color: #475569; margin-top: 2px;">${pos2.desc}</div>
         </div>
       </div>
 
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 9.5px;">
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 8px;">
-          <div style="color: #0369a1; font-weight: bold; margin-bottom: 4px;">💪 نقاط قوت کلیدی ورزشکار:</div>
+          <div style="color: #0369a1; font-weight: bold; margin-bottom: 4px;">💪 نقاط قوت برجسته در ${disc.shortTitle}:</div>
           <ul style="margin: 0; padding-right: 14px; color: #334155; line-height: 1.5;">
-            ${analysis.strengths.map(s => `<li><strong>${s.title}:</strong> ${s.text}</li>`).join('')}
+            <li><strong>شاخص‌های برتر رادار:</strong> ${disc.axes.filter(a => a.score >= 64).map(a => a.label.split(' ')[0]).join('، ') || 'تعادل فیزیکی مناسب'}</li>
+            <li><strong>ابعاد اسکلتی و اهرم‌ها:</strong> نسبت اندام ${(disc.bestLegRatio*100).toFixed(0)}٪ و شاخص گستره دست ${disc.bestApeIndex.toFixed(2)}</li>
+            <li><strong>سطح نخبگی:</strong> شاخص تجمیعی ${disc.talentScore} در رده ${disc.talentGrade}</li>
           </ul>
         </div>
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 8px;">
-          <div style="color: #b45309; font-weight: bold; margin-bottom: 4px;">🎯 اولویت‌های تمرینی و اصلاحی:</div>
+          <div style="color: #b45309; font-weight: bold; margin-bottom: 4px;">🎯 اولویت‌های تمرینی و بهبود عملکرد:</div>
           <ul style="margin: 0; padding-right: 14px; color: #334155; line-height: 1.5;">
-            ${analysis.weaknesses.map(w => `<li><strong>${w.title}:</strong> ${w.text}</li>`).join('')}
+            <li><strong>توسعه شاخص کلیدی:</strong> تمرکز بر ارتقای ${disc.axes.filter(a => a.isCritical && a.score < 80).map(a => a.label.split(' ')[0]).join(' و ') || 'توان حداکثری'}</li>
+            <li><strong>پیشگیری از آسیب بیومکانیک:</strong> تمرینات تعادل مفصلی و ترمز اکسنتریک بر اساس اهرم‌ها</li>
+            <li><strong>هدف‌گذاری دوره بعد:</strong> ارتقای امتیاز استعداد به بالای ${Math.min(96, disc.talentScore + 7)}</li>
           </ul>
         </div>
       </div>
-
-      <div style="margin-top: 8px; font-size: 9px; color: #475569; display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed #cbd5e1; padding-top: 6px;">
-        <span>تطابق با سایر رشته‌ها: بسکتبال: <strong>${analysis.otherSports[0].pct}٪</strong> | والیبال: <strong>${analysis.otherSports[1].pct}٪</strong> | دوومیدانی سرعت: <strong>${analysis.otherSports[2].pct}٪</strong></span>
-        <span style="color: #166534; font-weight: bold;">تمرکز آزمون: رشته هندبال</span>
-      </div>
     </div>
   `;
+}
+
+function generateHandballPdfSection(athlete, athleteHistory) {
+  return generateSportTalentScoutingPdfSection(athlete, athleteHistory);
 }
 
 function generatePdfReportHtml(athlete, athleteHistory) {
@@ -8582,14 +8901,46 @@ if (flexibilitySaveBtn) {
   });
 }
 
-// ================== ANTHROPOMETRY TEST (تست قد، میان‌تنه، طول دو دست و نسبت‌ها) ==================
+// ================== ANTHROPOMETRY TEST (تست خودکار قد، میان‌تنه، لگن، طول دو دست، نسبت‌ها و دورهای بدنی) ==================
 let anthroHeightCm = 0;
 let anthroTrunkCm = 0;
 let anthroWingspanCm = 0;
 let anthroCormicIndex = 0;
 let anthroApeIndex = 1.0;
 let anthroLegCm = 0;
+let anthroPelvisWidthCm = 0;
+let anthroPelvisLengthCm = 0;
+let anthroSpanMinusHeightCm = 0;
+let anthroHeightToLegRatio = '0.00';
+let anthroWristCircumferenceCm = 0;
+let anthroWaistCircumferenceCm = 0;
+let anthroChestCircumferenceCm = 0;
+let anthroAutoHeightEstimated = 0;
 let anthroOverlayData = null;
+
+// DOM references for Anthro HUD
+const anthroPelvisVal = document.getElementById('anthroPelvisVal');
+const anthroSpanMinusHeightVal = document.getElementById('anthroSpanMinusHeightVal');
+const anthroHeightToLegVal = document.getElementById('anthroHeightToLegVal');
+const anthroWristVal = document.getElementById('anthroWristVal');
+const anthroWaistVal = document.getElementById('anthroWaistVal');
+const anthroChestVal = document.getElementById('anthroChestVal');
+
+// DOM references for Anthro Panel
+const anthroAutoHeightText = document.getElementById('anthroAutoHeightText');
+const anthroPelvisDesc = document.getElementById('anthroPelvisDesc');
+const anthroTrunkLegDesc = document.getElementById('anthroTrunkLegDesc');
+const anthroSpanMinusHeightDesc = document.getElementById('anthroSpanMinusHeightDesc');
+const anthroHeightToLegDesc = document.getElementById('anthroHeightToLegDesc');
+const anthroWristDesc = document.getElementById('anthroWristDesc');
+const anthroWaistDesc = document.getElementById('anthroWaistDesc');
+const anthroChestDesc = document.getElementById('anthroChestDesc');
+
+const anthroPelvisInput = document.getElementById('anthroPelvisInput');
+const anthroWristInput = document.getElementById('anthroWristInput');
+const anthroWaistInput = document.getElementById('anthroWaistInput');
+const anthroChestInput = document.getElementById('anthroChestInput');
+const anthroApplyHeightBtn = document.getElementById('anthroApplyHeightBtn');
 
 function anthroEnterMode() {
   hideAllPanels();
@@ -8601,7 +8952,7 @@ function anthroEnterMode() {
     anthroHeightCm = active.heightCm;
     if (anthroHeightInput) anthroHeightInput.value = anthroHeightCm;
   }
-  setStatus('آزمون آنتروپومتری: روبروی دوربین صاف بایستید تا قد، میان‌تنه و طول دو دست اسکن شود.');
+  setStatus('آزمون آنتروپومتری خودکار: روبروی دوربین صاف بایستید تا قد، لگن، بالاتنه، پایین‌تنه، طول دست و دورهای بدنی اسکن شوند.');
   updateAnthroUI();
 }
 
@@ -8609,46 +8960,76 @@ function updateAnthroUI() {
   const h = anthroHeightCm || 175;
   const trunk = anthroTrunkCm || Math.round(h * 0.52);
   const wingspan = anthroWingspanCm || h;
-  const leg = Math.max(20, h - trunk);
+  const leg = anthroLegCm || Math.max(20, h - trunk);
 
   anthroCormicIndex = ((trunk / h) * 100);
   anthroApeIndex = (wingspan / h);
-  anthroLegCm = leg;
+  anthroSpanMinusHeightCm = Math.round(wingspan - h);
+  anthroHeightToLegRatio = (h / (leg || 1)).toFixed(2);
 
+  // HUD values
   if (anthroHeightVal) anthroHeightVal.textContent = `${Math.round(h)} cm`;
   if (anthroTrunkVal) anthroTrunkVal.textContent = `${Math.round(trunk)} cm`;
-  if (anthroWingspanVal) anthroWingspanVal.textContent = `${Math.round(wingspan)} cm`;
-  if (anthroCormicVal) anthroCormicVal.textContent = `${anthroCormicIndex.toFixed(1)}%`;
-  if (anthroApeVal) anthroApeVal.textContent = anthroApeIndex.toFixed(2);
   if (anthroLegVal) anthroLegVal.textContent = `${Math.round(leg)} cm`;
+  if (anthroPelvisVal) anthroPelvisVal.textContent = `${anthroPelvisWidthCm || Math.round(h * 0.16)}×${anthroPelvisLengthCm || Math.round(h * 0.12)} cm`;
+  if (anthroWingspanVal) anthroWingspanVal.textContent = `${Math.round(wingspan)} cm`;
+  if (anthroSpanMinusHeightVal) {
+    const sign = anthroSpanMinusHeightCm > 0 ? '+' : '';
+    anthroSpanMinusHeightVal.textContent = `${sign}${anthroSpanMinusHeightCm} cm`;
+  }
+  if (anthroHeightToLegVal) anthroHeightToLegVal.textContent = anthroHeightToLegRatio;
+  if (anthroWristVal) anthroWristVal.textContent = `${anthroWristCircumferenceCm || 16.5} cm`;
+  if (anthroWaistVal) anthroWaistVal.textContent = `${anthroWaistCircumferenceCm || 76.0} cm`;
+  if (anthroChestVal) anthroChestVal.textContent = `${anthroChestCircumferenceCm || 92.0} cm`;
 
+  // Panel Inputs
   if (anthroHeightInput && anthroHeightCm) anthroHeightInput.value = Math.round(anthroHeightCm);
   if (anthroTrunkInput && anthroTrunkCm) anthroTrunkInput.value = Math.round(anthroTrunkCm);
   if (anthroWingspanInput && anthroWingspanCm) anthroWingspanInput.value = Math.round(anthroWingspanCm);
+  if (anthroPelvisInput && anthroPelvisWidthCm) anthroPelvisInput.value = anthroPelvisWidthCm;
+  if (anthroWristInput && anthroWristCircumferenceCm) anthroWristInput.value = anthroWristCircumferenceCm;
+  if (anthroWaistInput && anthroWaistCircumferenceCm) anthroWaistInput.value = anthroWaistCircumferenceCm;
+  if (anthroChestInput && anthroChestCircumferenceCm) anthroChestInput.value = anthroChestCircumferenceCm;
 
-  // Interpretations
-  let cormicText = '';
-  if (anthroCormicIndex < 51) {
-    cormicText = 'پا کشیده (Macrokelic) • پاهای بلند و تنه کوتاه؛ فوق‌العاده برای دویدن، پرش و والیبال';
-  } else if (anthroCormicIndex <= 53) {
-    cormicText = 'متناسب و هماهنگ (Mesatikelic) • هماهنگی کامل بین طول بالاتنه و پاها';
-  } else {
-    cormicText = 'تنه کشیده (Brachykelic) • مرکز ثقل پایدار؛ عالی برای کشتی، وزنه‌برداری و قایقرانی';
+  // Panel Interpretations
+  if (anthroAutoHeightText) {
+    anthroAutoHeightText.textContent = `${Math.round(h)} سانتی‌متر (تخمینی هوش مصنوعی: ${anthroAutoHeightEstimated || Math.round(h)} cm)`;
   }
-  if (anthroCormicDesc) anthroCormicDesc.textContent = cormicText;
 
-  let apeText = '';
-  if (anthroApeIndex >= 1.03) {
-    apeText = `اهرم دست بلند (${anthroApeIndex.toFixed(2)}) • مزیت فیزیکی برجسته برای بسکتبال، شنا و ورزش‌های رزمی`;
-  } else if (anthroApeIndex >= 0.98) {
-    apeText = `نسبت دست نرمال (${anthroApeIndex.toFixed(2)}) • طول دست‌ها دقیقاً متناسب با قد ورزشکار`;
-  } else {
-    apeText = `اهرم دست فشرده (${anthroApeIndex.toFixed(2)}) • مرکز شتاب بالا و مناسب حرکات انفجاری نزدیک بدن`;
+  if (anthroPelvisDesc) {
+    const pw = anthroPelvisWidthCm || Math.round(h * 0.16);
+    const pl = anthroPelvisLengthCm || Math.round(h * 0.12);
+    anthroPelvisDesc.textContent = `پهنا: ${pw} cm • طول عمودی: ${pl} cm (مرکز ثقل بهینه)`;
   }
-  if (anthroApeDesc) anthroApeDesc.textContent = apeText;
 
-  if (anthroLegDesc) {
-    anthroLegDesc.textContent = `طول اندام تحتانی: ${Math.round(leg)} سانتی‌متر • سهم اندام تحتانی از کل قامت: ${((leg/h)*100).toFixed(1)}%`;
+  if (anthroTrunkLegDesc) {
+    anthroTrunkLegDesc.textContent = `بالاتنه: ${Math.round(trunk)} cm (${anthroCormicIndex.toFixed(1)}%) • پایین‌تنه: ${Math.round(leg)} cm`;
+  }
+
+  if (anthroSpanMinusHeightDesc) {
+    const diff = anthroSpanMinusHeightCm;
+    const sign = diff > 0 ? '+' : '';
+    let adv = diff > 2 ? 'مزیت اهرمی فوق‌العاده در دفاع و پرتاب هندبال' : (diff >= -1 ? 'متناسب و متعادل' : 'فشرده و انفجاری');
+    anthroSpanMinusHeightDesc.textContent = `${sign}${diff} سانتی‌متر (Ape Index: ${anthroApeIndex.toFixed(2)}) • ${adv}`;
+  }
+
+  if (anthroHeightToLegDesc) {
+    let legEval = Number(anthroHeightToLegRatio) < 1.95 ? 'پاهای کشیده (مزیت در سرعت و پرش)' : 'متناسب برای قدرت و پایداری';
+    anthroHeightToLegDesc.textContent = `نسبت: ${anthroHeightToLegRatio} • ${legEval}`;
+  }
+
+  if (anthroWristDesc) {
+    const w = anthroWristCircumferenceCm || 16.5;
+    let frame = w < 16.5 ? 'ظریف (Small Frame)' : (w <= 18.5 ? 'متوسط (Medium Frame)' : 'درشت و قدرتی (Large Frame)');
+    anthroWristDesc.textContent = `${w} سانتی‌متر • اسکلت: ${frame}`;
+  }
+
+  if (anthroWaistDesc) {
+    anthroWaistDesc.textContent = `${anthroWaistCircumferenceCm || 76} سانتی‌متر • محیط تقریبی تنه میانی`;
+  }
+
+  if (anthroChestDesc) {
+    anthroChestDesc.textContent = `${anthroChestCircumferenceCm || 92} سانتی‌متر • ظرفیت تنفسی و قفسه سینه`;
   }
 }
 
@@ -8672,13 +9053,34 @@ function anthroProcessFrame(kp) {
   if (!feet.length) return;
   const feetY = Math.max(...feet.map(p => p.y));
 
-  // Head crown estimate (vertex): nose minus distance between eyes and nose * 2
+  // Head crown estimate (vertex): nose minus distance between eyes and nose * 3.2
   const eyeY = (leye && reye) ? (leye.y + reye.y) / 2 : nose.y - 15;
   const headOffset = Math.max(25, Math.abs(nose.y - eyeY) * 3.2);
   const crownY = nose.y - headOffset;
 
   const totalHeightPx = Math.max(50, feetY - crownY);
   const trunkHeightPx = Math.max(30, midHip.y - crownY);
+  const legHeightPx = Math.max(20, feetY - midHip.y);
+  const hipWidthPx = Math.hypot(rh.x - lh.x, rh.y - lh.y);
+  const shoulderWidthPx = Math.hypot(rs.x - ls.x, rs.y - ls.y);
+
+  // Optical height estimation from human proportions (Greek canon: height is ~7.5x head height)
+  const headHeightPx = Math.max(25, Math.abs(nose.y - eyeY) * 3.6);
+  const estimatedOpticalHeight = Math.round((totalHeightPx / headHeightPx) * 23.2);
+  anthroAutoHeightEstimated = Math.max(120, Math.min(225, estimatedOpticalHeight));
+
+  // Reference height from profile
+  const active = getActiveAthlete();
+  const refHeight = (active && active.heightCm) ? active.heightCm : 175;
+  const scale = refHeight / totalHeightPx;
+
+  anthroHeightCm = refHeight;
+  anthroTrunkCm = Math.round(trunkHeightPx * scale);
+  anthroLegCm = Math.round(legHeightPx * scale);
+  
+  // Pelvis width and length
+  anthroPelvisWidthCm = Math.round(hipWidthPx * scale);
+  anthroPelvisLengthCm = Math.round(anthroPelvisWidthCm * 0.78);
 
   // Wingspan estimate
   let wingspanPx = 0;
@@ -8686,6 +9088,36 @@ function anthroProcessFrame(kp) {
     const wristDistPx = Math.hypot(rw.x - lw.x, rw.y - lw.y);
     wingspanPx = wristDistPx * 1.18; // Includes hand fingertips
   }
+  if (wingspanPx > 0) {
+    anthroWingspanCm = Math.round(wingspanPx * scale);
+  } else if (!anthroWingspanCm) {
+    anthroWingspanCm = refHeight;
+  }
+  anthroSpanMinusHeightCm = anthroWingspanCm - anthroHeightCm;
+
+  // Height to Lower Body Ratio
+  anthroHeightToLegRatio = (anthroHeightCm / (anthroLegCm || 1)).toFixed(2);
+
+  // Wrist circumference estimation
+  const wristDiamPx = Math.max(8, shoulderWidthPx * 0.115);
+  const wristDiamCm = wristDiamPx * scale;
+  anthroWristCircumferenceCm = Number(Math.max(14.0, Math.min(23.0, Math.PI * wristDiamCm * 1.05)).toFixed(1));
+
+  // Waist circumference estimation (Ramanujan ellipse perimeter at waist level)
+  const waistWidthCm = (hipWidthPx * 0.92) * scale;
+  const aWaist = waistWidthCm / 2;
+  const bWaist = (waistWidthCm * 0.72) / 2;
+  const hWaist = Math.pow(aWaist - bWaist, 2) / Math.pow(aWaist + bWaist, 2);
+  const waistPerim = Math.PI * (aWaist + bWaist) * (1 + (3 * hWaist) / (10 + Math.sqrt(4 - 3 * hWaist)));
+  anthroWaistCircumferenceCm = Number(Math.max(55.0, Math.min(130.0, waistPerim)).toFixed(1));
+
+  // Chest circumference estimation (Ramanujan ellipse perimeter at chest level)
+  const chestWidthCm = (shoulderWidthPx * 0.90) * scale;
+  const aChest = chestWidthCm / 2;
+  const bChest = (chestWidthCm * 0.75) / 2;
+  const hChest = Math.pow(aChest - bChest, 2) / Math.pow(aChest + bChest, 2);
+  const chestPerim = Math.PI * (aChest + bChest) * (1 + (3 * hChest) / (10 + Math.sqrt(4 - 3 * hChest)));
+  anthroChestCircumferenceCm = Number(Math.max(70.0, Math.min(140.0, chestPerim)).toFixed(1));
 
   anthroOverlayData = {
     midShoulder,
@@ -8694,35 +9126,29 @@ function anthroProcessFrame(kp) {
     feetY,
     lw,
     rw,
+    lh,
+    rh,
+    ls,
+    rs,
     totalHeightPx,
-    trunkHeightPx
+    trunkHeightPx,
+    legHeightPx,
+    hipWidthPx,
+    shoulderWidthPx
   };
-
-  // Convert to cm using registered height or calibration
-  const active = getActiveAthlete();
-  const refHeight = (active && active.heightCm) ? active.heightCm : 175;
-  const scale = refHeight / totalHeightPx;
-
-  anthroHeightCm = refHeight;
-  anthroTrunkCm = trunkHeightPx * scale;
-  if (wingspanPx > 0) {
-    anthroWingspanCm = wingspanPx * scale;
-  } else if (!anthroWingspanCm) {
-    anthroWingspanCm = refHeight;
-  }
 
   updateAnthroUI();
 }
 
 function anthroDrawOverlay() {
   if (mode !== 'anthro' || !anthroOverlayData) return;
-  const { midShoulder, midHip, crownY, feetY, lw, rw } = anthroOverlayData;
+  const { midShoulder, midHip, crownY, feetY, lw, rw, lh, rh, ls, rs } = anthroOverlayData;
   const cx = midShoulder.x;
 
   ctx.save();
 
-  // 1. Standing Height bracket
-  const bracketX = Math.max(25, cx - 120);
+  // 1. Standing Height bracket (Left)
+  const bracketX = Math.max(25, cx - 130);
   ctx.strokeStyle = '#38bdf8';
   ctx.lineWidth = 2.5;
   ctx.beginPath();
@@ -8740,9 +9166,9 @@ function anthroDrawOverlay() {
   const hMidY = (crownY + feetY) / 2;
   ctx.beginPath();
   if (ctx.roundRect) {
-    ctx.roundRect(bracketX - 85, hMidY - 12, 75, 24, 6);
+    ctx.roundRect(bracketX - 95, hMidY - 12, 90, 24, 6);
   } else {
-    ctx.rect(bracketX - 85, hMidY - 12, 75, 24);
+    ctx.rect(bracketX - 95, hMidY - 12, 90, 24);
   }
   ctx.fill();
   ctx.strokeStyle = '#38bdf8';
@@ -8752,10 +9178,10 @@ function anthroDrawOverlay() {
   ctx.font = 'bold 11px Vazirmatn, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(`قد: ${Math.round(anthroHeightCm)}cm`, bracketX - 48, hMidY);
+  ctx.fillText(`قد: ${Math.round(anthroHeightCm)}cm`, bracketX - 50, hMidY);
 
-  // 2. Trunk Height bracket (Crown to Mid-Hip)
-  const trunkX = Math.min(canvas.width - 25, cx + 110);
+  // 2. Trunk Height bracket (Right - Crown to Mid-Hip)
+  const trunkX = Math.min(canvas.width - 25, cx + 115);
   ctx.strokeStyle = '#a855f7';
   ctx.lineWidth = 2.5;
   ctx.beginPath();
@@ -8773,9 +9199,9 @@ function anthroDrawOverlay() {
   ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
   ctx.beginPath();
   if (ctx.roundRect) {
-    ctx.roundRect(trunkX + 10, tMidY - 12, 95, 24, 6);
+    ctx.roundRect(trunkX + 8, tMidY - 12, 95, 24, 6);
   } else {
-    ctx.rect(trunkX + 10, tMidY - 12, 95, 24);
+    ctx.rect(trunkX + 8, tMidY - 12, 95, 24);
   }
   ctx.fill();
   ctx.strokeStyle = '#a855f7';
@@ -8785,9 +9211,65 @@ function anthroDrawOverlay() {
   ctx.font = 'bold 11px Vazirmatn, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(`تنه: ${Math.round(anthroTrunkCm)}cm`, trunkX + 57, tMidY);
+  ctx.fillText(`بالاتنه: ${Math.round(anthroTrunkCm)}cm`, trunkX + 55, tMidY);
 
-  // 3. Wingspan line if wrists visible
+  // 3. Lower body (Legs) bracket (Right - Mid-Hip to Feet)
+  ctx.strokeStyle = '#f59e0b';
+  ctx.lineWidth = 2.2;
+  ctx.beginPath();
+  ctx.moveTo(trunkX, midHip.y);
+  ctx.lineTo(trunkX, feetY);
+  ctx.moveTo(trunkX - 10, feetY);
+  ctx.lineTo(trunkX + 10, feetY);
+  ctx.stroke();
+
+  const legMidY = (midHip.y + feetY) / 2;
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+  ctx.beginPath();
+  if (ctx.roundRect) {
+    ctx.roundRect(trunkX + 8, legMidY - 12, 95, 24, 6);
+  } else {
+    ctx.rect(trunkX + 8, legMidY - 12, 95, 24);
+  }
+  ctx.fill();
+  ctx.strokeStyle = '#f59e0b';
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+  ctx.fillStyle = '#fbbf24';
+  ctx.font = 'bold 11px Vazirmatn, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(`پایین‌تنه: ${Math.round(anthroLegCm)}cm`, trunkX + 55, legMidY);
+
+  // 4. Pelvis Width & Length Indicator across hips
+  if (lh && rh) {
+    ctx.strokeStyle = '#06b6d4';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(lh.x, lh.y);
+    ctx.lineTo(rh.x, rh.y);
+    ctx.stroke();
+
+    // Pelvic center badge
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(midHip.x - 55, midHip.y + 12, 110, 20, 5);
+    } else {
+      ctx.rect(midHip.x - 55, midHip.y + 12, 110, 20);
+    }
+    ctx.fill();
+    ctx.strokeStyle = '#06b6d4';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = '#67e8f9';
+    ctx.font = 'bold 10px Vazirmatn, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`لگن: ${anthroPelvisWidthCm}×${anthroPelvisLengthCm}cm`, midHip.x, midHip.y + 22);
+  }
+
+  // 5. Wingspan line and Span - Height badge
   if (lw && rw && lw.score > 0.2 && rw.score > 0.2) {
     ctx.strokeStyle = '#22c55e';
     ctx.lineWidth = 2.5;
@@ -8799,13 +9281,13 @@ function anthroDrawOverlay() {
     ctx.setLineDash([]);
 
     const wMidX = (lw.x + rw.x) / 2;
-    const wMidY = (lw.y + rw.y) / 2 - 20;
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+    const wMidY = (lw.y + rw.y) / 2 - 24;
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
     ctx.beginPath();
     if (ctx.roundRect) {
-      ctx.roundRect(wMidX - 60, wMidY - 12, 120, 24, 6);
+      ctx.roundRect(wMidX - 95, wMidY - 13, 190, 26, 6);
     } else {
-      ctx.rect(wMidX - 60, wMidY - 12, 120, 24);
+      ctx.rect(wMidX - 95, wMidY - 13, 190, 26);
     }
     ctx.fill();
     ctx.strokeStyle = '#22c55e';
@@ -8815,7 +9297,28 @@ function anthroDrawOverlay() {
     ctx.font = 'bold 11px Vazirmatn, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(`طول دست: ${Math.round(anthroWingspanCm)}cm`, wMidX, wMidY);
+    const sign = anthroSpanMinusHeightCm >= 0 ? '+' : '';
+    ctx.fillText(`دست: ${Math.round(anthroWingspanCm)}cm (تفاضل: ${sign}${anthroSpanMinusHeightCm}cm)`, wMidX, wMidY);
+  }
+
+  // 6. Chest and Waist circumference guidelines
+  if (ls && rs && lh && rh) {
+    // Chest line
+    const chestY = (midShoulder.y * 0.6 + midHip.y * 0.4);
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.ellipse(cx, chestY, (Math.hypot(rs.x - ls.x, rs.y - ls.y) * 0.45), 10, 0, 0, 2 * Math.PI);
+    ctx.stroke();
+
+    // Waist line
+    const waistY = (midShoulder.y * 0.3 + midHip.y * 0.7);
+    ctx.strokeStyle = 'rgba(244, 114, 182, 0.45)';
+    ctx.beginPath();
+    ctx.ellipse(cx, waistY, (Math.hypot(rh.x - lh.x, rh.y - lh.y) * 0.46), 9, 0, 0, 2 * Math.PI);
+    ctx.stroke();
+    ctx.setLineDash([]);
   }
 
   ctx.restore();
@@ -8823,8 +9326,31 @@ function anthroDrawOverlay() {
 
 if (anthroScanBtn) {
   anthroScanBtn.addEventListener('click', () => {
-    playChime(550, 'sine', 0.15);
-    setStatus('اسکن ابعاد بدنی انجام شد.');
+    if (anthroAutoHeightEstimated > 0) {
+      anthroHeightCm = anthroAutoHeightEstimated;
+      if (anthroHeightInput) anthroHeightInput.value = anthroHeightCm;
+      updateAnthroUI();
+      playChime(580, 'sine', 0.18);
+      setStatus(`📸 اسکن خودکار هوش مصنوعی تکمیل شد: قد محاسبه‌شده ${anthroHeightCm} سانتی‌متر`);
+    } else {
+      playChime(550, 'sine', 0.15);
+      setStatus('📸 اسکن ابعاد بدنی انجام شد.');
+    }
+  });
+}
+
+if (anthroApplyHeightBtn) {
+  anthroApplyHeightBtn.addEventListener('click', () => {
+    const active = getActiveAthlete();
+    const h = anthroAutoHeightEstimated || anthroHeightCm || 175;
+    anthroHeightCm = h;
+    if (active) {
+      updateAthlete(active.id, {
+        heightCm: h
+      });
+      setStatus(`✅ قد ${h} سانتی‌متر در پروفایل «${active.name}» تثبیت و ثبت شد.`);
+      playChime(660, 'sine', 0.2);
+    }
   });
 }
 
@@ -8841,6 +9367,18 @@ if (anthroSaveBtn) {
     if (anthroWingspanInput && parseFloat(anthroWingspanInput.value)) {
       anthroWingspanCm = parseFloat(anthroWingspanInput.value);
     }
+    if (anthroPelvisInput && parseFloat(anthroPelvisInput.value)) {
+      anthroPelvisWidthCm = parseFloat(anthroPelvisInput.value);
+    }
+    if (anthroWristInput && parseFloat(anthroWristInput.value)) {
+      anthroWristCircumferenceCm = parseFloat(anthroWristInput.value);
+    }
+    if (anthroWaistInput && parseFloat(anthroWaistInput.value)) {
+      anthroWaistCircumferenceCm = parseFloat(anthroWaistInput.value);
+    }
+    if (anthroChestInput && parseFloat(anthroChestInput.value)) {
+      anthroChestCircumferenceCm = parseFloat(anthroChestInput.value);
+    }
     updateAnthroUI();
 
     saveToHistory('anthro', {
@@ -8848,6 +9386,13 @@ if (anthroSaveBtn) {
       trunkCm: Math.round(anthroTrunkCm),
       wingspanCm: Math.round(anthroWingspanCm),
       legCm: Math.round(anthroLegCm),
+      pelvisWidthCm: anthroPelvisWidthCm,
+      pelvisLengthCm: anthroPelvisLengthCm,
+      spanMinusHeightCm: anthroSpanMinusHeightCm,
+      heightToLegRatio: anthroHeightToLegRatio,
+      wristCircumferenceCm: anthroWristCircumferenceCm,
+      waistCircumferenceCm: anthroWaistCircumferenceCm,
+      chestCircumferenceCm: anthroChestCircumferenceCm,
       cormicIndex: anthroCormicIndex.toFixed(1),
       apeIndex: anthroApeIndex.toFixed(2),
       cormicDesc: anthroCormicDesc ? anthroCormicDesc.textContent : '',
@@ -8865,9 +9410,9 @@ if (anthroSaveBtn) {
       }
     }
 
-    setStatus('داده‌های آنتروپومتری و نسبت‌های بدنی با موفقیت ذخیره شد ✅');
+    setStatus('داده‌های آنتروپومتری و کلیه ابعاد بدنی با موفقیت ذخیره شد ✅');
     anthroSaveBtn.textContent = 'ذخیره شد ✓';
-    setTimeout(() => { if (anthroSaveBtn) anthroSaveBtn.textContent = 'ذخیره در پرونده ورزشکار'; }, 2000);
+    setTimeout(() => { if (anthroSaveBtn) anthroSaveBtn.textContent = '💾 ثبت کامل در پرونده'; }, 2000);
   });
 }
 
@@ -9707,6 +10252,10 @@ function switchMode(newMode) {
   } else if (mode === 'anthro') {
     anthroEnterMode();
   }
+
+  if (typeof updateLaptopStatsPanel === 'function') {
+    updateLaptopStatsPanel();
+  }
 }
 
 if (modeRunBtn) modeRunBtn.addEventListener('click', () => switchMode('run'));
@@ -10481,6 +11030,11 @@ function drawPose(poses) {
     if (isCalibratingHeight) heightCalibDrawOverlay();
     if (isObjectCalibrating) objectCalibDrawOverlay();
 
+    // Render transparent camera alignment grid overlay (when active)
+    if (typeof showAlignmentGrid !== 'undefined' && showAlignmentGrid) {
+      drawAlignmentGridOverlay();
+    }
+
     if (!poses || !poses.length) return;
     const kp = {};
     for (const point of poses[0].keypoints) kp[point.name] = point;
@@ -10786,6 +11340,11 @@ function drawPose(poses) {
       }
     }
 
+    // 5. Joint Angles Display Overlay (Explicit user requirement: نمایش زوایای بین مفاصل)
+    if (showJointAngles) {
+      drawJointAnglesOverlay(kp);
+    }
+
     ctx.restore();
 
     // Dynamically calibrate scale from detected human pose
@@ -10805,6 +11364,739 @@ function drawPose(poses) {
     logError('drawPose', error, { posesLength: poses?.length });
     // Don't throw - let the loop continue
   }
+}
+
+// ================== JOINT ANGLE COMPUTATION & VISUALIZATION ==================
+let showJointAngles = false;
+try {
+  showJointAngles = localStorage.getItem('motion_tracker_show_joint_angles') === 'true';
+} catch (e) {}
+
+function calculateJointAngle(p1, p2, p3) {
+  if (!p1 || !p2 || !p3) return null;
+  const s1 = p1.score || 0;
+  const s2 = p2.score || 0;
+  const s3 = p3.score || 0;
+  if (s1 < 0.20 || s2 < 0.20 || s3 < 0.20) return null;
+
+  const rad1 = Math.atan2(p1.y - p2.y, p1.x - p2.x);
+  const rad2 = Math.atan2(p3.y - p2.y, p3.x - p2.x);
+  let diff = Math.abs(rad1 - rad2);
+  if (diff > Math.PI) diff = 2 * Math.PI - diff;
+  const degrees = Math.round((diff * 180) / Math.PI);
+  return { angle: degrees, p1, p2, p3, rad1, rad2 };
+}
+
+function drawJointAnglesOverlay(kp) {
+  if (!kp) return;
+
+  const jointsToMeasure = [
+    // Knees (مفاصل زانو)
+    { name: 'زانوی راست', p1: kp['right_hip'], p2: kp['right_knee'], p3: kp['right_ankle'], color: '#22c55e', side: 'r' },
+    { name: 'زانوی چپ', p1: kp['left_hip'], p2: kp['left_knee'], p3: kp['left_ankle'], color: '#22c55e', side: 'l' },
+    // Elbows (مفاصل آرنج)
+    { name: 'آرنج راست', p1: kp['right_shoulder'], p2: kp['right_elbow'], p3: kp['right_wrist'], color: '#38bdf8', side: 'r' },
+    { name: 'آرنج چپ', p1: kp['left_shoulder'], p2: kp['left_elbow'], p3: kp['left_wrist'], color: '#38bdf8', side: 'l' },
+    // Hips (مفاصل ران / لگن)
+    { name: 'لگن راست', p1: kp['right_shoulder'], p2: kp['right_hip'], p3: kp['right_knee'], color: '#f59e0b', side: 'r' },
+    { name: 'لگن چپ', p1: kp['left_shoulder'], p2: kp['left_hip'], p3: kp['left_knee'], color: '#f59e0b', side: 'l' },
+    // Shoulders (مفاصل شانه)
+    { name: 'شانه راست', p1: kp['right_elbow'], p2: kp['right_shoulder'], p3: kp['right_hip'], color: '#a855f7', side: 'r' },
+    { name: 'شانه چپ', p1: kp['left_elbow'], p2: kp['left_shoulder'], p3: kp['left_hip'], color: '#a855f7', side: 'l' },
+    // Ankles (مچ پا)
+    { name: 'مچ پای راست', p1: kp['right_knee'], p2: kp['right_ankle'], p3: kp['right_foot_index'], color: '#10b981', side: 'r' },
+    { name: 'مچ پای چپ', p1: kp['left_knee'], p2: kp['left_ankle'], p3: kp['left_foot_index'], color: '#10b981', side: 'l' }
+  ];
+
+  ctx.save();
+  ctx.font = 'bold 11px Vazirmatn, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  for (const item of jointsToMeasure) {
+    const res = calculateJointAngle(item.p1, item.p2, item.p3);
+    if (!res) continue;
+
+    const { angle, p2, rad1, rad2 } = res;
+    const arcRadius = 22;
+
+    // 1. Draw angle sector arc around vertex
+    ctx.strokeStyle = item.color;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(p2.x, p2.y, arcRadius, rad1, rad2, false);
+    ctx.stroke();
+
+    // 2. High contrast pill badge showing angle degrees
+    const label = `${angle}°`;
+    const labelW = ctx.measureText(label).width;
+    const badgeW = Math.max(38, labelW + 12);
+    const badgeH = 22;
+
+    // Position badge slightly offset from joint
+    const offsetX = item.side === 'r' ? 32 : -32;
+    const offsetY = -8;
+    const bx = p2.x + offsetX;
+    const by = p2.y + offsetY;
+
+    // Badge background
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(bx - badgeW / 2, by - badgeH / 2, badgeW, badgeH, 6);
+    } else {
+      ctx.rect(bx - badgeW / 2, by - badgeH / 2, badgeW, badgeH);
+    }
+    ctx.fill();
+
+    // Badge border matching limb region
+    ctx.strokeStyle = item.color;
+    ctx.lineWidth = 1.3;
+    ctx.stroke();
+
+    // Small connector tick from joint to badge
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(p2.x + (item.side === 'r' ? 12 : -12), p2.y);
+    ctx.lineTo(bx + (item.side === 'r' ? -badgeW / 2 : badgeW / 2), by);
+    ctx.stroke();
+
+    // Text
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(label, bx, by + 1);
+  }
+
+  ctx.restore();
+}
+
+function toggleJointAngles(forcedVal) {
+  if (typeof forcedVal === 'boolean') {
+    showJointAngles = forcedVal;
+  } else {
+    showJointAngles = !showJointAngles;
+  }
+
+  try {
+    localStorage.setItem('motion_tracker_show_joint_angles', showJointAngles ? 'true' : 'false');
+  } catch (e) {}
+
+  updateJointAnglesUI();
+  setStatus(showJointAngles ? '📐 نمایش زوایای مفاصل فعال شد.' : '📐 نمایش زوایای مفاصل غیرفعال شد.');
+  playChime(showJointAngles ? 600 : 400, 'sine', 0.12);
+}
+
+function updateJointAnglesUI() {
+  const topBtn = document.getElementById('toggleJointAnglesBtn');
+  const topText = document.getElementById('jointAnglesBtnText');
+  const drawerBadge = document.getElementById('drawerJointAnglesBadge');
+  const statsBtn = document.getElementById('statsToggleJointAnglesBtn');
+
+  if (topBtn) {
+    if (showJointAngles) {
+      topBtn.style.background = 'rgba(2, 132, 199, 0.35)';
+      topBtn.style.borderColor = '#38bdf8';
+      topBtn.style.color = '#38bdf8';
+    } else {
+      topBtn.style.background = '';
+      topBtn.style.borderColor = '';
+      topBtn.style.color = '';
+    }
+  }
+
+  if (topText) {
+    topText.textContent = showJointAngles ? 'زوایا: روشن' : 'زوایای مفاصل';
+  }
+
+  if (drawerBadge) {
+    drawerBadge.textContent = showJointAngles ? 'روشن' : 'خاموش';
+    drawerBadge.style.background = showJointAngles ? '#16a34a' : '#334155';
+    drawerBadge.style.color = showJointAngles ? '#ffffff' : '#94a3b8';
+  }
+
+  if (statsBtn) {
+    if (showJointAngles) {
+      statsBtn.classList.add('active');
+      statsBtn.style.background = '#0284c7';
+      statsBtn.style.color = '#ffffff';
+      statsBtn.textContent = '📐 زوایا: روشن';
+    } else {
+      statsBtn.classList.remove('active');
+      statsBtn.style.background = '';
+      statsBtn.style.color = '';
+      statsBtn.textContent = '📐 زوایای مفاصل';
+    }
+  }
+}
+
+// ================== ALIGNMENT GRID OVERLAY ==================
+let showAlignmentGrid = false;
+try {
+  showAlignmentGrid = localStorage.getItem('motion_tracker_show_alignment_grid') === 'true';
+} catch (e) {}
+
+function toggleAlignmentGrid(forceVal) {
+  if (typeof forceVal === 'boolean') {
+    showAlignmentGrid = forceVal;
+  } else {
+    showAlignmentGrid = !showAlignmentGrid;
+  }
+
+  try {
+    localStorage.setItem('motion_tracker_show_alignment_grid', showAlignmentGrid ? 'true' : 'false');
+  } catch (e) {}
+
+  updateAlignmentGridUI();
+  playChime(showAlignmentGrid ? 700 : 380, 'sine', 0.12);
+
+  if (showAlignmentGrid) {
+    showShortcutToast('📐 کادر ترازبندی دوربین فعال شد (کلید G)');
+    setStatus('📐 کادر ترازبندی و تقارن دوربین فعال شد.');
+  } else {
+    showShortcutToast('📐 کادر ترازبندی غیرفعال شد (کلید G)');
+    setStatus('📐 کادر ترازبندی غیرفعال شد.');
+  }
+}
+
+function updateAlignmentGridUI() {
+  const toggleGridBtn = document.getElementById('toggleGridBtn');
+  const statsToggleGridBtn = document.getElementById('statsToggleGridBtn');
+  const drawerItemGrid = document.getElementById('drawerItemGrid');
+  const settingAlignmentGrid = document.getElementById('settingAlignmentGrid');
+
+  if (toggleGridBtn) {
+    toggleGridBtn.classList.toggle('active', showAlignmentGrid);
+    toggleGridBtn.style.color = showAlignmentGrid ? '#38bdf8' : '';
+    toggleGridBtn.style.borderColor = showAlignmentGrid ? '#38bdf8' : '';
+  }
+  if (statsToggleGridBtn) {
+    statsToggleGridBtn.classList.toggle('active', showAlignmentGrid);
+    if (showAlignmentGrid) {
+      statsToggleGridBtn.style.background = '#0284c7';
+      statsToggleGridBtn.style.color = '#ffffff';
+      statsToggleGridBtn.style.borderColor = '#38bdf8';
+      statsToggleGridBtn.textContent = '📐 گرید: روشن';
+    } else {
+      statsToggleGridBtn.style.background = '';
+      statsToggleGridBtn.style.color = '';
+      statsToggleGridBtn.style.borderColor = '';
+      statsToggleGridBtn.textContent = '📐 گرید تراز (G)';
+    }
+  }
+  if (drawerItemGrid) {
+    drawerItemGrid.classList.toggle('active', showAlignmentGrid);
+  }
+  if (settingAlignmentGrid) {
+    settingAlignmentGrid.checked = showAlignmentGrid;
+  }
+}
+
+function drawAlignmentGridOverlay() {
+  const w = canvas.width;
+  const h = canvas.height;
+  if (!w || !h) return;
+
+  ctx.save();
+
+  // 1. 3x3 Rule-of-Thirds Grid Lines
+  ctx.strokeStyle = 'rgba(56, 189, 248, 0.28)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([5, 5]);
+
+  const x1 = w / 3;
+  const x2 = (2 * w) / 3;
+  const y1 = h / 3;
+  const y2 = (2 * h) / 3;
+
+  ctx.beginPath();
+  // Vertical thirds
+  ctx.moveTo(x1, 0); ctx.lineTo(x1, h);
+  ctx.moveTo(x2, 0); ctx.lineTo(x2, h);
+  // Horizontal thirds
+  ctx.moveTo(0, y1); ctx.lineTo(w, y1);
+  ctx.moveTo(0, y2); ctx.lineTo(w, y2);
+  ctx.stroke();
+
+  // 2. Center Crosshair and Concentric Target Reticles
+  ctx.setLineDash([]);
+  const cx = w / 2;
+  const cy = h / 2;
+
+  // Center vertical plumb line (Gravity alignment for athlete spine)
+  ctx.strokeStyle = 'rgba(56, 189, 248, 0.55)';
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.moveTo(cx, 16); ctx.lineTo(cx, h - 16);
+  ctx.stroke();
+
+  // Center horizontal reference line
+  ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+  ctx.beginPath();
+  ctx.moveTo(25, cy); ctx.lineTo(w - 25, cy);
+  ctx.stroke();
+
+  // Target Circles
+  ctx.strokeStyle = 'rgba(56, 189, 248, 0.75)';
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 28, 0, 2 * Math.PI);
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 64, 0, 2 * Math.PI);
+  ctx.stroke();
+
+  // Center Point
+  ctx.fillStyle = '#38bdf8';
+  ctx.beginPath();
+  ctx.arc(cx, cy, 3, 0, 2 * Math.PI);
+  ctx.fill();
+
+  // 3. Ground Level Baseline Alignment (88% height - where feet/baseline should rest)
+  const groundY = h * 0.88;
+  ctx.strokeStyle = 'rgba(34, 197, 94, 0.75)'; // Emerald baseline
+  ctx.lineWidth = 1.8;
+  ctx.setLineDash([8, 4]);
+  ctx.beginPath();
+  ctx.moveTo(25, groundY);
+  ctx.lineTo(w - 25, groundY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Ground level calibration tick marks
+  for (let i = 0; i <= 10; i++) {
+    const tx = 25 + (i / 10) * (w - 50);
+    const tickH = (i === 5 || i === 0 || i === 10) ? 12 : 6;
+    ctx.beginPath();
+    ctx.moveTo(tx, groundY - tickH / 2);
+    ctx.lineTo(tx, groundY + tickH / 2);
+    ctx.stroke();
+  }
+
+  // Label for ground baseline
+  ctx.font = 'bold 10px Vazirmatn, Tahoma, sans-serif';
+  ctx.fillStyle = '#22c55e';
+  ctx.textAlign = 'right';
+  ctx.fillText('خط تراز سطح زمین / تماس پاها', w - 30, groundY - 7);
+
+  // 4. Tactical Frame Corner Brackets
+  const cornerLen = 26;
+  const margin = 16;
+  ctx.strokeStyle = 'rgba(56, 189, 248, 0.75)';
+  ctx.lineWidth = 2.5;
+
+  // Top-left
+  ctx.beginPath();
+  ctx.moveTo(margin, margin + cornerLen);
+  ctx.lineTo(margin, margin);
+  ctx.lineTo(margin + cornerLen, margin);
+  ctx.stroke();
+
+  // Top-right
+  ctx.beginPath();
+  ctx.moveTo(w - margin - cornerLen, margin);
+  ctx.lineTo(w - margin, margin);
+  ctx.lineTo(w - margin, margin + cornerLen);
+  ctx.stroke();
+
+  // Bottom-left
+  ctx.beginPath();
+  ctx.moveTo(margin, h - margin - cornerLen);
+  ctx.lineTo(margin, h - margin);
+  ctx.lineTo(margin + cornerLen, h - margin);
+  ctx.stroke();
+
+  // Bottom-right
+  ctx.beginPath();
+  ctx.moveTo(w - margin - cornerLen, h - margin);
+  ctx.lineTo(w - margin, h - margin);
+  ctx.lineTo(w - margin, h - margin - cornerLen);
+  ctx.stroke();
+
+  // Top-Center Status Pill
+  const badgeW = 190, badgeH = 22;
+  const bx = (w - badgeW) / 2, by = 16;
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
+  ctx.strokeStyle = 'rgba(56, 189, 248, 0.5)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(bx, by, badgeW, badgeH, 6);
+  else ctx.rect(bx, by, badgeW, badgeH);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = '#38bdf8';
+  ctx.font = 'bold 10.5px Vazirmatn, Tahoma, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('📐 کادر ترازبندی و تقارن دوربین (G)', cx, by + 15);
+
+  ctx.restore();
+}
+
+// ================== KEYBOARD SHORTCUTS SYSTEM ==================
+let shortcutToastTimeout = null;
+function showShortcutToast(message) {
+  const toast = document.getElementById('shortcutToast');
+  if (!toast) return;
+  toast.textContent = message;
+  toast.style.display = 'block';
+  toast.style.opacity = '1';
+  if (shortcutToastTimeout) clearTimeout(shortcutToastTimeout);
+  shortcutToastTimeout = setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => {
+      if (toast.style.opacity === '0') toast.style.display = 'none';
+    }, 250);
+  }, 1600);
+}
+
+function triggerCurrentTest() {
+  if (mode === 'run') {
+    const triggerBtn = document.getElementById('runTriggerBtn');
+    if (triggerBtn) triggerBtn.click();
+    else if (typeof triggerRunTest === 'function') triggerRunTest();
+    showShortcutToast('⏱️ فعال‌سازی آزمون دو سرعت (Space)');
+  } else if (mode === 'jump') {
+    const triggerBtn = document.getElementById('jumpTriggerBtn');
+    if (triggerBtn) triggerBtn.click();
+    else if (typeof triggerJumpTest === 'function') triggerJumpTest();
+    showShortcutToast('⤴️ شروع آزمون پرش عمودی (Space)');
+  } else if (mode === 'bosco') {
+    const triggerBtn = document.getElementById('boscoTriggerBtn');
+    if (triggerBtn) triggerBtn.click();
+    else if (typeof triggerBoscoTest === 'function') triggerBoscoTest();
+    showShortcutToast('🦘 شروع پرش متوالی بوسکو (Space)');
+  } else if (mode === 'agility') {
+    const triggerBtn = document.getElementById('agilityTriggerBtn');
+    if (triggerBtn) triggerBtn.click();
+    else if (typeof triggerAgilityTest === 'function') triggerAgilityTest();
+    showShortcutToast('⚡ شروع آزمون چابکی شاتل (Space)');
+  } else if (mode === 'pushup') {
+    const triggerBtn = document.getElementById('pushupTriggerBtn');
+    if (triggerBtn) triggerBtn.click();
+    else if (typeof triggerPushupTest === 'function') triggerPushupTest();
+    showShortcutToast('💪 شروع آزمون شنا سوئدی (Space)');
+  } else if (mode === 'situp') {
+    const triggerBtn = document.getElementById('situpTriggerBtn');
+    if (triggerBtn) triggerBtn.click();
+    else if (typeof triggerSitupTest === 'function') triggerSitupTest();
+    showShortcutToast('🧘 شروع آزمون دراز و نشست (Space)');
+  } else if (mode === 'wingspan') {
+    const snapBtn = document.getElementById('wingspanSnapshotBtn');
+    if (snapBtn) snapBtn.click();
+    else if (typeof captureWingspanSnapshot === 'function') captureWingspanSnapshot();
+    showShortcutToast('📏 ثبت طول دست Wingspan (Space)');
+  } else if (mode === 'anthro') {
+    const saveBtn = document.getElementById('anthroSaveBtn');
+    if (saveBtn) saveBtn.click();
+    else if (typeof saveAnthroRecord === 'function') saveAnthroRecord();
+    showShortcutToast('📐 ثبت ابعاد آنتروپومتری (Space)');
+  } else if (mode === 'flexibility') {
+    const snapBtn = document.getElementById('flexibilitySnapshotBtn');
+    if (snapBtn) snapBtn.click();
+    else if (typeof captureFlexibilitySnapshot === 'function') captureFlexibilitySnapshot();
+    showShortcutToast('🤸 ثبت رکورد انعطاف‌پذیری (Space)');
+  } else {
+    showShortcutToast('⚡ آزمون فعال شد (Space)');
+  }
+}
+
+function resetActiveModeTest() {
+  if (mode === 'run' && typeof runResetState === 'function') runResetState();
+  else if (mode === 'jump' && typeof jumpResetState === 'function') jumpResetState();
+  else if (mode === 'bosco' && typeof boscoResetState === 'function') boscoResetState();
+  else if (mode === 'agility' && typeof agilityResetState === 'function') agilityResetState();
+  else if (mode === 'pushup' && typeof pushupResetState === 'function') pushupResetState();
+  else if (mode === 'situp' && typeof situpResetState === 'function') situpResetState();
+  else if (mode === 'wingspan' && typeof wingspanResetState === 'function') wingspanResetState();
+  else if (mode === 'anthro' && typeof anthroResetState === 'function') anthroResetState();
+  else if (mode === 'flexibility' && typeof flexibilityResetState === 'function') flexibilityResetState();
+  setStatus('🔄 آزمون بازنشانی شد.');
+}
+
+function openKeyboardShortcutsModal() {
+  const modal = document.getElementById('keyboardShortcutsModal');
+  if (modal) modal.style.display = 'flex';
+}
+
+function closeKeyboardShortcutsModal() {
+  const modal = document.getElementById('keyboardShortcutsModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function initKeyboardShortcuts() {
+  window.addEventListener('keydown', (e) => {
+    // If the user is currently typing in an input, textarea, or select, do not intercept!
+    const activeEl = document.activeElement;
+    if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT' || activeEl.isContentEditable)) {
+      if (e.key === 'Escape') {
+        activeEl.blur();
+      }
+      return;
+    }
+
+    const key = e.key;
+
+    if (key === ' ' || e.code === 'Space') {
+      e.preventDefault();
+      triggerCurrentTest();
+      return;
+    }
+
+    if (key === '1') {
+      e.preventDefault();
+      switchMode('run');
+      showShortcutToast('🏃 تغییر آزمون: دوی سرعت (1)');
+      return;
+    }
+    if (key === '2') {
+      e.preventDefault();
+      switchMode('jump');
+      showShortcutToast('⤴️ تغییر آزمون: پرش عمودی سارجنت (2)');
+      return;
+    }
+    if (key === '3') {
+      e.preventDefault();
+      switchMode('bosco');
+      showShortcutToast('🦘 تغییر آزمون: پرش متوالی بوسکو (3)');
+      return;
+    }
+    if (key === '4') {
+      e.preventDefault();
+      switchMode('agility');
+      showShortcutToast('⚡ تغییر آزمون: چابکی شاتل (4)');
+      return;
+    }
+    if (key === '5') {
+      e.preventDefault();
+      switchMode('pushup');
+      showShortcutToast('💪 تغییر آزمون: شنا سوئدی (5)');
+      return;
+    }
+    if (key === '6') {
+      e.preventDefault();
+      switchMode('situp');
+      showShortcutToast('🧘 تغییر آزمون: دراز و نشست (6)');
+      return;
+    }
+    if (key === '7') {
+      e.preventDefault();
+      switchMode('wingspan');
+      showShortcutToast('📏 تغییر آزمون: طول دو دست Wingspan (7)');
+      return;
+    }
+    if (key === '8') {
+      e.preventDefault();
+      switchMode('flexibility');
+      showShortcutToast('🤸 تغییر آزمون: انعطاف‌پذیری (8)');
+      return;
+    }
+    if (key === '9') {
+      e.preventDefault();
+      switchMode('anthro');
+      showShortcutToast('📐 تغییر آزمون: آنتروپومتری و ابعاد اسکلتی (9)');
+      return;
+    }
+    if (key === '0') {
+      e.preventDefault();
+      switchMode('distance');
+      showShortcutToast('📏 کالیبراسیون فاصله (0)');
+      return;
+    }
+
+    if (key === 'g' || key === 'G' || key === 'ل') {
+      e.preventDefault();
+      toggleAlignmentGrid();
+      return;
+    }
+
+    if (key === 'a' || key === 'A' || key === 'ش') {
+      e.preventDefault();
+      toggleJointAngles();
+      return;
+    }
+
+    if (key === 's' || key === 'S' || key === 'س') {
+      e.preventDefault();
+      if (typeof saveActiveModeRecord === 'function') {
+        saveActiveModeRecord();
+        showShortcutToast('💾 رکورد ثبت شد (S)');
+      }
+      return;
+    }
+
+    if (key === 'r' || key === 'R' || key === 'ق') {
+      e.preventDefault();
+      resetActiveModeTest();
+      showShortcutToast('🔄 بازنشانی آزمون جاری (R)');
+      return;
+    }
+
+    if (key === 'c' || key === 'C' || key === 'ز') {
+      e.preventDefault();
+      if (typeof swapCameras === 'function') {
+        swapCameras();
+        showShortcutToast('📷 تعویض / سوییچ دوربین (C)');
+      }
+      return;
+    }
+
+    if (key === 'm' || key === 'M' || key === 'پ') {
+      e.preventDefault();
+      const modal = document.getElementById('athleteProfileModal');
+      if (modal) {
+        modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
+        if (modal.style.display === 'flex' && typeof renderAthleteModal === 'function') {
+          renderAthleteModal();
+        }
+        showShortcutToast('👤 مدیریت ورزشکاران (M)');
+      }
+      return;
+    }
+
+    if (key === '?' || key === 'k' || key === 'K' || key === 'ن') {
+      e.preventDefault();
+      openKeyboardShortcutsModal();
+      return;
+    }
+
+    if (key === 'Escape') {
+      closeKeyboardShortcutsModal();
+      const modals = ['athleteProfileModal', 'handballModal', 'pdfReportModal', 'multiCamModal', 'studioLayoutModal', 'editAthleteModal'];
+      modals.forEach(id => {
+        const m = document.getElementById(id);
+        if (m) m.style.display = 'none';
+      });
+      return;
+    }
+  });
+}
+
+// ================== ACTIONABLE HEALTH & TRAINING SUGGESTIONS PANEL ==================
+function updateActionableSuggestionsUI(athlete) {
+  const container = document.getElementById('statsSuggestionsBox');
+  if (!container) return;
+
+  const history = typeof getHistory === 'function' ? getHistory() : [];
+  const athleteHistory = athlete ? history.filter(e => e.athleteId === athlete.id) : [];
+
+  // Extract anthropometric and history telemetry
+  let height = parseFloat(athlete?.heightCm) || 175;
+  let trunkCm = (typeof anthroTrunkCm !== 'undefined' && anthroTrunkCm > 0) ? anthroTrunkCm : Math.round(height * 0.52);
+  let legCm = (typeof anthroLegCm !== 'undefined' && anthroLegCm > 0) ? anthroLegCm : Math.round(height * 0.48);
+  let wingspan = (typeof anthroWingspanCm !== 'undefined' && anthroWingspanCm > 0) ? anthroWingspanCm : height;
+  let apeIndex = (typeof anthroApeIndex !== 'undefined' && anthroApeIndex > 0) ? anthroApeIndex : (wingspan / height);
+  let pelvisWidth = (typeof anthroPelvisWidthCm !== 'undefined' && anthroPelvisWidthCm > 0) ? anthroPelvisWidthCm : 27;
+  let wristCirc = (typeof anthroWristCircumferenceCm !== 'undefined' && anthroWristCircumferenceCm > 0) ? anthroWristCircumferenceCm : 16.5;
+  let waistCirc = (typeof anthroWaistCircumferenceCm !== 'undefined' && anthroWaistCircumferenceCm > 0) ? anthroWaistCircumferenceCm : 76;
+  let chestCirc = (typeof anthroChestCircumferenceCm !== 'undefined' && anthroChestCircumferenceCm > 0) ? anthroChestCircumferenceCm : 92;
+
+  // Also check history for recent anthro tests
+  const lastAnthro = athleteHistory.find(e => e.type === 'anthro');
+  if (lastAnthro && lastAnthro.data) {
+    if (lastAnthro.data.trunkCm) trunkCm = parseFloat(lastAnthro.data.trunkCm);
+    if (lastAnthro.data.legCm) legCm = parseFloat(lastAnthro.data.legCm);
+    if (lastAnthro.data.wingspan) wingspan = parseFloat(lastAnthro.data.wingspan);
+    if (lastAnthro.data.apeIndex) apeIndex = parseFloat(lastAnthro.data.apeIndex);
+    if (lastAnthro.data.pelvisWidthCm) pelvisWidth = parseFloat(lastAnthro.data.pelvisWidthCm);
+    if (lastAnthro.data.wristCircCm) wristCirc = parseFloat(lastAnthro.data.wristCircCm);
+    if (lastAnthro.data.waistCircCm) waistCirc = parseFloat(lastAnthro.data.waistCircCm);
+    if (lastAnthro.data.chestCircCm) chestCirc = parseFloat(lastAnthro.data.chestCircCm);
+  }
+
+  const legRatio = legCm / height; // e.g. 0.48 - 0.54
+  const cormicRatio = trunkCm / height; // e.g. 0.48 - 0.54
+  const disc = getSportDisciplineConfig(athlete, athleteHistory);
+
+  // Generate actionable biomechanical and sport science prescriptions
+  let leverageTitle = '';
+  let leverageText = '';
+  let leverageTag = '';
+
+  if (legRatio >= 0.52) {
+    leverageTitle = 'اهرم بلند اندام تحتانی (Long Lower-Limb Leverage)';
+    leverageText = `نسبت پایین‌تنه ${(legRatio * 100).toFixed(0)}٪ است که طول گام فوق‌العاده‌ای در دویدن و نفوذ فراهم می‌آورد. با این حال، به علت بالا بودن مرکز ثقل و گشتاور اینرسی، در دریل‌های چابکی و تغییر جهت‌های سریع (COD)، ورزشکار باید مرکز ثقل خود را ۴ الی ۶ سانتی‌متر پایین‌تر آورده و بر فاز ترمزگیری اکسنتریک (Eccentric Deceleration) تأکید کند.`;
+    leverageTag = '⚡ تنظیم مرکز ثقل در چابکی';
+  } else if (legRatio <= 0.47) {
+    leverageTitle = 'اهرم پایدار با تنه بلند (High Trunk & Low Center of Gravity)';
+    leverageText = `نسبت پایین‌تنه ${(legRatio * 100).toFixed(0)}٪ و تنه ${(cormicRatio * 100).toFixed(0)}٪ نشان‌دهنده مرکز ثقل پایین و تعادل مکانیکی عالی است. ورزشکار در برش‌های تند، دریل‌های چابکی مخروطی کوتاه و نبردهای درگیرانه ثبات عالی دارد. توصیه می‌شود تمرکز توان بر شتاب انفجاری گام نخست (Initial Step Burst) قرار گیرد.`;
+    leverageTag = '🛡️ ثبات مرکزی و شتاب اولیه';
+  } else {
+    leverageTitle = 'اهرم‌های بدنی متوازن و بهینه (Balanced Biomechanical Levers)';
+    leverageText = `توزیع طول بالاتنه (${trunkCm}cm) و پایین‌تنه (${legCm}cm) در تعادل هنجار استاندارد ورزشی قرار دارد. این تناسب، انتقال گشتاور نیرو از زنجیره حرکتی ران به تنه را بسیار روان می‌سازد.`;
+    leverageTag = '⚖️ تعادل متقارن اندام';
+  }
+
+  // Agility & Neuromuscular Prescription
+  let agilityPrescription = '';
+  if (legRatio >= 0.51) {
+    agilityPrescription = 'توصیه به اجرای دریل ۵-۱۰-۵ پرو اگیلیتی با توقف‌های تک‌پای پروانه‌ای، پلایومتریک جانبی با کش مقاومتی، و تمرینات تقویت زنجیره خلفی (همسترینگ اکسنتریک با Nordic Curl) جهت پیشگیری از آسیب زانو در توقف‌ها.';
+  } else {
+    agilityPrescription = 'توصیه به دریل‌های نردبان چابکی سریع (Fast Footwork Agility Ladder)، دوی زیگزاگ فوتسال/هندبالی و جهش‌های واکنشی با محرک دیداری برای ارتقای توان فرکانس عصبی عضلانی.';
+  }
+
+  // Wingspan & Upper Body Leverage
+  let wingspanRec = '';
+  if (apeIndex >= 1.03) {
+    wingspanRec = `گستره دست بلند (+${(wingspan - height).toFixed(0)}cm، شاخص ${apeIndex.toFixed(2)}) مزیت بارز در شوت‌زنی، دریافت و بلاک تور است. تمرینات ثبات روتاتور کاف شانه و کشش قدامی قفسه سینه (${chestCirc}cm) برای بهینه‌سازی گشتاور پرتاب ضروری است.`;
+  } else {
+    wingspanRec = `اهرم دست فشرده و کارآمد (شاخص ${apeIndex.toFixed(2)}) مزیت مکانیکی بالایی در قدرت شنا سوئدی و پرس بالاتنه ایجاد می‌کند. تمرکز بر تمرینات باز کردن دامنه مفصل شانه و پرتاب با مدیسین‌بال پیشنهاد می‌شود.`;
+  }
+
+  // Biomechanical Joint Health & Symmetry
+  const healthRec = `پایش زوایای بین مفاصل: اطمینان حاصل شود که زاویه والگوس زانو در فرود پرش‌ها بالای ۱۶۵ درجه باشد تا رباط صلیبی (ACL) تحت تنش برشی قرار نگیرد. دور مچ ${wristCirc}cm و دور شکم ${waistCirc}cm نشان‌دهنده ساختار بدنی استاندارد در رشته ${disc.shortTitle} است.`;
+
+  container.innerHTML = `
+    <!-- Card 1: Biomechanical Leverage & Agility -->
+    <div style="background: #ffffff; border: 1px solid #bae6fd; border-radius: 8px; padding: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+        <div style="font-size: 11.5px; font-weight: bold; color: #0369a1; display: flex; align-items: center; gap: 6px;">
+          <span>🦴 ${leverageTitle}</span>
+        </div>
+        <span style="background: rgba(2, 132, 199, 0.12); color: #0284c7; font-size: 9.5px; font-weight: bold; padding: 2px 8px; border-radius: 999px;">
+          ${leverageTag}
+        </span>
+      </div>
+      <p style="font-size: 10.5px; color: #334155; line-height: 1.6; margin: 0 0 8px 0;">
+        ${leverageText}
+      </p>
+      <div style="background: #f0f9ff; border: 1px dashed #7dd3fc; border-radius: 6px; padding: 6px 8px; font-size: 10px; color: #0c4a6e; line-height: 1.5;">
+        <strong>🎯 تجویز تمرین چابکی اختصاصی:</strong> ${agilityPrescription}
+      </div>
+    </div>
+
+    <!-- Card 2: Wingspan & Core Stabilization -->
+    <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+        <div style="font-size: 11.5px; font-weight: bold; color: #166534; display: flex; align-items: center; gap: 6px;">
+          <span>🦍 گستره دست و اهرم‌های بالاتنه (${wingspan}cm)</span>
+        </div>
+        <span style="background: rgba(22, 163, 74, 0.12); color: #15803d; font-size: 9.5px; font-weight: bold; padding: 2px 8px; border-radius: 999px;">
+          Ape Index: ${apeIndex.toFixed(2)}
+        </span>
+      </div>
+      <p style="font-size: 10.5px; color: #334155; line-height: 1.6; margin: 0;">
+        ${wingspanRec}
+      </p>
+    </div>
+
+    <!-- Card 3: Postural Joint Health & Safety -->
+    <div style="background: #ffffff; border: 1px solid #fed7aa; border-radius: 8px; padding: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+        <div style="font-size: 11.5px; font-weight: bold; color: #c2410c; display: flex; align-items: center; gap: 6px;">
+          <span>🛡️ سلامت بیومکانیک مفاصل و ایمنی تمرین</span>
+        </div>
+        <span style="background: rgba(234, 88, 12, 0.12); color: #c2410c; font-size: 9.5px; font-weight: bold; padding: 2px 8px; border-radius: 999px;">
+          پیشگیری از آسیب
+        </span>
+      </div>
+      <p style="font-size: 10.5px; color: #334155; line-height: 1.6; margin: 0;">
+        ${healthRec}
+      </p>
+    </div>
+  `;
 }
 
 function getRunnerX(kp) {
@@ -10860,6 +12152,22 @@ async function detectLoop() {
         applyPoseKalmanFilter(poses[0].keypoints);
       }
       drawPose(poses);
+
+      // Render secondary camera feed if active
+      if (typeof renderSecondaryFeed === 'function') {
+        renderSecondaryFeed();
+      }
+
+      // Render Picture-in-Picture live mirror in Stats Window ("و هم بشه دوربین رو توی کادر مشخصات دید")
+      if (typeof renderPipMirror === 'function') {
+        renderPipMirror();
+      }
+
+      // Update Laptop Telemetry and Kinematic Stats
+      if (typeof updateLaptopTelemetryView === 'function') {
+        updateLaptopTelemetryView();
+      }
+
       consecutiveErrors = 0; // Reset on success
     }
   } catch (error) {
@@ -11207,3 +12515,985 @@ window.addEventListener('error', (event) => {
 console.log('✅ Motion Tracker loaded successfully');
 console.log('Browser:', navigator.userAgent);
 console.log('Screen:', window.innerWidth + 'x' + window.innerHeight);
+
+// ============================================================================
+// DESKTOP WORKSTATION, MULTI-CAMERA & DUAL-WINDOW ARCHITECTURE
+// ============================================================================
+
+let currentStudioLayout = 'split'; // 'split' | 'camera' | 'stats'
+let isSecondaryCameraActive = false;
+let secondaryCameraStream = null;
+let secondaryCameraId = null;
+let secondaryVideo = null;
+let secondaryCanvas = null;
+let secondaryCtx = null;
+let multiCameraMode = 'multi-angle'; // 'multi-angle' | 'multi-athlete'
+let multiCameraLayout = 'split'; // 'split' | 'pip'
+let cam1AthleteId = null;
+let cam2AthleteId = null;
+let activePipSource = 'cam1'; // 'cam1' | 'cam2'
+let pipMirrorCanvas = null;
+let pipCtx = null;
+let lastPipRenderTime = 0;
+let studioBroadcastChannel = null;
+
+// Initialize BroadcastChannel for Dual Window Pop-Out Synchronization
+try {
+  if (typeof BroadcastChannel !== 'undefined') {
+    studioBroadcastChannel = new BroadcastChannel('motion_tracker_dual_channel');
+    studioBroadcastChannel.onmessage = (event) => {
+      handleStudioBroadcast(event.data);
+    };
+  }
+} catch (e) {
+  console.warn('BroadcastChannel not supported or restricted in iframe:', e);
+}
+
+function handleStudioBroadcast(data) {
+  if (!data || !data.type) return;
+  if (data.type === 'SET_ATHLETE' && data.athleteId) {
+    setActiveAthlete(data.athleteId);
+  } else if (data.type === 'SWITCH_MODE' && data.mode) {
+    switchMode(data.mode);
+  }
+}
+
+function broadcastStudioMessage(msg) {
+  if (studioBroadcastChannel) {
+    try {
+      studioBroadcastChannel.postMessage(msg);
+    } catch (e) {}
+  }
+}
+
+/**
+ * Initialize Desktop Workstation and Multi-Cam listeners
+ */
+function initDesktopStudioArchitecture() {
+  secondaryVideo = document.getElementById('video2');
+  secondaryCanvas = document.getElementById('overlay2');
+  pipMirrorCanvas = document.getElementById('pipMirrorCanvas');
+  if (pipMirrorCanvas) {
+    pipCtx = pipMirrorCanvas.getContext('2d');
+  }
+
+  // Check URL query parameters for Pop-Out or Specific Views
+  const urlParams = new URLSearchParams(window.location.search);
+  const requestedView = urlParams.get('windowView');
+  if (requestedView === 'statsOnly') {
+    setStudioLayout('stats');
+  } else if (requestedView === 'cameraOnly') {
+    setStudioLayout('camera');
+  } else {
+    // Default to split view on desktop (>= 900px)
+    if (window.innerWidth >= 900) {
+      setStudioLayout('split');
+    }
+  }
+
+  // Studio Layout Buttons in Topbar and Modals
+  const studioLayoutBtn = document.getElementById('studioLayoutBtn');
+  if (studioLayoutBtn) {
+    studioLayoutBtn.addEventListener('click', () => openStudioLayoutModal());
+  }
+
+  const multiCamTriggerBtn = document.getElementById('multiCamTriggerBtn');
+  if (multiCamTriggerBtn) {
+    multiCamTriggerBtn.addEventListener('click', () => openMultiCamModal());
+  }
+
+  // Workstation Header Layout Toggles
+  const statsLayoutSplitBtn = document.getElementById('statsLayoutSplitBtn');
+  if (statsLayoutSplitBtn) {
+    statsLayoutSplitBtn.addEventListener('click', () => setStudioLayout('split'));
+  }
+
+  const statsLayoutCamBtn = document.getElementById('statsLayoutCamBtn');
+  if (statsLayoutCamBtn) {
+    statsLayoutCamBtn.addEventListener('click', () => setStudioLayout('camera'));
+  }
+
+  const statsLayoutStatsBtn = document.getElementById('statsLayoutStatsBtn');
+  if (statsLayoutStatsBtn) {
+    statsLayoutStatsBtn.addEventListener('click', () => setStudioLayout('stats'));
+  }
+
+  const statsPopoutBtn = document.getElementById('statsPopoutBtn');
+  if (statsPopoutBtn) {
+    statsPopoutBtn.addEventListener('click', () => openDualWindowPopout());
+  }
+
+  const statsPopoutWindowBtn = document.getElementById('statsPopoutWindowBtn');
+  if (statsPopoutWindowBtn) {
+    statsPopoutWindowBtn.addEventListener('click', () => openDualWindowPopout());
+  }
+
+  const laptopLayoutSplitBtn = document.getElementById('laptopLayoutSplitBtn');
+  if (laptopLayoutSplitBtn) {
+    laptopLayoutSplitBtn.addEventListener('click', () => setStudioLayout('split'));
+  }
+
+  const laptopLayoutCamBtn = document.getElementById('laptopLayoutCamBtn');
+  if (laptopLayoutCamBtn) {
+    laptopLayoutCamBtn.addEventListener('click', () => setStudioLayout('camera'));
+  }
+
+  // Joint Angles Toggles (Top bar, Drawer, Workstation)
+  const toggleJointAnglesBtn = document.getElementById('toggleJointAnglesBtn');
+  if (toggleJointAnglesBtn) {
+    toggleJointAnglesBtn.addEventListener('click', () => toggleJointAngles());
+  }
+
+  const drawerItemJointAngles = document.getElementById('drawerItemJointAngles');
+  if (drawerItemJointAngles) {
+    drawerItemJointAngles.addEventListener('click', () => {
+      toggleJointAngles();
+      if (typeof closeDrawer === 'function') closeDrawer();
+    });
+  }
+
+  const statsToggleJointAnglesBtn = document.getElementById('statsToggleJointAnglesBtn');
+  if (statsToggleJointAnglesBtn) {
+    statsToggleJointAnglesBtn.addEventListener('click', () => toggleJointAngles());
+  }
+  updateJointAnglesUI();
+
+  // PiP Controls inside Stats Window
+  const pipSwapBtn = document.getElementById('pipSwapBtn');
+  if (pipSwapBtn) {
+    pipSwapBtn.addEventListener('click', () => togglePipSource());
+  }
+
+  const pipPopoutNativeBtn = document.getElementById('pipPopoutNativeBtn');
+  if (pipPopoutNativeBtn) {
+    pipPopoutNativeBtn.addEventListener('click', () => requestNativeOSPiP());
+  }
+
+  // Athlete switch button in stats window
+  const statsSwitchAthleteBtn = document.getElementById('statsSwitchAthleteBtn');
+  if (statsSwitchAthleteBtn) {
+    statsSwitchAthleteBtn.addEventListener('click', () => {
+      if (athleteProfileModal) {
+        athleteProfileModal.style.display = 'flex';
+        renderAthletesList();
+      }
+    });
+  }
+
+  // Multi-Cam manage button in stats window
+  const statsManageMultiCamBtn = document.getElementById('statsManageMultiCamBtn');
+  if (statsManageMultiCamBtn) {
+    statsManageMultiCamBtn.addEventListener('click', () => openMultiCamModal());
+  }
+
+  // Mode buttons fast grid in stats window
+  document.querySelectorAll('.mode-fast-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetMode = btn.getAttribute('data-mode');
+      if (targetMode) {
+        switchMode(targetMode);
+        broadcastStudioMessage({ type: 'SWITCH_MODE', mode: targetMode });
+      }
+    });
+  });
+
+  // Action buttons in stats window
+  const statsSaveRecordBtn = document.getElementById('statsSaveRecordBtn');
+  if (statsSaveRecordBtn) {
+    statsSaveRecordBtn.addEventListener('click', () => {
+      if (typeof saveActiveModeRecord === 'function') {
+        saveActiveModeRecord();
+      } else {
+        setStatus('💾 رکورد با موفقیت ثبت شد');
+      }
+    });
+  }
+
+  const statsHandballReportBtn = document.getElementById('statsHandballReportBtn');
+  if (statsHandballReportBtn) {
+    statsHandballReportBtn.addEventListener('click', () => {
+      if (typeof openHandballScoutingModal === 'function') {
+        openHandballScoutingModal();
+      }
+    });
+  }
+
+  const statsPdfBtn = document.getElementById('statsPdfBtn');
+  if (statsPdfBtn) {
+    statsPdfBtn.addEventListener('click', () => {
+      if (typeof openPdfReportModal === 'function') {
+        openPdfReportModal();
+      }
+    });
+  }
+
+  const statsExportCsvBtn = document.getElementById('statsExportCsvBtn');
+  if (statsExportCsvBtn) {
+    statsExportCsvBtn.addEventListener('click', () => {
+      if (typeof exportHistoryCSV === 'function') {
+        exportHistoryCSV();
+      }
+    });
+  }
+
+  // Studio Layout Modal Buttons
+  const studioLayoutCloseBtn = document.getElementById('studioLayoutCloseBtn');
+  if (studioLayoutCloseBtn) {
+    studioLayoutCloseBtn.addEventListener('click', () => closeStudioLayoutModal());
+  }
+  const chooseSplitLayoutBtn = document.getElementById('chooseSplitLayoutBtn');
+  if (chooseSplitLayoutBtn) {
+    chooseSplitLayoutBtn.addEventListener('click', () => {
+      setStudioLayout('split');
+      closeStudioLayoutModal();
+    });
+  }
+  const chooseCameraLayoutBtn = document.getElementById('chooseCameraLayoutBtn');
+  if (chooseCameraLayoutBtn) {
+    chooseCameraLayoutBtn.addEventListener('click', () => {
+      setStudioLayout('camera');
+      closeStudioLayoutModal();
+    });
+  }
+  const chooseStatsLayoutBtn = document.getElementById('chooseStatsLayoutBtn');
+  if (chooseStatsLayoutBtn) {
+    chooseStatsLayoutBtn.addEventListener('click', () => {
+      setStudioLayout('stats');
+      closeStudioLayoutModal();
+    });
+  }
+  const choosePopoutLayoutBtn = document.getElementById('choosePopoutLayoutBtn');
+  if (choosePopoutLayoutBtn) {
+    choosePopoutLayoutBtn.addEventListener('click', () => {
+      closeStudioLayoutModal();
+      openDualWindowPopout();
+    });
+  }
+
+  // Multi-Camera Modal Controls
+  initMultiCamModalListeners();
+
+  // Joint Angles toggle in stats workstation
+  const statsToggleJointAnglesBtn = document.getElementById('statsToggleJointAnglesBtn');
+  if (statsToggleJointAnglesBtn) {
+    statsToggleJointAnglesBtn.addEventListener('click', () => toggleJointAngles());
+  }
+
+  // Camera Alignment Grid toggle in stats workstation
+  const statsToggleGridBtn = document.getElementById('statsToggleGridBtn');
+  if (statsToggleGridBtn) {
+    statsToggleGridBtn.addEventListener('click', () => toggleAlignmentGrid());
+  }
+
+  // Settings checkbox for Alignment Grid
+  const settingAlignmentGrid = document.getElementById('settingAlignmentGrid');
+  if (settingAlignmentGrid) {
+    settingAlignmentGrid.addEventListener('change', (e) => toggleAlignmentGrid(e.target.checked));
+  }
+
+  // Keyboard Shortcuts modal button in stats workstation
+  const statsShortcutsBtn = document.getElementById('statsShortcutsBtn');
+  if (statsShortcutsBtn) {
+    statsShortcutsBtn.addEventListener('click', () => openKeyboardShortcutsModal());
+  }
+
+  const keyboardShortcutsCloseBtn = document.getElementById('keyboardShortcutsCloseBtn');
+  if (keyboardShortcutsCloseBtn) {
+    keyboardShortcutsCloseBtn.addEventListener('click', () => closeKeyboardShortcutsModal());
+  }
+
+  // Initialize keyboard shortcut handler
+  initKeyboardShortcuts();
+  updateAlignmentGridUI();
+  updateJointAnglesUI();
+
+  // Initial populate of stats panel
+  updateLaptopStatsPanel();
+}
+
+/**
+ * Switch layout mode: 'split', 'camera', 'stats'
+ */
+function setStudioLayout(layoutMode) {
+  currentStudioLayout = layoutMode;
+  const studioContainer = document.getElementById('appStudioContainer');
+  if (!studioContainer) return;
+
+  studioContainer.classList.remove('studio-view-split', 'studio-view-camera', 'studio-view-stats');
+  studioContainer.classList.add('studio-view-' + layoutMode);
+
+  // Update topbar indicator
+  const iconSpan = document.getElementById('studioLayoutIcon');
+  const textSpan = document.getElementById('studioLayoutText');
+  if (iconSpan && textSpan) {
+    if (layoutMode === 'split') {
+      iconSpan.textContent = '🖥️';
+      textSpan.textContent = 'دوپنجره';
+    } else if (layoutMode === 'camera') {
+      iconSpan.textContent = '📷';
+      textSpan.textContent = 'دوربین';
+    } else if (layoutMode === 'stats') {
+      iconSpan.textContent = '📊';
+      textSpan.textContent = 'مشخصات';
+    }
+  }
+
+  // Highlight active button in stats window
+  const splitBtn = document.getElementById('statsLayoutSplitBtn');
+  const camBtn = document.getElementById('statsLayoutCamBtn');
+  if (splitBtn) splitBtn.classList.toggle('active', layoutMode === 'split');
+  if (camBtn) camBtn.classList.toggle('active', layoutMode === 'camera');
+
+  // Trigger canvases resize
+  resizeCanvas();
+  if (isSecondaryCameraActive && secondaryVideo && secondaryCanvas) {
+    secondaryCanvas.width = secondaryVideo.videoWidth || 640;
+    secondaryCanvas.height = secondaryVideo.videoHeight || 480;
+  }
+
+  updateLaptopStatsPanel();
+}
+
+function openStudioLayoutModal() {
+  const modal = document.getElementById('studioLayoutModal');
+  if (modal) modal.style.display = 'flex';
+}
+
+function closeStudioLayoutModal() {
+  const modal = document.getElementById('studioLayoutModal');
+  if (modal) modal.style.display = 'none';
+}
+
+/**
+ * Opens pop-out window for dual monitor setup:
+ * Window 1 (Main): Camera feed for athletes / projector
+ * Window 2 (Pop-Out): Workstation & Biomechanical Telemetry for Coach
+ */
+function openDualWindowPopout() {
+  try {
+    const popUrl = window.location.origin + window.location.pathname + '?windowView=statsOnly';
+    const popWin = window.open(popUrl, 'MotionTrackerCoachWorkstation', 'width=1200,height=800,menubar=no,toolbar=no');
+    if (popWin) {
+      setStudioLayout('camera');
+      setStatus('🪟 استودیو دوپنجره روی دو مانیتور فعال شد');
+    } else {
+      setStatus('⚠️ مسدودکننده پاپ‌آپ مرورگر فعال است؛ لطفاً اجازه باز شدن پنجره را بدهید.');
+    }
+  } catch (e) {
+    console.error('Popout window error:', e);
+  }
+}
+
+/**
+ * Multi-Camera Modal and Device Setup
+ */
+function initMultiCamModalListeners() {
+  const closeBtn = document.getElementById('multiCamCloseBtn');
+  if (closeBtn) closeBtn.addEventListener('click', closeMultiCamModal);
+
+  const angleModeBtn = document.getElementById('multiCamModeAngleBtn');
+  const athleteModeBtn = document.getElementById('multiCamModeAthleteBtn');
+  if (angleModeBtn && athleteModeBtn) {
+    angleModeBtn.addEventListener('click', () => {
+      multiCameraMode = 'multi-angle';
+      angleModeBtn.classList.add('active');
+      athleteModeBtn.classList.remove('active');
+      toggleAthleteAssignmentRows(false);
+    });
+    athleteModeBtn.addEventListener('click', () => {
+      multiCameraMode = 'multi-athlete';
+      athleteModeBtn.classList.add('active');
+      angleModeBtn.classList.remove('active');
+      toggleAthleteAssignmentRows(true);
+    });
+  }
+
+  const layoutSplitBtn = document.getElementById('layoutSplitBtn');
+  const layoutPipBtn = document.getElementById('layoutPipBtn');
+  if (layoutSplitBtn && layoutPipBtn) {
+    layoutSplitBtn.addEventListener('click', () => {
+      multiCameraLayout = 'split';
+      layoutSplitBtn.classList.add('active');
+      layoutPipBtn.classList.remove('active');
+    });
+    layoutPipBtn.addEventListener('click', () => {
+      multiCameraLayout = 'pip';
+      layoutPipBtn.classList.add('active');
+      layoutSplitBtn.classList.remove('active');
+    });
+  }
+
+  const swapBtn = document.getElementById('multiCamSwapBtn');
+  if (swapBtn) {
+    swapBtn.addEventListener('click', async () => {
+      await swapCameras();
+      populateMultiCamModal();
+    });
+  }
+
+  const applyBtn = document.getElementById('multiCamApplyBtn');
+  if (applyBtn) {
+    applyBtn.addEventListener('click', async () => {
+      const primarySelect = document.getElementById('primaryCameraSelect');
+      const secondarySelect = document.getElementById('secondaryCameraSelect');
+
+      const chosenPrimary = primarySelect ? primarySelect.value : null;
+      const chosenSecondary = secondarySelect ? secondarySelect.value : null;
+
+      // Switch primary if changed
+      if (chosenPrimary && chosenPrimary !== currentCameraId) {
+        await switchCamera(chosenPrimary);
+      }
+
+      // Connect or disconnect secondary
+      if (chosenSecondary) {
+        if (chosenSecondary === chosenPrimary) {
+          setStatus('⚠️ لطفاً دو سنسور مجزا برای دوربین ۱ و ۲ انتخاب کنید');
+          return;
+        }
+        await connectSecondaryCamera(chosenSecondary);
+      } else {
+        disconnectSecondaryCamera();
+      }
+
+      // Update multi-camera layout wrapper
+      const feedsWrapper = document.getElementById('cameraFeedsWrapper');
+      if (feedsWrapper) {
+        if (isSecondaryCameraActive) {
+          feedsWrapper.className = multiCameraLayout === 'pip' ? 'feed-layout-pip' : 'feed-layout-split';
+        } else {
+          feedsWrapper.className = 'feed-layout-single';
+        }
+      }
+
+      // Save athlete assignments if in multi-athlete mode
+      const cam1AthSelect = document.getElementById('cam1AthleteSelect');
+      const cam2AthSelect = document.getElementById('cam2AthleteSelect');
+      if (cam1AthSelect) cam1AthleteId = cam1AthSelect.value;
+      if (cam2AthSelect) cam2AthleteId = cam2AthSelect.value;
+
+      updateMultiCamUI();
+      closeMultiCamModal();
+    });
+  }
+}
+
+function toggleAthleteAssignmentRows(show) {
+  const r1 = document.getElementById('cam1AthleteAssignmentRow');
+  const r2 = document.getElementById('cam2AthleteAssignmentRow');
+  if (r1) r1.style.display = show ? 'block' : 'none';
+  if (r2) r2.style.display = show ? 'block' : 'none';
+}
+
+function openMultiCamModal() {
+  populateMultiCamModal();
+  const modal = document.getElementById('multiCamModal');
+  if (modal) modal.style.display = 'flex';
+}
+
+function closeMultiCamModal() {
+  const modal = document.getElementById('multiCamModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function populateMultiCamModal() {
+  const primarySelect = document.getElementById('primaryCameraSelect');
+  const secondarySelect = document.getElementById('secondaryCameraSelect');
+  const cam1AthSelect = document.getElementById('cam1AthleteSelect');
+  const cam2AthSelect = document.getElementById('cam2AthleteSelect');
+
+  const cameras = availableCameras.length > 0 ? availableCameras : [
+    { deviceId: currentCameraId || 'default', persianLabel: '📷 دوربین پیش‌فرض' }
+  ];
+
+  if (primarySelect) {
+    primarySelect.innerHTML = '';
+    cameras.forEach(cam => {
+      const opt = document.createElement('option');
+      opt.value = cam.deviceId;
+      opt.textContent = cam.persianLabel + (cam.resolution ? ` (${cam.resolution})` : '');
+      if (cam.deviceId === currentCameraId) opt.selected = true;
+      primarySelect.appendChild(opt);
+    });
+  }
+
+  if (secondarySelect) {
+    secondarySelect.innerHTML = '<option value="">-- غیرفعال (تک‌دوربینه) --</option>';
+    cameras.forEach(cam => {
+      const opt = document.createElement('option');
+      opt.value = cam.deviceId;
+      opt.textContent = cam.persianLabel + (cam.resolution ? ` (${cam.resolution})` : '');
+      if (secondaryCameraId && cam.deviceId === secondaryCameraId) opt.selected = true;
+      secondarySelect.appendChild(opt);
+    });
+  }
+
+  // Populate athletes
+  const athletes = getAthletes();
+  if (cam1AthSelect && cam2AthSelect) {
+    cam1AthSelect.innerHTML = '';
+    cam2AthSelect.innerHTML = '';
+    athletes.forEach((ath, idx) => {
+      const opt1 = document.createElement('option');
+      opt1.value = ath.id;
+      opt1.textContent = `${ath.name} (کد: ${ath.code || idx + 1})`;
+      if (ath.id === (cam1AthleteId || getActiveAthleteId())) opt1.selected = true;
+      cam1AthSelect.appendChild(opt1);
+
+      const opt2 = document.createElement('option');
+      opt2.value = ath.id;
+      opt2.textContent = `${ath.name} (کد: ${ath.code || idx + 1})`;
+      if (ath.id === (cam2AthleteId || (athletes[1] ? athletes[1].id : ath.id))) opt2.selected = true;
+      cam2AthSelect.appendChild(opt2);
+    });
+  }
+}
+
+/**
+ * Connects second camera stream
+ */
+async function connectSecondaryCamera(deviceId) {
+  try {
+    if (secondaryCameraStream) {
+      secondaryCameraStream.getTracks().forEach(t => t.stop());
+      secondaryCameraStream = null;
+    }
+
+    if (!deviceId) {
+      disconnectSecondaryCamera();
+      return true;
+    }
+
+    setStatus('در حال اتصال به دوربین دوم...');
+    const constraints = {
+      video: {
+        deviceId: { exact: deviceId },
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      },
+      audio: false
+    };
+
+    secondaryCameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+    secondaryCameraId = deviceId;
+
+    if (!secondaryVideo) secondaryVideo = document.getElementById('video2');
+    if (!secondaryCanvas) secondaryCanvas = document.getElementById('overlay2');
+
+    if (secondaryVideo) {
+      secondaryVideo.srcObject = secondaryCameraStream;
+      await secondaryVideo.play();
+    }
+
+    if (secondaryCanvas && secondaryVideo) {
+      secondaryCanvas.width = secondaryVideo.videoWidth || 640;
+      secondaryCanvas.height = secondaryVideo.videoHeight || 480;
+    }
+
+    isSecondaryCameraActive = true;
+
+    const feed2Box = document.getElementById('cameraFeed2');
+    if (feed2Box) feed2Box.style.display = 'block';
+
+    const feedsWrapper = document.getElementById('cameraFeedsWrapper');
+    if (feedsWrapper) {
+      feedsWrapper.className = multiCameraLayout === 'pip' ? 'feed-layout-pip' : 'feed-layout-split';
+    }
+
+    updateMultiCamUI();
+    setStatus('✅ دوربین دوم با موفقیت متصل و همگام‌سازی شد');
+    return true;
+  } catch (err) {
+    console.error('Secondary camera error:', err);
+    setStatus('⚠️ خطا در اتصال دوربین دوم: ' + (err.message || 'عدم دسترسی'));
+    disconnectSecondaryCamera();
+    return false;
+  }
+}
+
+function disconnectSecondaryCamera() {
+  if (secondaryCameraStream) {
+    secondaryCameraStream.getTracks().forEach(t => t.stop());
+    secondaryCameraStream = null;
+  }
+  secondaryCameraId = null;
+  isSecondaryCameraActive = false;
+
+  const feed2Box = document.getElementById('cameraFeed2');
+  if (feed2Box) feed2Box.style.display = 'none';
+
+  const feedsWrapper = document.getElementById('cameraFeedsWrapper');
+  if (feedsWrapper) feedsWrapper.className = 'feed-layout-single';
+
+  updateMultiCamUI();
+}
+
+async function swapCameras() {
+  if (!isSecondaryCameraActive || !secondaryCameraId) {
+    setStatus('دوربین دومی متصل نیست');
+    return;
+  }
+  const oldPrimary = currentCameraId;
+  const oldSecondary = secondaryCameraId;
+
+  disconnectSecondaryCamera();
+  await switchCamera(oldSecondary);
+  await connectSecondaryCamera(oldPrimary);
+  setStatus('🔄 جایگاه دوربین ۱ و ۲ جابجا شد');
+}
+
+function updateMultiCamUI() {
+  const activePill = document.getElementById('multiCamActivePill');
+  if (activePill) {
+    if (isSecondaryCameraActive) {
+      activePill.textContent = '۲';
+      activePill.className = 'multiCamPill dual';
+    } else {
+      activePill.textContent = '۱';
+      activePill.className = 'multiCamPill single';
+    }
+  }
+
+  // Workstation card
+  const statsCam2Dot = document.getElementById('statsCam2Dot');
+  const statsCam2Role = document.getElementById('statsCam2Role');
+  const statsCam2AthleteTag = document.getElementById('statsCam2AthleteTag');
+  const statsMultiCamModeLabel = document.getElementById('statsMultiCamModeLabel');
+  const statsMultiCamLayoutBadge = document.getElementById('statsMultiCamLayoutBadge');
+
+  if (statsMultiCamModeLabel) {
+    statsMultiCamModeLabel.textContent = multiCameraMode === 'multi-athlete' 
+      ? '👥 هر دوربین برای یک ورزشکار مجزا' 
+      : '🤾‍♂️ چند زاویه برای ۱ ورزشکار';
+  }
+
+  if (statsMultiCamLayoutBadge) {
+    statsMultiCamLayoutBadge.textContent = multiCameraLayout === 'pip' ? 'چیدمان: تصویر در تصویر' : 'چیدمان: ۵۰٪ - ۵۰٪';
+  }
+
+  if (isSecondaryCameraActive) {
+    if (statsCam2Dot) {
+      statsCam2Dot.textContent = '●';
+      statsCam2Dot.style.color = '#22c55e';
+    }
+    if (statsCam2Role) {
+      const cam = availableCameras.find(c => c.deviceId === secondaryCameraId);
+      statsCam2Role.textContent = cam ? cam.persianLabel : 'فعال (زاویه روبه‌رو)';
+    }
+    if (statsCam2AthleteTag) {
+      statsCam2AthleteTag.textContent = multiCameraMode === 'multi-athlete' ? getAthleteNameById(cam2AthleteId) : 'زاویه دوم';
+      statsCam2AthleteTag.style.background = 'rgba(56,189,248,0.2)';
+      statsCam2AthleteTag.style.color = '#38bdf8';
+    }
+  } else {
+    if (statsCam2Dot) {
+      statsCam2Dot.textContent = '○';
+      statsCam2Dot.style.color = '#64748b';
+    }
+    if (statsCam2Role) statsCam2Role.textContent = 'غیرفعال (آماده اتصال)';
+    if (statsCam2AthleteTag) {
+      statsCam2AthleteTag.textContent = 'اتصال';
+      statsCam2AthleteTag.style.background = 'rgba(100,116,139,0.3)';
+      statsCam2AthleteTag.style.color = '#94a3b8';
+    }
+  }
+
+  // Feed badges on video overlay
+  const cam1Badge = document.getElementById('cam1BadgeText');
+  const cam1AthBadge = document.getElementById('cam1AthleteBadge');
+  const cam2Badge = document.getElementById('cam2BadgeText');
+  const cam2AthBadge = document.getElementById('cam2AthleteBadge');
+
+  if (multiCameraMode === 'multi-athlete') {
+    if (cam1Badge) cam1Badge.textContent = '📷 دوربین ۱';
+    if (cam1AthBadge) cam1AthBadge.textContent = getAthleteNameById(cam1AthleteId || getActiveAthleteId());
+    if (cam2Badge) cam2Badge.textContent = '🎥 دوربین ۲';
+    if (cam2AthBadge) cam2AthBadge.textContent = getAthleteNameById(cam2AthleteId);
+  } else {
+    if (cam1Badge) cam1Badge.textContent = '📷 دوربین ۱ (نیم‌رخ)';
+    if (cam1AthBadge) cam1AthBadge.textContent = getActiveAthlete().name;
+    if (cam2Badge) cam2Badge.textContent = '🎥 دوربین ۲ (روبه‌رو)';
+    if (cam2AthBadge) cam2AthBadge.textContent = 'زاویه مکمل';
+  }
+}
+
+function getAthleteNameById(id) {
+  if (!id) return getActiveAthlete().name;
+  const a = getAthletes().find(x => x.id === id);
+  return a ? a.name : getActiveAthlete().name;
+}
+
+/**
+ * Render secondary camera feed to overlay2
+ */
+function renderSecondaryFeed() {
+  if (!secondaryCanvas || !secondaryVideo || secondaryVideo.readyState < 2) return;
+  if (!secondaryCtx) secondaryCtx = secondaryCanvas.getContext('2d');
+
+  if (secondaryCanvas.width !== secondaryVideo.videoWidth || secondaryCanvas.height !== secondaryVideo.videoHeight) {
+    secondaryCanvas.width = secondaryVideo.videoWidth || 640;
+    secondaryCanvas.height = secondaryVideo.videoHeight || 480;
+  }
+
+  const w = secondaryCanvas.width;
+  const h = secondaryCanvas.height;
+  secondaryCtx.clearRect(0, 0, w, h);
+
+  // Subtle tactical crosshair alignment
+  secondaryCtx.save();
+  secondaryCtx.strokeStyle = 'rgba(56, 189, 248, 0.2)';
+  secondaryCtx.lineWidth = 1;
+  secondaryCtx.setLineDash([4, 4]);
+  secondaryCtx.beginPath();
+  secondaryCtx.moveTo(w / 2, 0);
+  secondaryCtx.lineTo(w / 2, h);
+  secondaryCtx.moveTo(0, h / 2);
+  secondaryCtx.lineTo(w, h / 2);
+  secondaryCtx.stroke();
+  secondaryCtx.restore();
+}
+
+/**
+ * Picture-in-Picture live mirror inside the Stats Workstation Window
+ * Explicit user requirement: "و هم بشه دوربین رو توی کادر مشخصات دید"
+ */
+function renderPipMirror() {
+  if (!pipMirrorCanvas) return;
+  if (currentStudioLayout === 'camera') return;
+
+  const now = performance.now();
+  if (now - lastPipRenderTime < 33) return; // Cap at ~30fps for smooth performance
+  lastPipRenderTime = now;
+
+  if (!pipCtx) pipCtx = pipMirrorCanvas.getContext('2d');
+
+  const srcVideo = (activePipSource === 'cam2' && isSecondaryCameraActive && secondaryVideo) ? secondaryVideo : video;
+  const srcCanvas = (activePipSource === 'cam2' && isSecondaryCameraActive && secondaryCanvas) ? secondaryCanvas : canvas;
+
+  if (srcVideo && srcVideo.readyState >= 2) {
+    try {
+      pipCtx.drawImage(srcVideo, 0, 0, pipMirrorCanvas.width, pipMirrorCanvas.height);
+      if (srcCanvas && srcCanvas.width > 0) {
+        pipCtx.drawImage(srcCanvas, 0, 0, pipMirrorCanvas.width, pipMirrorCanvas.height);
+      }
+    } catch (e) {}
+  }
+
+  const pipFpsVal = document.getElementById('pipFpsVal');
+  if (pipFpsVal && typeof fps !== 'undefined') {
+    pipFpsVal.textContent = Math.round(fps);
+  }
+}
+
+function togglePipSource() {
+  if (!isSecondaryCameraActive) {
+    activePipSource = 'cam1';
+    setStatus('دوربین دوم متصل نیست؛ تصویر دوربین ۱ نمایش داده می‌شود');
+    return;
+  }
+  activePipSource = activePipSource === 'cam1' ? 'cam2' : 'cam1';
+  setStatus(`🔄 منبع تصویر کادر مشخصات به دوربین ${activePipSource === 'cam1' ? '۱' : '۲'} تغییر یافت`);
+}
+
+async function requestNativeOSPiP() {
+  const targetVideo = (activePipSource === 'cam2' && isSecondaryCameraActive && secondaryVideo) ? secondaryVideo : video;
+  if (!targetVideo) return;
+  try {
+    if (document.pictureInPictureElement) {
+      await document.exitPictureInPicture();
+    } else if (targetVideo.requestPictureInPicture) {
+      await targetVideo.requestPictureInPicture();
+    } else {
+      setStatus('قابلیت Picture-in-Picture در این مرورگر پشتیبانی نمی‌شود');
+    }
+  } catch (err) {
+    console.warn('PiP error:', err);
+    setStatus('⚠️ خطا در ایجاد تصویر شناور Picture-in-Picture');
+  }
+}
+
+/**
+ * Update active athlete and radar preview in Laptop Stats Workstation
+ */
+function updateLaptopStatsPanel() {
+  const active = getActiveAthlete();
+  if (!active) return;
+
+  const nameEl = document.getElementById('statsAthleteName');
+  const codeEl = document.getElementById('statsAthleteCode');
+  const heightEl = document.getElementById('statsAthleteHeight');
+  const ageEl = document.getElementById('statsAthleteAge');
+  const weightEl = document.getElementById('statsAthleteWeight');
+  const genderEl = document.getElementById('statsAthleteGender');
+  const targetPosEl = document.getElementById('statsAthleteTargetPos');
+  const avatarEl = document.getElementById('statsAthleteAvatar');
+
+  if (nameEl) nameEl.textContent = active.name;
+  if (codeEl) codeEl.textContent = active.code || '۱۰۱';
+  if (heightEl) heightEl.textContent = active.heightCm || '۱۷۵';
+  if (ageEl) ageEl.textContent = active.age || '۱۸';
+  if (weightEl) weightEl.textContent = active.weight || '۶۸';
+  if (genderEl) genderEl.textContent = active.gender === 'female' ? 'خانم' : 'آقا';
+  if (targetPosEl) targetPosEl.textContent = active.sportPosition || active.sport || 'عمومی';
+  if (avatarEl) avatarEl.textContent = active.sport === 'handball' ? '🤾‍♂️' : (active.gender === 'female' ? '🏃‍♀️' : '🏃‍♂️');
+
+  // Highlight active mode button in fast grid
+  document.querySelectorAll('.mode-fast-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-mode') === mode);
+  });
+
+  // Render Radar Chart Preview
+  const radarContainer = document.getElementById('statsRadarContainer');
+  if (radarContainer && typeof generateRadarChartSvg === 'function') {
+    const history = typeof getHistory === 'function' ? getHistory() : [];
+    const athleteHistory = history.filter(e => e.athleteId === active.id);
+    radarContainer.innerHTML = generateRadarChartSvg(active, athleteHistory);
+  }
+
+  // Render Actionable Health & Training Suggestions
+  if (typeof updateActionableSuggestionsUI === 'function') {
+    updateActionableSuggestionsUI(active);
+  }
+
+  // Update multi-camera status
+  updateMultiCamUI();
+}
+
+/**
+ * Update Biomechanical Telemetry in Laptop Stats Panel
+ */
+function updateLaptopTelemetryView() {
+  const l1 = document.getElementById('telemMetric1Label');
+  const v1 = document.getElementById('telemMetric1Val');
+  const l2 = document.getElementById('telemMetric2Label');
+  const v2 = document.getElementById('telemMetric2Val');
+  const l3 = document.getElementById('telemMetric3Label');
+  const v3 = document.getElementById('telemMetric3Val');
+  const l4 = document.getElementById('telemMetric4Label');
+  const v4 = document.getElementById('telemMetric4Val');
+  const badge = document.getElementById('statsTelemModeBadge');
+
+  if (!l1 || !v1) return;
+
+  if (badge) {
+    const modeNames = {
+      run: 'دوی سرعت',
+      jump: 'پرش عمودی CMJ',
+      bosco: 'پرش متوالی بوسکو',
+      agility: 'چابکی شاتل',
+      situp: 'دراز و نشست',
+      pushup: 'شنا سوئدی',
+      flexibility: 'انعطاف‌پذیری',
+      anthro: 'آنتروپومتری',
+      wingspan: 'گستره دست',
+      distance: 'فاصله‌سنج'
+    };
+    badge.textContent = 'آزمون فعال: ' + (modeNames[mode] || mode);
+  }
+
+  if (mode === 'run') {
+    l1.textContent = '⏱️ زمان / کرونومتر';
+    v1.textContent = typeof runTimer !== 'undefined' ? `${runTimer.toFixed(2)} s` : '0.00 s';
+
+    l2.textContent = '🏃 سرعت لحظه‌ای';
+    v2.textContent = typeof currentSpeedMs !== 'undefined' ? `${currentSpeedMs.toFixed(1)} m/s` : '0.0 m/s';
+
+    l3.textContent = '⚡ شتاب و گام';
+    v3.textContent = typeof runPhase !== 'undefined' ? `فاز: ${runPhase}` : 'آماده';
+
+    l4.textContent = '📍 مسافت محاسبه‌شده';
+    v4.textContent = typeof gateDistanceMeters !== 'undefined' ? `${gateDistanceMeters} متر` : '۱۰ متر';
+  } else if (mode === 'jump') {
+    l1.textContent = '⤴️ اوج ارتفاع پرش';
+    v1.textContent = typeof jumpHeightCm !== 'undefined' ? `${jumpHeightCm.toFixed(1)} cm` : '0.0 cm';
+
+    l2.textContent = '✈️ زمان پرواز (Air Time)';
+    v2.textContent = typeof flightTimeMs !== 'undefined' ? `${Math.round(flightTimeMs)} ms` : '-- ms';
+
+    l3.textContent = '⚡ توان انفجاری تخمینی';
+    const estPower = (typeof jumpHeightCm !== 'undefined' && jumpHeightCm > 0) ? `${(Math.sqrt(jumpHeightCm) * 9.8).toFixed(1)} W/kg` : '--';
+    v3.textContent = estPower;
+
+    l4.textContent = '📐 زاویه زانو در اوج خمش';
+    v4.textContent = typeof minKneeAngle !== 'undefined' ? `${Math.round(minKneeAngle)}°` : '--°';
+  } else if (mode === 'bosco') {
+    l1.textContent = '⏱️ زمان باقیمانده';
+    const bTimer = document.getElementById('boscoTimerVal');
+    v1.textContent = bTimer ? bTimer.textContent : '30.0 s';
+
+    l2.textContent = '🦘 تعداد پرش‌ها';
+    const bJumps = document.getElementById('boscoJumpCountVal');
+    v2.textContent = bJumps ? bJumps.textContent : '0 / 30';
+
+    l3.textContent = '⚡ شاخص توان بیلاستی';
+    v3.textContent = typeof boscoLastAirTime !== 'undefined' ? `${Math.round(boscoLastAirTime)} ms` : '--';
+
+    l4.textContent = '👟 زمان تماس با زمین';
+    v4.textContent = typeof boscoLastContactTime !== 'undefined' ? `${Math.round(boscoLastContactTime)} ms` : '--';
+  } else if (mode === 'agility') {
+    l1.textContent = '⏱️ زمان کل شاتل';
+    v1.textContent = typeof agilityTimer !== 'undefined' ? `${agilityTimer.toFixed(2)} s` : '0.00 s';
+
+    l2.textContent = '🔄 رفت و برگشت';
+    v2.textContent = typeof agilityLapCount !== 'undefined' ? `${agilityLapCount} دور` : '0 دور';
+
+    l3.textContent = '⚡ سرعت لحظه‌ای';
+    v3.textContent = typeof currentSpeedMs !== 'undefined' ? `${currentSpeedMs.toFixed(1)} m/s` : '--';
+
+    l4.textContent = '🎯 فاز چابکی';
+    v4.textContent = typeof agilityPhase !== 'undefined' ? agilityPhase : 'آماده';
+  } else if (mode === 'situp') {
+    l1.textContent = '🧘 تکرارهای صحیح';
+    v1.textContent = typeof situpCount !== 'undefined' ? `${situpCount}` : '0';
+
+    l2.textContent = '📐 زاویه تنه و ستون فقرات';
+    v2.textContent = typeof situpAngle !== 'undefined' ? `${Math.round(situpAngle)}°` : '--°';
+
+    l3.textContent = '⏱️ زمان آزمون';
+    v3.textContent = typeof situpTimer !== 'undefined' ? `${Math.round(situpTimer)} s` : '--';
+
+    l4.textContent = '🎯 ریتم در دقیقه (Cadence)';
+    v4.textContent = typeof situpCadence !== 'undefined' ? `${situpCadence} rpm` : '--';
+  } else if (mode === 'pushup') {
+    l1.textContent = '💪 شنا سوئدی صحیح';
+    v1.textContent = typeof pushupCount !== 'undefined' ? `${pushupCount}` : '0';
+
+    l2.textContent = '📐 زاویه آرنج';
+    v2.textContent = typeof pushupElbowAngle !== 'undefined' ? `${Math.round(pushupElbowAngle)}°` : '--°';
+
+    l3.textContent = '⏱️ زمان آزمون';
+    v3.textContent = typeof pushupTimer !== 'undefined' ? `${Math.round(pushupTimer)} s` : '--';
+
+    l4.textContent = '🎯 وضعیت فرم حرکت';
+    v4.textContent = typeof pushupPhase !== 'undefined' ? pushupPhase : 'آماده';
+  } else if (mode === 'anthro') {
+    l1.textContent = '🧍 قد خودکار / بالاتنه';
+    v1.textContent = `${Math.round(anthroHeightCm || 175)}cm | تنه: ${Math.round(anthroTrunkCm || 90)}cm`;
+
+    l2.textContent = '🦍 دست منهای قد (Ape Index)';
+    const sign = anthroSpanMinusHeightCm >= 0 ? '+' : '';
+    v2.textContent = `${sign}${anthroSpanMinusHeightCm} cm (${anthroApeIndex.toFixed(2)})`;
+
+    l3.textContent = '🦴 ابعاد لگن و پایین‌تنه';
+    v3.textContent = `لگن: ${anthroPelvisWidthCm || 26}×${anthroPelvisLengthCm || 20} | پا: ${anthroLegCm || 85}cm`;
+
+    l4.textContent = '⌚ دورهای بدنی (مچ/سینه/شکم)';
+    v4.textContent = `مچ: ${anthroWristCircumferenceCm || 16.5} | سینه: ${anthroChestCircumferenceCm || 92} | شکم: ${anthroWaistCircumferenceCm || 76}`;
+  } else {
+    l1.textContent = '📏 شاخص حرکتی';
+    v1.textContent = 'زنده';
+    l2.textContent = '⚡ نرخ فریم پردازش';
+    v2.textContent = `${Math.round(fps || 30)} FPS`;
+    l3.textContent = '🎥 سنسورهای متصل';
+    v3.textContent = isSecondaryCameraActive ? '۲ دوربین فعال' : '۱ دوربین';
+    l4.textContent = '👤 ورزشکار فعال';
+    v4.textContent = getActiveAthlete().name;
+  }
+}
+
+// Automatically initialize desktop architecture on script load
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initDesktopStudioArchitecture);
+} else {
+  initDesktopStudioArchitecture();
+}

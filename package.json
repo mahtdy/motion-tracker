@@ -1,6 +1,6 @@
 {
   "name": "motion-tracker",
-  "version": "1.6.0",
+  "version": "1.8.0",
   "description": "سامانه دیجیتال استعدادیابی ورزشی، آزمون پرش، شنا سوئدی، دراز و نشست و سرعت دو (حرکت‌سنج)",
   "type": "commonjs",
   "scripts": {

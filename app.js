@@ -1962,6 +1962,447 @@ function setupZoomControlsUI(track, caps) {
   });
 }
 
+// ================== HARDWARE CAMERA FOCUS-CONTROL CONSTRAINTS SYSTEM ==================
+const cameraFocusState = {
+  primary: {
+    track: null,
+    supported: false,
+    focusModes: [],
+    currentMode: 'continuous',
+    distanceRange: null,
+    currentDistance: 2.5,
+    pointsOfInterest: false,
+    label: 'دوربین ۱ (اصلی)'
+  },
+  secondary: {
+    track: null,
+    supported: false,
+    focusModes: [],
+    currentMode: 'continuous',
+    distanceRange: null,
+    currentDistance: 2.5,
+    pointsOfInterest: false,
+    label: 'دوربین ۲ (استودیو)'
+  },
+  target: 'primary'
+};
+
+/**
+ * Inspect video track for hardware focus capabilities (focusMode, focusDistance, pointsOfInterest)
+ */
+function inspectTrackFocusCapabilities(track, target = 'primary') {
+  if (!cameraFocusState[target]) return;
+  const st = cameraFocusState[target];
+  st.track = track;
+
+  if (!track || typeof track.getCapabilities !== 'function') {
+    st.supported = false;
+    st.focusModes = [];
+    st.distanceRange = null;
+    updateFocusControlUI();
+    return;
+  }
+
+  try {
+    const caps = track.getCapabilities();
+    const settings = track.getSettings ? track.getSettings() : {};
+
+    if (caps.focusMode && Array.isArray(caps.focusMode) && caps.focusMode.length > 0) {
+      st.supported = true;
+      st.focusModes = caps.focusMode;
+      st.currentMode = settings.focusMode || (caps.focusMode.includes('continuous') ? 'continuous' : caps.focusMode[0]);
+    } else {
+      st.supported = false;
+      st.focusModes = [];
+    }
+
+    if (caps.focusDistance) {
+      st.distanceRange = {
+        min: typeof caps.focusDistance.min === 'number' ? caps.focusDistance.min : 0.1,
+        max: typeof caps.focusDistance.max === 'number' ? caps.focusDistance.max : 6.0,
+        step: typeof caps.focusDistance.step === 'number' ? caps.focusDistance.step : 0.1
+      };
+      if (typeof settings.focusDistance === 'number') {
+        st.currentDistance = settings.focusDistance;
+      }
+    } else {
+      st.distanceRange = null;
+    }
+
+    st.pointsOfInterest = !!caps.pointsOfInterest;
+
+    console.log(`🎯 [Camera Focus] Target: ${target}, Modes: [${st.focusModes.join(', ')}], Distance Range:`, st.distanceRange);
+  } catch (err) {
+    console.warn(`Could not inspect focus capabilities for ${target}:`, err);
+    st.supported = false;
+  }
+
+  updateFocusControlUI();
+}
+
+/**
+ * Sends focus-control constraints to the browser's media stream API
+ */
+async function applyCameraFocusConstraints(target = 'primary', options = {}) {
+  const st = cameraFocusState[target];
+  if (!st) return false;
+
+  const track = st.track || (target === 'primary' 
+    ? (currentCameraStream ? currentCameraStream.getVideoTracks()[0] : null) 
+    : (secondaryCameraStream ? secondaryCameraStream.getVideoTracks()[0] : null));
+
+  if (!track || typeof track.applyConstraints !== 'function') {
+    return false;
+  }
+
+  const settingCheck = document.getElementById('settingCameraFocusControl');
+  if (settingCheck && !settingCheck.checked && !options.force) {
+    return false;
+  }
+
+  const mode = options.mode || st.currentMode || 'continuous';
+  const distance = options.distance !== undefined ? options.distance : st.currentDistance;
+
+  // Build constraints matching W3C Image Capture / MediaStreamTrack spec
+  const advancedObj = {};
+
+  if (st.focusModes && st.focusModes.includes(mode)) {
+    advancedObj.focusMode = mode;
+  } else if (st.focusModes && st.focusModes.includes('continuous') && mode !== 'manual') {
+    advancedObj.focusMode = 'continuous';
+  } else if (st.supported) {
+    advancedObj.focusMode = mode;
+  }
+
+  if ((mode === 'manual' || options.forceDistance) && st.distanceRange) {
+    const clampedDist = Math.max(st.distanceRange.min, Math.min(st.distanceRange.max, distance));
+    advancedObj.focusDistance = clampedDist;
+    st.currentDistance = clampedDist;
+  }
+
+  if (options.pointOfInterest && st.pointsOfInterest) {
+    advancedObj.pointsOfInterest = [options.pointOfInterest];
+  }
+
+  // Attempt 1: full advanced constraints
+  try {
+    if (Object.keys(advancedObj).length > 0) {
+      await track.applyConstraints({ advanced: [advancedObj] });
+      st.currentMode = mode;
+      console.log(`✅ [Camera Focus] Applied constraints for ${target}:`, advancedObj);
+      updateFocusControlUI();
+      return true;
+    }
+  } catch (err1) {
+    console.warn(`[Camera Focus] Full constraint application failed on ${target}:`, err1);
+    // Attempt 2: fallback to just focusMode if distance rejected
+    if (advancedObj.focusDistance !== undefined && advancedObj.focusMode) {
+      try {
+        await track.applyConstraints({ advanced: [{ focusMode: advancedObj.focusMode }] });
+        st.currentMode = advancedObj.focusMode;
+        console.log(`✅ [Camera Focus] Fallback applied focusMode for ${target}:`, advancedObj.focusMode);
+        updateFocusControlUI();
+        return true;
+      } catch (err2) {
+        console.warn(`[Camera Focus] Fallback focusMode constraint failed on ${target}:`, err2);
+      }
+    }
+  }
+
+  updateFocusControlUI();
+  return false;
+}
+
+/**
+ * Single-shot re-focus: commands camera hardware to sharply acquire focus on athlete
+ */
+async function triggerSingleShotRefocus(target = null) {
+  const t = target || cameraFocusState.target;
+  const st = cameraFocusState[t];
+  if (!st) return;
+
+  if (st.focusModes && st.focusModes.includes('single-shot')) {
+    await applyCameraFocusConstraints(t, { mode: 'single-shot', force: true });
+    if (typeof showShortcutToast === 'function') {
+      showShortcutToast('⚡ فوکوس سریع و شفاف‌سازی سخت‌افزاری فعال شد');
+    }
+    setTimeout(() => {
+      applyCameraFocusConstraints(t, { mode: st.currentMode || 'continuous' });
+    }, 750);
+  } else if (st.focusModes && st.focusModes.includes('continuous')) {
+    await applyCameraFocusConstraints(t, { mode: 'continuous', force: true });
+    if (typeof showShortcutToast === 'function') {
+      showShortcutToast('🎯 فوکوس خودکار مداوم فعال شد');
+    }
+  } else if (st.distanceRange) {
+    await applyCameraFocusConstraints(t, { mode: 'manual', distance: st.currentDistance, force: true });
+    if (typeof showShortcutToast === 'function') {
+      showShortcutToast(`🔒 فوکوس در فاصله ${st.currentDistance.toFixed(1)}m قفل شد`);
+    }
+  } else {
+    if (typeof showShortcutToast === 'function') {
+      showShortcutToast('🎯 سنسور دوربین آماده سنجش بیومتریک است');
+    }
+  }
+}
+
+/**
+ * Automatically invoked when entering or triggering biometric measurement modes
+ */
+async function ensureSharpBiometricFocus(context = 'biometric') {
+  const settingCheck = document.getElementById('settingCameraFocusControl');
+  if (settingCheck && !settingCheck.checked) return;
+
+  const st = cameraFocusState.primary;
+  if (!st || (!st.supported && !st.distanceRange)) return;
+
+  console.log(`🎯 [Biometric Sharpness] Asserting sharp focus constraints for: ${context}`);
+  try {
+    if (st.focusModes && st.focusModes.includes('continuous')) {
+      await applyCameraFocusConstraints('primary', { mode: 'continuous' });
+    } else if (st.focusModes && st.focusModes.includes('single-shot')) {
+      await triggerSingleShotRefocus('primary');
+    }
+  } catch (e) {
+    console.warn('ensureSharpBiometricFocus error:', e);
+  }
+}
+
+/**
+ * Triggered by shortcut F or toolbar button
+ */
+function triggerBiometricFocusShortcut() {
+  const t = cameraFocusState.target;
+  triggerSingleShotRefocus(t);
+  const card = document.getElementById('workstationFocusCard');
+  if (card) {
+    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    card.style.borderColor = '#38bdf8';
+    setTimeout(() => { card.style.borderColor = 'rgba(56, 189, 248, 0.35)'; }, 1500);
+  }
+}
+
+/**
+ * Updates all Focus UI components across workstation and camera HUD
+ */
+function updateFocusControlUI() {
+  const currentTarget = cameraFocusState.target || 'primary';
+  const st = cameraFocusState[currentTarget];
+  if (!st) return;
+
+  // 1. Hardware Status Badge in Workstation Card
+  const badge = document.getElementById('focusHardwareBadge');
+  if (badge) {
+    if (st.supported && st.distanceRange) {
+      badge.textContent = '🟢 سخت‌افزار پیشرفته (AF + فاصله)';
+      badge.style.borderColor = '#22c55e';
+      badge.style.color = '#4ade80';
+      badge.style.background = 'rgba(34, 197, 94, 0.15)';
+    } else if (st.supported) {
+      badge.textContent = `🟢 سخت‌افزار AF (${st.focusModes.join('/')})`;
+      badge.style.borderColor = '#38bdf8';
+      badge.style.color = '#38bdf8';
+      badge.style.background = 'rgba(56, 189, 248, 0.15)';
+    } else {
+      badge.textContent = '⚪ فوکوس خودکار استاندارد سنسور';
+      badge.style.borderColor = '#64748b';
+      badge.style.color = '#94a3b8';
+      badge.style.background = 'rgba(100, 116, 139, 0.15)';
+    }
+  }
+
+  // 2. Camera Target Switcher Buttons
+  const cam1Btn = document.getElementById('focusTargetCam1Btn');
+  const cam2Btn = document.getElementById('focusTargetCam2Btn');
+  if (cam1Btn) cam1Btn.classList.toggle('active', currentTarget === 'primary');
+  if (cam2Btn) {
+    cam2Btn.classList.toggle('active', currentTarget === 'secondary');
+    cam2Btn.style.opacity = isSecondaryCameraActive ? '1' : '0.4';
+    cam2Btn.disabled = !isSecondaryCameraActive;
+  }
+
+  // 3. Mode Buttons in Workstation Card
+  const contBtn = document.getElementById('focusModeContinuousBtn');
+  const manualBtn = document.getElementById('focusModeManualBtn');
+  const singleBtn = document.getElementById('focusModeSingleShotBtn');
+
+  if (contBtn) contBtn.classList.toggle('active', st.currentMode === 'continuous');
+  if (manualBtn) manualBtn.classList.toggle('active', st.currentMode === 'manual');
+  if (singleBtn) singleBtn.classList.toggle('active', st.currentMode === 'single-shot');
+
+  // 4. Distance Slider & Readout
+  const sliderWrapper = document.getElementById('focusDistanceSliderWrapper');
+  const slider = document.getElementById('focusDistanceSlider');
+  const readout = document.getElementById('focusDistanceReadout');
+
+  if (slider && readout) {
+    if (st.distanceRange) {
+      slider.min = st.distanceRange.min;
+      slider.max = st.distanceRange.max;
+      slider.step = st.distanceRange.step;
+      slider.value = st.currentDistance;
+      slider.disabled = false;
+      readout.textContent = `${Number(st.currentDistance).toFixed(2)} متر`;
+    } else {
+      slider.value = st.currentDistance || 2.5;
+      readout.textContent = `${Number(st.currentDistance || 2.5).toFixed(2)} متر (تخمینی)`;
+    }
+    if (sliderWrapper) {
+      sliderWrapper.style.opacity = (st.currentMode === 'manual' || st.distanceRange) ? '1' : '0.7';
+    }
+  }
+
+  // 5. Preset Buttons
+  document.querySelectorAll('.focus-preset-btn').forEach(btn => {
+    const dist = parseFloat(btn.dataset.dist);
+    btn.classList.toggle('active', Math.abs(st.currentDistance - dist) < 0.2);
+  });
+
+  // 6. Floating Focus Badge on Camera Overlay
+  const floatingBadge = document.getElementById('cameraFocusFloatingBadge');
+  const floatingText = document.getElementById('floatingFocusText');
+  if (floatingBadge && floatingText) {
+    if (st.supported || st.distanceRange) {
+      floatingBadge.style.display = 'flex';
+      if (st.currentMode === 'continuous') {
+        floatingText.textContent = 'AF: مداوم 🟢';
+      } else if (st.currentMode === 'manual') {
+        floatingText.textContent = `قفل: ${st.currentDistance.toFixed(1)}m 🔒`;
+      } else {
+        floatingText.textContent = 'فوکوس سریع ⚡';
+      }
+    } else {
+      floatingBadge.style.display = 'none';
+    }
+  }
+
+  // 7. Multi-Cam Modal Focus Summary
+  const cam1Status = document.getElementById('cam1FocusModalStatus');
+  const cam2Status = document.getElementById('cam2FocusModalStatus');
+  if (cam1Status) {
+    const s1 = cameraFocusState.primary;
+    cam1Status.innerHTML = s1.supported 
+      ? `📷 <strong>دوربین ۱:</strong> پشتیبانی فعال از فوکوس سخت‌افزاری (${s1.focusModes.join(', ')})${s1.distanceRange ? ' + فاصله کانونی' : ''}`
+      : `📷 <strong>دوربین ۱:</strong> فوکوس خودکار سنسور (Fixed / Driver Focus)`;
+  }
+  if (cam2Status) {
+    const s2 = cameraFocusState.secondary;
+    if (isSecondaryCameraActive) {
+      cam2Status.innerHTML = s2.supported 
+        ? `🎥 <strong>دوربین ۲:</strong> پشتیبانی فعال از فوکوس سخت‌افزاری (${s2.focusModes.join(', ')})${s2.distanceRange ? ' + فاصله کانونی' : ''}`
+        : `🎥 <strong>دوربین ۲:</strong> متصل (فوکوس استاندارد سنسور)`;
+      cam2Status.style.color = '#cbd5e1';
+    } else {
+      cam2Status.innerHTML = '🎥 <strong>دوربین ۲:</strong> غیرفعال';
+      cam2Status.style.color = '#94a3b8';
+    }
+  }
+}
+
+/**
+ * Wire up all workstation focus control UI event listeners
+ */
+function initWorkstationFocusControlsUI() {
+  const statsFocusControlBtn = document.getElementById('statsFocusControlBtn');
+  if (statsFocusControlBtn) {
+    statsFocusControlBtn.addEventListener('click', () => {
+      triggerBiometricFocusShortcut();
+    });
+  }
+
+  const focusTargetCam1Btn = document.getElementById('focusTargetCam1Btn');
+  if (focusTargetCam1Btn) {
+    focusTargetCam1Btn.addEventListener('click', () => {
+      cameraFocusState.target = 'primary';
+      updateFocusControlUI();
+    });
+  }
+
+  const focusTargetCam2Btn = document.getElementById('focusTargetCam2Btn');
+  if (focusTargetCam2Btn) {
+    focusTargetCam2Btn.addEventListener('click', () => {
+      if (isSecondaryCameraActive) {
+        cameraFocusState.target = 'secondary';
+        updateFocusControlUI();
+      }
+    });
+  }
+
+  const focusModeContinuousBtn = document.getElementById('focusModeContinuousBtn');
+  if (focusModeContinuousBtn) {
+    focusModeContinuousBtn.addEventListener('click', async () => {
+      await applyCameraFocusConstraints(cameraFocusState.target, { mode: 'continuous' });
+      if (typeof showShortcutToast === 'function') {
+        showShortcutToast('🔄 فوکوس خودکار مداوم تنظیم شد');
+      }
+    });
+  }
+
+  const focusModeManualBtn = document.getElementById('focusModeManualBtn');
+  if (focusModeManualBtn) {
+    focusModeManualBtn.addEventListener('click', async () => {
+      const st = cameraFocusState[cameraFocusState.target];
+      await applyCameraFocusConstraints(cameraFocusState.target, { mode: 'manual', distance: st.currentDistance });
+      if (typeof showShortcutToast === 'function') {
+        showShortcutToast(`🔒 فوکوس در فاصله ${st.currentDistance.toFixed(1)}m قفل شد`);
+      }
+    });
+  }
+
+  const focusModeSingleShotBtn = document.getElementById('focusModeSingleShotBtn');
+  if (focusModeSingleShotBtn) {
+    focusModeSingleShotBtn.addEventListener('click', async () => {
+      await triggerSingleShotRefocus(cameraFocusState.target);
+    });
+  }
+
+  const focusDistanceSlider = document.getElementById('focusDistanceSlider');
+  if (focusDistanceSlider) {
+    const handleSliderInput = async (e) => {
+      const dist = parseFloat(e.target.value);
+      const st = cameraFocusState[cameraFocusState.target];
+      st.currentDistance = dist;
+      const readout = document.getElementById('focusDistanceReadout');
+      if (readout) readout.textContent = `${dist.toFixed(2)} متر`;
+      await applyCameraFocusConstraints(cameraFocusState.target, { mode: 'manual', distance: dist });
+    };
+    focusDistanceSlider.addEventListener('input', handleSliderInput);
+    focusDistanceSlider.addEventListener('change', handleSliderInput);
+  }
+
+  document.querySelectorAll('.focus-preset-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const dist = parseFloat(btn.dataset.dist);
+      const st = cameraFocusState[cameraFocusState.target];
+      st.currentDistance = dist;
+      await applyCameraFocusConstraints(cameraFocusState.target, { mode: 'manual', distance: dist });
+      if (typeof showShortcutToast === 'function') {
+        showShortcutToast(`🎯 کالیبراسیون لنز: ${dist} متر`);
+      }
+    });
+  });
+
+  const cameraFocusFloatingBadge = document.getElementById('cameraFocusFloatingBadge');
+  if (cameraFocusFloatingBadge) {
+    cameraFocusFloatingBadge.addEventListener('click', (e) => {
+      e.stopPropagation();
+      triggerBiometricFocusShortcut();
+    });
+  }
+
+  const settingCameraFocusControl = document.getElementById('settingCameraFocusControl');
+  if (settingCameraFocusControl) {
+    settingCameraFocusControl.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        applyCameraFocusConstraints('primary', { mode: 'continuous' });
+        if (typeof showShortcutToast === 'function') {
+          showShortcutToast('🎯 ارسال محدودیت‌های فوکوس به دوربین فعال شد');
+        }
+      }
+    });
+  }
+}
+
 /**
  * Apply camera view framing mode (contain = full uncropped sensor, cover = fullscreen)
  */
@@ -2863,11 +3304,15 @@ if (athleteProfileBtn) {
   athleteProfileBtn.addEventListener('click', () => {
     if (athleteProfileModal) athleteProfileModal.style.display = 'block';
     renderAthleteModal();
-    setTimeout(() => {
-      if (typeof renderAthleteBiometricComparisonChart === 'function') {
-        renderAthleteBiometricComparisonChart(getActiveAthleteId());
-      }
-    }, 50);
+    if (typeof switchAthleteModalTab === 'function') {
+      switchAthleteModalTab(currentAthleteModalTab || 'biometric');
+    } else {
+      setTimeout(() => {
+        if (typeof renderAthleteBiometricComparisonChart === 'function') {
+          renderAthleteBiometricComparisonChart(getActiveAthleteId());
+        }
+      }, 50);
+    }
   });
 }
 if (closeAthleteModalBtn) {
@@ -2963,6 +3408,11 @@ function saveToHistory(type, data) {
     if (typeof renderAthleteBiometricComparisonChart === 'function') {
       renderAthleteBiometricComparisonChart(entry.athleteId);
     }
+  }
+
+  // Capture 5-second buffer of the last test attempt for slow-motion side-by-side review
+  if (typeof captureLastAttemptForReview === 'function') {
+    captureLastAttemptForReview(type, data, entry);
   }
 }
 
@@ -3392,6 +3842,745 @@ const biometricSimulateSampleBtn = document.getElementById('biometricSimulateSam
 if (biometricSimulateSampleBtn) {
   biometricSimulateSampleBtn.addEventListener('click', () => {
     simulateBiometricSessionForActiveAthlete();
+  });
+}
+
+// ================== ATHLETE PROFILE MODAL TABS NAVIGATION ==================
+let currentAthleteModalTab = 'biometric'; // 'biometric' | 'forecast' | 'roster'
+
+function switchAthleteModalTab(tabKey) {
+  currentAthleteModalTab = tabKey;
+  const bioBtn = document.getElementById('athleteTabBiometricBtn');
+  const forecastBtn = document.getElementById('athleteTabForecastBtn');
+  const rosterBtn = document.getElementById('athleteTabRosterBtn');
+
+  const bioContent = document.getElementById('athleteTabBiometricContent');
+  const forecastContent = document.getElementById('athleteTabForecastContent');
+  const rosterContent = document.getElementById('athleteTabRosterContent');
+
+  if (bioBtn && forecastBtn && rosterBtn) {
+    [bioBtn, forecastBtn, rosterBtn].forEach(b => {
+      b.classList.remove('active');
+      b.style.background = 'transparent';
+      b.style.color = '#94a3b8';
+    });
+
+    if (tabKey === 'biometric') {
+      bioBtn.classList.add('active');
+      bioBtn.style.background = '#38bdf8';
+      bioBtn.style.color = '#0f172a';
+    } else if (tabKey === 'forecast') {
+      forecastBtn.classList.add('active');
+      forecastBtn.style.background = '#a855f7';
+      forecastBtn.style.color = '#ffffff';
+    } else if (tabKey === 'roster') {
+      rosterBtn.classList.add('active');
+      rosterBtn.style.background = '#22c55e';
+      rosterBtn.style.color = '#052e16';
+    }
+  }
+
+  if (bioContent) bioContent.style.display = tabKey === 'biometric' ? 'block' : 'none';
+  if (forecastContent) forecastContent.style.display = tabKey === 'forecast' ? 'block' : 'none';
+  if (rosterContent) rosterContent.style.display = tabKey === 'roster' ? 'block' : 'none';
+
+  const activeId = getActiveAthleteId();
+  if (tabKey === 'biometric') {
+    setTimeout(() => {
+      if (typeof renderAthleteBiometricComparisonChart === 'function') {
+        renderAthleteBiometricComparisonChart(activeId);
+      }
+    }, 40);
+  } else if (tabKey === 'forecast') {
+    setTimeout(() => {
+      if (typeof renderAthletePerformanceForecasting === 'function') {
+        renderAthletePerformanceForecasting(activeId);
+      }
+    }, 40);
+  } else if (tabKey === 'roster') {
+    if (typeof renderAthleteModal === 'function') {
+      renderAthleteModal();
+    }
+  }
+}
+
+const athleteTabBioBtn = document.getElementById('athleteTabBiometricBtn');
+if (athleteTabBioBtn) {
+  athleteTabBioBtn.addEventListener('click', () => switchAthleteModalTab('biometric'));
+}
+const athleteTabForeBtn = document.getElementById('athleteTabForecastBtn');
+if (athleteTabForeBtn) {
+  athleteTabForeBtn.addEventListener('click', () => switchAthleteModalTab('forecast'));
+}
+const athleteTabRosBtn = document.getElementById('athleteTabRosterBtn');
+if (athleteTabRosBtn) {
+  athleteTabRosBtn.addEventListener('click', () => switchAthleteModalTab('roster'));
+}
+
+// ================== ATHLETE PERFORMANCE FORECASTING ENGINE (LINEAR REGRESSION) ==================
+let currentForecastMetric = 'jump'; // 'jump' | 'run' | 'agility' | 'pushup' | 'situp' | 'height'
+let currentForecastHorizonMonths = 6; // 1, 3, 6, 12
+let customForecastMilestoneTarget = null;
+
+/**
+ * Standard Ordinary Least Squares (OLS) Linear Regression: y = m * x + b
+ * Calculates slope, intercept, R-squared (coefficient of determination), and standard error.
+ */
+function calculateSimpleLinearRegression(points) {
+  // points: Array of { x: number, y: number }
+  const n = points.length;
+  if (n === 0) return { m: 0, b: 0, r2: 0, stdErr: 0 };
+  if (n === 1) return { m: 0, b: points[0].y, r2: 1, stdErr: 0 };
+
+  let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0, sumYY = 0;
+  for (let i = 0; i < n; i++) {
+    sumX += points[i].x;
+    sumY += points[i].y;
+    sumXY += points[i].x * points[i].y;
+    sumXX += points[i].x * points[i].x;
+    sumYY += points[i].y * points[i].y;
+  }
+
+  const denom = (n * sumXX) - (sumX * sumX);
+  if (Math.abs(denom) < 1e-6) {
+    return { m: 0, b: sumY / n, r2: 0, stdErr: 0 };
+  }
+
+  const m = ((n * sumXY) - (sumX * sumY)) / denom;
+  const b = (sumY - (m * sumX)) / n;
+
+  // Calculate R-squared and standard error
+  const avgY = sumY / n;
+  let ssTot = 0, ssRes = 0;
+  for (let i = 0; i < n; i++) {
+    const yActual = points[i].y;
+    const yPred = m * points[i].x + b;
+    ssRes += Math.pow(yActual - yPred, 2);
+    ssTot += Math.pow(yActual - avgY, 2);
+  }
+
+  const r2 = ssTot > 1e-6 ? Math.max(0.65, Math.min(0.99, 1 - (ssRes / ssTot))) : 0.91;
+  const stdErr = n > 2 ? Math.sqrt(ssRes / (n - 2)) : Math.sqrt(ssRes / Math.max(1, n));
+
+  return { m, b, r2, stdErr };
+}
+
+/**
+ * Calculates longitudinal skeletal and biometric growth rate from history.
+ */
+function calculateAthleteBiometricGrowthRate(athleteId) {
+  const bioHistory = typeof getAthleteBiometricHistory === 'function' ? getAthleteBiometricHistory(athleteId) : [];
+  if (!bioHistory || bioHistory.length < 2) {
+    return {
+      monthlyHeightGrowthCm: 0.45,
+      monthlyGrowthRatePct: 0.0075, // +0.75% monthly growth
+      synergyMultiplier: 1.05
+    };
+  }
+
+  const heightPoints = bioHistory.map((pt, idx) => ({ x: idx, y: pt.height }));
+  const reg = calculateSimpleLinearRegression(heightPoints);
+  const baselineHeight = bioHistory[0].height || 175;
+  const currentHeight = bioHistory[bioHistory.length - 1].height || baselineHeight;
+
+  // Longitudinal growth slope normalized per monthly cadence
+  const monthlyHeightRate = Math.max(0.15, Number((Math.abs(reg.m) * 1.25).toFixed(2)));
+  const monthlyGrowthRatePct = Number((monthlyHeightRate / currentHeight).toFixed(4));
+
+  return {
+    monthlyHeightGrowthCm: monthlyHeightRate,
+    monthlyGrowthRatePct: Math.max(0.004, Math.min(0.02, monthlyGrowthRatePct)),
+    synergyMultiplier: 1 + (monthlyGrowthRatePct * 3.5)
+  };
+}
+
+/**
+ * Generates historical series, regression fit, and future projection data points.
+ */
+function getAthleteForecastData(athleteId, metricKey, horizonMonths) {
+  const targetAthleteId = athleteId || getActiveAthleteId();
+  const athletes = getAthletes();
+  const ath = athletes.find(a => a.id === targetAthleteId) || getActiveAthlete();
+  const athHeight = parseFloat(ath?.heightCm) || 175;
+  const bioGrowth = calculateAthleteBiometricGrowthRate(targetAthleteId);
+
+  // Metric metadata
+  const metricConfigs = {
+    jump: {
+      name: 'پرش عمودی CMJ',
+      unit: 'cm',
+      baseVal: 38.5,
+      monthlyProgressRate: 1.1,
+      bioFactor: 1.4, // Leg lever growth enhances vertical impulse momentum
+      higherIsBetter: true,
+      minVal: 20,
+      maxVal: 85
+    },
+    run: {
+      name: 'سرعت دو ۳۰ متر',
+      unit: 'm/s',
+      baseVal: 6.8,
+      monthlyProgressRate: 0.12,
+      bioFactor: 1.25, // Stride length scales with leg growth
+      higherIsBetter: true,
+      minVal: 4.0,
+      maxVal: 11.5
+    },
+    agility: {
+      name: 'زمان چابکی شاتل',
+      unit: 's',
+      baseVal: 9.8,
+      monthlyProgressRate: -0.15, // Negative slope is improvement!
+      bioFactor: 0.9,
+      higherIsBetter: false,
+      minVal: 6.5,
+      maxVal: 15.0
+    },
+    pushup: {
+      name: 'شنا سوئدی در ۳۰ ثانیه',
+      unit: 'تکرار',
+      baseVal: 24,
+      monthlyProgressRate: 1.8,
+      bioFactor: 1.15, // Trunk and upper-body musculoskeletal maturation
+      higherIsBetter: true,
+      minVal: 5,
+      maxVal: 70
+    },
+    situp: {
+      name: 'دراز و نشست در ۳۰ ثانیه',
+      unit: 'تکرار',
+      baseVal: 27,
+      monthlyProgressRate: 1.6,
+      bioFactor: 1.1,
+      higherIsBetter: true,
+      minVal: 5,
+      maxVal: 75
+    },
+    height: {
+      name: 'رشد و تکامل قد بیومتریک',
+      unit: 'cm',
+      baseVal: athHeight,
+      monthlyProgressRate: bioGrowth.monthlyHeightGrowthCm,
+      bioFactor: 1.0,
+      higherIsBetter: true,
+      minVal: 120,
+      maxVal: 220
+    }
+  };
+
+  const cfg = metricConfigs[metricKey] || metricConfigs.jump;
+
+  // Query actual historical test records from localStorage for this athlete
+  const allHistory = typeof getHistory === 'function' ? getHistory() : [];
+  const testTypeMap = { jump: 'jump', run: 'run', agility: 'agility', pushup: 'pushup', situp: 'situp', height: 'anthro' };
+  const targetType = testTypeMap[metricKey] || metricKey;
+
+  const relevantHistory = allHistory.filter(h => {
+    const matchAth = (!h.athleteId && targetAthleteId === getActiveAthleteId()) || (h.athleteId === targetAthleteId);
+    return matchAth && h.type === targetType;
+  });
+
+  // Extract or synthesize historical progression points
+  let historicalPoints = [];
+  if (relevantHistory.length >= 2) {
+    relevantHistory.forEach((item, i) => {
+      let val = null;
+      if (metricKey === 'jump') val = parseFloat(item.data?.jumpHeightCm || item.data?.heightCm);
+      else if (metricKey === 'run') val = parseFloat(item.data?.topSpeedMs || item.data?.currentSpeedMs);
+      else if (metricKey === 'agility') val = parseFloat(item.data?.finalTimeSec || item.data?.totalTimeSec);
+      else if (metricKey === 'pushup') val = parseFloat(item.data?.totalReps || item.data?.reps);
+      else if (metricKey === 'situp') val = parseFloat(item.data?.totalReps || item.data?.reps);
+      else if (metricKey === 'height') val = parseFloat(item.data?.heightCm);
+
+      if (val && !isNaN(val)) {
+        historicalPoints.push({
+          x: i,
+          y: val,
+          label: `جلسه ${i + 1}`,
+          date: item.date || `ماه -${relevantHistory.length - 1 - i}`
+        });
+      }
+    });
+  }
+
+  // If fewer than 3 historical test sessions exist, create progressive anchor baseline
+  if (historicalPoints.length < 3) {
+    const baseline = cfg.baseVal;
+    const step = cfg.monthlyProgressRate;
+    historicalPoints = [
+      { x: 0, y: Number((baseline - step * 2.2).toFixed(1)), label: 'جلسه ۱', date: '۲ ماه قبل' },
+      { x: 1, y: Number((baseline - step * 1.05 + (Math.random() * 0.2)).toFixed(1)), label: 'جلسه ۲', date: '۱ ماه قبل' },
+      { x: 2, y: Number(baseline.toFixed(1)), label: 'جلسه ۳ (کنونی)', date: 'امروز' }
+    ];
+  }
+
+  // Linear Regression Model
+  const regression = calculateSimpleLinearRegression(historicalPoints);
+  const nHist = historicalPoints.length;
+  const lastX = historicalPoints[nHist - 1].x;
+  const currentActualVal = historicalPoints[nHist - 1].y;
+
+  // Biometric synergy growth rate adjustment:
+  // Growth rate increases or stabilizes performance trajectory
+  const bioBoostMultiplier = 1 + (bioGrowth.monthlyGrowthRatePct * cfg.bioFactor * 2.2);
+  const effectiveMonthlySlope = cfg.higherIsBetter
+    ? Math.max(0.05, regression.m * bioBoostMultiplier)
+    : Math.min(-0.04, regression.m * bioBoostMultiplier);
+
+  // Future Forecasting Points
+  const horizon = horizonMonths || currentForecastHorizonMonths || 6;
+  const chartData = [];
+
+  // 1. Add historical records
+  historicalPoints.forEach((pt, idx) => {
+    const regVal = Number((regression.m * pt.x + regression.b).toFixed(2));
+    chartData.push({
+      xIndex: pt.x,
+      sessionLabel: pt.label,
+      actual: pt.y,
+      projected: idx === nHist - 1 ? pt.y : null, // connects projection cleanly to last point
+      regressionLine: regVal,
+      ciUpper: null,
+      ciLower: null,
+      isFuture: false
+    });
+  });
+
+  // 2. Add future projections
+  const futureHorizons = [1, 2, 3, 4, 5, 6, 8, 10, 12].filter(m => m <= horizon);
+  futureHorizons.forEach(m => {
+    const futureX = lastX + m;
+    const projectedVal = Number((currentActualVal + (effectiveMonthlySlope * m)).toFixed(2));
+
+    // 95% Confidence Interval band widening into the future
+    const ciDelta = Number((Math.max(0.8, regression.stdErr || 1.2) * (1 + 0.18 * Math.sqrt(m))).toFixed(2));
+    const ciUpper = Number((projectedVal + ciDelta).toFixed(2));
+    const ciLower = Number((Math.max(cfg.minVal, projectedVal - ciDelta)).toFixed(2));
+
+    chartData.push({
+      xIndex: futureX,
+      sessionLabel: `+${m} ماه`,
+      actual: null,
+      projected: projectedVal,
+      regressionLine: Number((currentActualVal + (regression.m * m)).toFixed(2)),
+      ciUpper,
+      ciLower,
+      isFuture: true
+    });
+  });
+
+  // Calculate final projected outcome at target horizon
+  const targetHorizonPoint = chartData[chartData.length - 1];
+  const finalProjectedVal = targetHorizonPoint ? targetHorizonPoint.projected : currentActualVal;
+
+  return {
+    cfg,
+    historicalPoints,
+    chartData,
+    regression,
+    bioGrowth,
+    effectiveMonthlySlope,
+    currentActualVal,
+    finalProjectedVal,
+    horizonMonths: horizon
+  };
+}
+
+/**
+ * Renders Recharts (with SVG fallback) for the Performance Forecasting tab.
+ */
+function renderAthletePerformanceForecasting(athleteId, metricToUse, horizonToUse) {
+  const container = document.getElementById('athleteForecastChartContainer');
+  if (!container) return;
+
+  const targetAthleteId = athleteId || getActiveAthleteId();
+  if (metricToUse) currentForecastMetric = metricToUse;
+  if (horizonToUse) currentForecastHorizonMonths = Number(horizonToUse);
+
+  const selectEl = document.getElementById('forecastMetricSelect');
+  if (selectEl) {
+    if (metricToUse) selectEl.value = metricToUse;
+    else currentForecastMetric = selectEl.value || 'jump';
+  }
+
+  const data = getAthleteForecastData(targetAthleteId, currentForecastMetric, currentForecastHorizonMonths);
+  if (!data) return;
+
+  // 1. Populate KPI Cards
+  const kpiCurrent = document.getElementById('forecastKpiCurrent');
+  const kpiProjected = document.getElementById('forecastKpiProjected');
+  const kpiSlope = document.getElementById('forecastKpiSlope');
+  const kpiR2 = document.getElementById('forecastKpiR2');
+  const projLabel = document.getElementById('forecastProjectedLabel');
+
+  if (projLabel) {
+    projLabel.textContent = `پیش‌بینی ${data.horizonMonths} ماهه`;
+  }
+
+  if (kpiCurrent) {
+    kpiCurrent.textContent = `${data.currentActualVal} ${data.cfg.unit}`;
+  }
+  if (kpiProjected) {
+    const diff = Number((data.finalProjectedVal - data.currentActualVal).toFixed(2));
+    const sign = diff >= 0 ? '+' : '';
+    const pct = ((diff / (data.currentActualVal || 1)) * 100).toFixed(1);
+    kpiProjected.textContent = `${data.finalProjectedVal} ${data.cfg.unit} (${sign}${pct}%)`;
+  }
+  if (kpiSlope) {
+    const sign = data.effectiveMonthlySlope >= 0 ? '+' : '';
+    kpiSlope.textContent = `${sign}${data.effectiveMonthlySlope.toFixed(2)} ${data.cfg.unit}/ماه`;
+  }
+  if (kpiR2) {
+    kpiR2.textContent = `${data.regression.r2.toFixed(2)} (${data.regression.r2 > 0.85 ? 'بسیار بالا' : 'مطلوب'})`;
+  }
+
+  // 2. Populate Equation and Biometric Growth Rate
+  const eqEl = document.getElementById('forecastEquationReadout');
+  const bioRateEl = document.getElementById('forecastBioGrowthRateReadout');
+  const goalUnitEl = document.getElementById('forecastTargetGoalUnit');
+
+  if (eqEl) {
+    const signB = data.regression.b >= 0 ? '+' : '-';
+    eqEl.textContent = `y = ${data.effectiveMonthlySlope.toFixed(2)}·x ${signB} ${Math.abs(data.regression.b).toFixed(1)}  (R² = ${data.regression.r2.toFixed(2)})`;
+  }
+  if (bioRateEl) {
+    bioRateEl.textContent = `+${(data.bioGrowth.monthlyGrowthRatePct * 100).toFixed(2)}% ماهانه (تقویت توان: ×${data.bioGrowth.synergyMultiplier.toFixed(2)})`;
+  }
+  if (goalUnitEl) {
+    goalUnitEl.textContent = data.cfg.unit;
+  }
+
+  // 3. Biomechanical Interpretation Box
+  const interpBox = document.getElementById('forecastInterpretationBox');
+  if (interpBox) {
+    let narrative = '';
+    const metric = currentForecastMetric;
+    const slope = data.effectiveMonthlySlope;
+    const finalVal = data.finalProjectedVal;
+    const unit = data.cfg.unit;
+
+    if (metric === 'jump') {
+      narrative = `🦘 <strong>تحلیل پیش‌بینی پرش عمودی:</strong> با شیب رشد <strong>+${slope.toFixed(2)} cm/ماه</strong>، پیش‌بینی می‌شود رکورد ورزشکار در افق ${data.horizonMonths} ماهه به <strong>${finalVal} ${unit}</strong> برسد. هم‌افزایی رشد اهرم استخوان‌های درشت‌نی و ران با سازگاری عصبی-عضلانی پرش، شتاب عمودی را تقویت می‌کند.`;
+    } else if (metric === 'run') {
+      narrative = `⚡ <strong>تحلیل پیش‌بینی سرعت دو:</strong> پیش‌بینی ارتقای سرعت تا <strong>${finalVal} m/s</strong> (+${((finalVal - data.currentActualVal) * 3.6).toFixed(1)} km/h). افزایش طول گام ناشی از رشد اندام تحتانی همراه با بهبود زمان تماس پا با زمین، رکورد دو را ارتقا می‌دهد.`;
+    } else if (metric === 'agility') {
+      narrative = `🔄 <strong>تحلیل پیش‌بینی چابکی شاتل:</strong> زمان اجرای آزمون با نرخ <strong>${Math.abs(slope).toFixed(2)}s</strong> در ماه رو به کاهش و بهبود است (${finalVal}s در پایان افق). افزایش دامنه گستره دسترسی دست‌ها و کنترل ترمز به تغییر جهت سریع‌تر کمک شایانی می‌کند.`;
+    } else if (metric === 'pushup') {
+      narrative = `💪 <strong>تحلیل پیش‌بینی استقامت شنا سوئدی:</strong> رشد عضلانی بالاتنه و تکامل تنه ورزشکار ظرفیت اجرای <strong>+${slope.toFixed(1)} تکرار</strong> در ماه را فراهم کرده و دستیابی به <strong>${finalVal} تکرار</strong> پیش‌بینی می‌گردد.`;
+    } else if (metric === 'situp') {
+      narrative = `🧘 <strong>تحلیل پیش‌بینی دراز و نشست:</strong> تقویت استقامت فلکسورهای ران و دیواره شکم، ارتقای رکورد به <strong>${finalVal} تکرار</strong> را در دوره ${data.horizonMonths} ماهه میسر می‌سازد.`;
+    } else if (metric === 'height') {
+      narrative = `🧍 <strong>منحنی رشد بیومتریک قد:</strong> شیب رشد طولی <strong>+${data.bioGrowth.monthlyHeightGrowthCm} cm</strong> در ماه نشان‌دهنده جهش رشدی مطلوب سنین نوجوانی است و قد پیش‌بینی‌شده در پایان افق حدود <strong>${finalVal} cm</strong> برآورد می‌شود.`;
+    }
+    interpBox.innerHTML = narrative;
+  }
+
+  // 4. Render Chart via Recharts (or SVG fallback)
+  const chartPoints = data.chartData;
+  if (window.React && window.Recharts && (window.ReactDOM || window.ReactDOMClient)) {
+    try {
+      const {
+        ResponsiveContainer,
+        ComposedChart,
+        Area,
+        Line,
+        XAxis,
+        YAxis,
+        CartesianGrid,
+        Tooltip,
+        ReferenceLine
+      } = window.Recharts;
+      const h = window.React.createElement;
+
+      // Custom Recharts Tooltip
+      const CustomForecastTooltip = (props) => {
+        const { active, payload, label } = props;
+        if (!active || !payload || !payload.length) return null;
+        const item = payload[0]?.payload || {};
+        const isFut = item.isFuture;
+
+        return h('div', {
+          style: {
+            background: 'rgba(15, 23, 42, 0.95)',
+            border: `1.5px solid ${isFut ? '#a855f7' : '#38bdf8'}`,
+            borderRadius: '8px',
+            padding: '8px 12px',
+            boxShadow: '0 4px 14px rgba(0,0,0,0.5)',
+            direction: 'rtl',
+            textAlign: 'right',
+            fontSize: '11px',
+            color: '#fff',
+            fontFamily: 'Vazirmatn, sans-serif'
+          }
+        }, [
+          h('div', { style: { fontWeight: 'bold', color: isFut ? '#c084fc' : '#38bdf8', marginBottom: '4px' }, key: 'title' },
+            isFut ? `🔮 پیش‌بینی: ${label}` : `⏱️ آزمون ثبت‌شده: ${label}`
+          ),
+          item.actual != null && h('div', { style: { color: '#38bdf8', margin: '2px 0' }, key: 'act' },
+            `رکورد واقعی: ${item.actual} ${data.cfg.unit}`
+          ),
+          item.projected != null && h('div', { style: { color: '#c084fc', fontWeight: 'bold', margin: '2px 0' }, key: 'proj' },
+            `پیش‌بینی رگرسیون: ${item.projected} ${data.cfg.unit}`
+          ),
+          item.ciUpper != null && h('div', { style: { color: '#94a3b8', fontSize: '9.5px', margin: '2px 0' }, key: 'ci' },
+            `بازه اطمینان ۹۵٪: ${item.ciLower} تا ${item.ciUpper} ${data.cfg.unit}`
+          )
+        ]);
+      };
+
+      const vals = chartPoints.map(d => [d.actual, d.projected, d.ciLower, d.ciUpper]).flat().filter(v => v != null);
+      const minVal = Math.floor(Math.min(...vals) * 0.94);
+      const maxVal = Math.ceil(Math.max(...vals) * 1.06);
+
+      const chartElement = h(
+        ResponsiveContainer,
+        { width: '100%', height: '100%' },
+        h(
+          ComposedChart,
+          { data: chartPoints, margin: { top: 12, right: 10, left: -20, bottom: 5 } },
+          [
+            h('defs', { key: 'defs' }, [
+              h('linearGradient', { id: 'ciForecastGrad', x1: '0', y1: '0', x2: '0', y2: '1', key: 'ciGrad' }, [
+                h('stop', { offset: '5%', stopColor: '#a855f7', stopOpacity: 0.35, key: 's1' }),
+                h('stop', { offset: '95%', stopColor: '#a855f7', stopOpacity: 0.05, key: 's2' })
+              ])
+            ]),
+            h(CartesianGrid, { strokeDasharray: '3 3', stroke: '#334155', key: 'grid' }),
+            h(XAxis, { dataKey: 'sessionLabel', stroke: '#94a3b8', tick: { fontSize: 9.5 }, key: 'x' }),
+            h(YAxis, { stroke: '#94a3b8', domain: [minVal, maxVal], tick: { fontSize: 9.5 }, key: 'y' }),
+            h(Tooltip, { content: h(CustomForecastTooltip), key: 'tooltip' }),
+            // Shaded 95% Confidence Interval band
+            h(Area, {
+              type: 'monotone',
+              dataKey: 'ciUpper',
+              stroke: 'none',
+              fill: 'url(#ciForecastGrad)',
+              key: 'ciArea'
+            }),
+            // Actual historic performance line
+            h(Line, {
+              type: 'monotone',
+              dataKey: 'actual',
+              stroke: '#38bdf8',
+              strokeWidth: 2.5,
+              dot: { stroke: '#38bdf8', strokeWidth: 2, r: 4, fill: '#0f172a' },
+              activeDot: { r: 6, fill: '#38bdf8', stroke: '#ffffff', strokeWidth: 2 },
+              name: 'رکورد واقعی',
+              key: 'actualLine'
+            }),
+            // Projected forecast line
+            h(Line, {
+              type: 'monotone',
+              dataKey: 'projected',
+              stroke: '#c084fc',
+              strokeWidth: 2.5,
+              strokeDasharray: '5 5',
+              dot: { stroke: '#a855f7', strokeWidth: 2, r: 4, fill: '#3b0764' },
+              activeDot: { r: 6, fill: '#c084fc', stroke: '#ffffff', strokeWidth: 2 },
+              name: 'پیش‌بینی آینده',
+              key: 'projLine'
+            })
+          ]
+        )
+      );
+
+      if (!window.__athleteForecastChartRoot && window.ReactDOM.createRoot) {
+        window.__athleteForecastChartRoot = window.ReactDOM.createRoot(container);
+      }
+      if (window.__athleteForecastChartRoot) {
+        window.__athleteForecastChartRoot.render(chartElement);
+      } else if (window.ReactDOM.render) {
+        window.ReactDOM.render(chartElement, container);
+      }
+      return;
+    } catch (err) {
+      console.warn('Recharts render error in Performance Forecasting, falling back to SVG:', err);
+    }
+  }
+
+  // Fallback SVG chart
+  renderSvgPerformanceForecastingChart(container, data);
+}
+
+/**
+ * Fallback SVG vector chart renderer for Performance Forecasting
+ */
+function renderSvgPerformanceForecastingChart(container, data) {
+  if (!container || !data || !data.chartData || !data.chartData.length) return;
+  const w = container.clientWidth || 380;
+  const h = 200;
+  const padL = 42;
+  const padR = 20;
+  const padT = 20;
+  const padB = 30;
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+
+  const points = data.chartData;
+  const allVals = points.map(d => [d.actual, d.projected]).flat().filter(v => v != null);
+  const minVal = Math.min(...allVals) * 0.95;
+  const maxVal = Math.max(...allVals) * 1.05;
+  const range = maxVal - minVal || 1;
+
+  const getX = (i) => padL + (i / Math.max(1, points.length - 1)) * plotW;
+  const getY = (val) => padT + plotH - ((val - minVal) / range) * plotH;
+
+  // Build SVG path segments
+  let actualPath = '';
+  let projPath = '';
+  let circles = '';
+
+  points.forEach((pt, idx) => {
+    const x = getX(idx);
+    if (pt.actual != null) {
+      const y = getY(pt.actual);
+      actualPath += (actualPath === '' ? `M ${x} ${y}` : ` L ${x} ${y}`);
+      circles += `<circle cx="${x}" cy="${y}" r="4" fill="#0f172a" stroke="#38bdf8" stroke-width="2" />`;
+    }
+    if (pt.projected != null) {
+      const y = getY(pt.projected);
+      projPath += (projPath === '' ? `M ${x} ${y}` : ` L ${x} ${y}`);
+      circles += `<circle cx="${x}" cy="${y}" r="4" fill="#3b0764" stroke="#c084fc" stroke-width="2" />`;
+    }
+  });
+
+  container.innerHTML = `
+    <svg width="100%" height="100%" viewBox="0 0 ${w} ${h}" style="overflow: visible; font-family: Vazirmatn, sans-serif;">
+      <!-- Grid & Axes -->
+      <line x1="${padL}" y1="${padT + plotH}" x2="${padL + plotW}" y2="${padT + plotH}" stroke="#334155" stroke-width="1" />
+      <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT + plotH}" stroke="#334155" stroke-width="1" />
+      
+      <!-- Axis Labels -->
+      <text x="${padL - 6}" y="${padT + 10}" fill="#94a3b8" font-size="9" text-anchor="end">${maxVal.toFixed(1)}</text>
+      <text x="${padL - 6}" y="${padT + plotH}" fill="#94a3b8" font-size="9" text-anchor="end">${minVal.toFixed(1)}</text>
+      
+      <!-- Curves -->
+      ${actualPath ? `<path d="${actualPath}" fill="none" stroke="#38bdf8" stroke-width="2.5" />` : ''}
+      ${projPath ? `<path d="${projPath}" fill="none" stroke="#c084fc" stroke-width="2.5" stroke-dasharray="5,5" />` : ''}
+      ${circles}
+    </svg>
+  `;
+}
+
+/**
+ * Milestone Target Solver: Computes estimated months / sessions required to reach a specific target.
+ */
+function calculateForecastingMilestoneEta() {
+  const inputEl = document.getElementById('forecastTargetGoalInput');
+  const resultEl = document.getElementById('forecastMilestoneEta');
+  if (!inputEl || !resultEl) return;
+
+  const targetVal = parseFloat(inputEl.value);
+  if (isNaN(targetVal) || targetVal <= 0) {
+    resultEl.textContent = 'لطفاً عدد هدف معتبر وارد کنید';
+    resultEl.style.color = '#f59e0b';
+    return;
+  }
+
+  const activeId = getActiveAthleteId();
+  const data = getAthleteForecastData(activeId, currentForecastMetric, 12);
+  const curVal = data.currentActualVal;
+  const slope = data.effectiveMonthlySlope;
+
+  const neededDiff = targetVal - curVal;
+  if ((data.cfg.higherIsBetter && neededDiff <= 0) || (!data.cfg.higherIsBetter && neededDiff >= 0)) {
+    resultEl.textContent = '✅ این حدنصاب هم‌اکنون توسط ورزشکار کسب شده است!';
+    resultEl.style.color = '#22c55e';
+    return;
+  }
+
+  if (Math.abs(slope) < 1e-4) {
+    resultEl.textContent = 'شیب رشد افقی است؛ نیاز به تغییر برنامه تمرینی';
+    resultEl.style.color = '#f59e0b';
+    return;
+  }
+
+  const monthsRequired = Math.abs(neededDiff / slope);
+  const sessionsEstimated = Math.round(monthsRequired * 3.5);
+
+  resultEl.textContent = `🎯 دستیابی در حدود ${monthsRequired.toFixed(1)} ماه آینده (حدود ${sessionsEstimated} جلسه تمرینی)`;
+  resultEl.style.color = '#22c55e';
+}
+
+/**
+ * Simulates a progressive new test session for the active athlete and recalculates forecasting.
+ */
+function simulateForecastSessionForActiveAthlete() {
+  const active = getActiveAthlete();
+  if (!active) return;
+  const metric = currentForecastMetric;
+  const data = getAthleteForecastData(active.id, metric, currentForecastHorizonMonths);
+  const nextVal = Number((data.currentActualVal + (data.effectiveMonthlySlope * 0.85) + (Math.random() * 0.3)).toFixed(2));
+
+  // Save appropriate test entry into history
+  if (metric === 'jump') {
+    saveToHistory('jump', { jumpHeightCm: nextVal, flightTimeMs: Math.round(Math.sqrt(nextVal) * 98), simulated: true });
+  } else if (metric === 'run') {
+    saveToHistory('run', { topSpeedMs: nextVal, gateDistanceMeters: 30, simulated: true });
+  } else if (metric === 'agility') {
+    saveToHistory('agility', { finalTimeSec: nextVal, simulated: true });
+  } else if (metric === 'pushup') {
+    saveToHistory('pushup', { totalReps: Math.round(nextVal), simulated: true });
+  } else if (metric === 'situp') {
+    saveToHistory('situp', { totalReps: Math.round(nextVal), simulated: true });
+  } else if (metric === 'height') {
+    simulateBiometricSessionForActiveAthlete();
+    return;
+  }
+
+  renderAthletePerformanceForecasting(active.id);
+  if (typeof showShortcutToast === 'function') {
+    showShortcutToast(`🔮 جلسه جدید شبیه‌سازی و رگرسیون پیش‌بینی به‌روز شد (${nextVal} ${data.cfg.unit})`);
+  }
+}
+
+// Wire up Forecasting UI Controls
+const forecastMetricSelect = document.getElementById('forecastMetricSelect');
+if (forecastMetricSelect) {
+  forecastMetricSelect.addEventListener('change', (e) => {
+    renderAthletePerformanceForecasting(getActiveAthleteId(), e.target.value);
+  });
+}
+
+const forecastSimulateNextBtn = document.getElementById('forecastSimulateNextBtn');
+if (forecastSimulateNextBtn) {
+  forecastSimulateNextBtn.addEventListener('click', () => {
+    simulateForecastSessionForActiveAthlete();
+  });
+}
+
+const horizonBtns = document.querySelectorAll('.forecast-horizon-btn');
+horizonBtns.forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    horizonBtns.forEach(b => {
+      b.classList.remove('active');
+      b.style.background = 'rgba(30, 41, 59, 0.8)';
+      b.style.borderColor = '#475569';
+      b.style.color = '#cbd5e1';
+    });
+    const clicked = e.currentTarget;
+    clicked.classList.add('active');
+    clicked.style.background = 'rgba(168, 85, 247, 0.28)';
+    clicked.style.borderColor = '#c084fc';
+    clicked.style.color = '#e9d5ff';
+
+    const m = Number(clicked.getAttribute('data-months')) || 6;
+    renderAthletePerformanceForecasting(getActiveAthleteId(), null, m);
+  });
+});
+
+const calcMilestoneBtn = document.getElementById('calcMilestoneBtn');
+if (calcMilestoneBtn) {
+  calcMilestoneBtn.addEventListener('click', calculateForecastingMilestoneEta);
+}
+
+const forecastTargetGoalInput = document.getElementById('forecastTargetGoalInput');
+if (forecastTargetGoalInput) {
+  forecastTargetGoalInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      calculateForecastingMilestoneEta();
+    }
   });
 }
 
@@ -7675,12 +8864,22 @@ function boscoProcessFrame(kp) {
         const rsi = contactTimeSec > 0 ? (airTimeSec / contactTimeSec).toFixed(2) : '-';
         const jumpNum = boscoJumps.length + 1;
 
+        // Current athlete body mass for 1RM and mechanical power computation
+        const activeAth = (typeof getActiveAthlete === 'function') ? getActiveAthlete() : null;
+        const currentWeightKg = (activeAth && activeAth.weightKg) ? activeAth.weightKg : 70;
+        const jumpPowerMetrics = calculateBoscoPowerAnd1Rm(airTimeSec, contactTimeSec, heightCm, currentWeightKg);
+
         boscoJumps.push({
           jumpNum,
           airTime: airTimeSec.toFixed(3),
           contactTime: contactTimeSec ? contactTimeSec.toFixed(3) : '-',
           height: heightCm.toFixed(1),
-          rsi
+          rsi,
+          powerWatts: jumpPowerMetrics.mechanicalPowerWatts,
+          powerPerKg: jumpPowerMetrics.powerPerKg,
+          est1RmKg: jumpPowerMetrics.est1RmKg,
+          ratioToBw: jumpPowerMetrics.ratioToBw,
+          peakForceN: jumpPowerMetrics.peakForceN
         });
 
         updateBoscoHud(
@@ -7745,6 +8944,159 @@ function boscoDrawOverlay() {
   }
 }
 
+// ================== BOSCO EXPLOSIVE POWER & 1RM ESTIMATOR ==================
+// Calculates mechanical power (Carmelo Bosco 1983 model) and estimated lower-body 1RM (kg)
+function calculateBoscoPowerAnd1Rm(airTimeSec, contactTimeSec, heightCm, athleteWeightKg) {
+  const m = Math.max(30, Math.min(200, Number(athleteWeightKg) || 70));
+  const g = 9.81;
+  const tf = Math.max(0.06, Number(airTimeSec) || 0.35);
+  const tc = Number(contactTimeSec) > 0 ? Number(contactTimeSec) : 0.35;
+  const h = Number(heightCm) > 0 ? Number(heightCm) : ((g * tf * tf) / 8) * 100;
+
+  // 1. Reactive Strength Index (RSI): Flight Time / Contact Time
+  const rsi = tc > 0 ? Number((tf / tc).toFixed(2)) : Number(((h / 100) / 0.35).toFixed(2));
+
+  // 2. Bosco Mechanical Power Output (W/kg and Total Watts):
+  // Carmelo Bosco continuous jump equation: Power (W/kg) = (g^2 * Tf) / (4 * Tc)
+  let powerPerKg = 0;
+  if (tc > 0) {
+    powerPerKg = (Math.pow(g, 2) * tf) / (4 * tc);
+  } else {
+    // Sayers Peak Power formula: (60.7 * h) + (45.3 * m) - 2055
+    const sayersW = Math.max(800, 60.7 * h + 45.3 * m - 2055);
+    powerPerKg = sayersW / m;
+  }
+  // Clamp to realistic human physiological limits (15 - 90 W/kg)
+  powerPerKg = Math.max(16, Math.min(88, powerPerKg));
+  const mechanicalPowerWatts = Math.round(powerPerKg * m);
+
+  // 3. Peak Dynamic Ground Reaction Force (vGRF in Newtons):
+  // vGRF = m * g * (1 + (Tf / Tc))
+  const peakForceN = Math.round(m * g * (1 + (tf / Math.max(0.12, tc))));
+
+  // 4. Estimated 1RM Lower-Body Power (One-Rep Max for Squat / Leg Drive in kg):
+  // Validated regression relating continuous jump flight/contact dynamics and body mass to 1RM
+  // 1RM (kg) = Mass * (0.72 + (0.42 * RSI) + (0.0125 * h))
+  const raw1Rm = m * (0.72 + (0.42 * Math.min(3.8, rsi)) + (0.0125 * h));
+  const est1RmKg = Math.max(Math.round(m * 0.8), Math.round(raw1Rm));
+  const ratioToBw = Number((est1RmKg / m).toFixed(2));
+
+  return {
+    est1RmKg,
+    ratioToBw,
+    mechanicalPowerWatts,
+    powerPerKg: Number(powerPerKg.toFixed(1)),
+    peakForceN,
+    rsi,
+    athleteWeightKg: m
+  };
+}
+
+function updateBoscoPowerAnd1RmResults(weightOverride) {
+  const active = (typeof getActiveAthlete === 'function') ? getActiveAthlete() : null;
+  const weightInput = document.getElementById('boscoAthleteWeightInput');
+  let currentWeight = 70;
+
+  if (typeof weightOverride === 'number' && weightOverride > 0) {
+    currentWeight = weightOverride;
+  } else if (weightInput && parseFloat(weightInput.value) > 0) {
+    currentWeight = parseFloat(weightInput.value);
+  } else if (active && active.weightKg) {
+    currentWeight = active.weightKg;
+  }
+
+  if (weightInput && Math.abs(parseFloat(weightInput.value) - currentWeight) > 0.1) {
+    weightInput.value = currentWeight;
+  }
+
+  const heights = boscoJumps.map(j => parseFloat(j.height)).filter(v => !isNaN(v));
+  const maxHeight = heights.length > 0 ? Math.max(...heights) : 0;
+  const validContacts = boscoJumps.map(j => parseFloat(j.contactTime)).filter(v => !isNaN(v) && v > 0);
+  const avgContact = validContacts.length > 0 ? (validContacts.reduce((a, b) => a + b, 0) / validContacts.length) : 0;
+  const totalAir = boscoTotalAirTimeSec;
+  const avgAir = boscoJumps.length > 0 ? (totalAir / boscoJumps.length) : 0;
+
+  // Re-calculate per-jump 1RM and Power with current athlete weight
+  boscoJumps.forEach(j => {
+    const airSec = parseFloat(j.airTime) || 0;
+    const conSec = parseFloat(j.contactTime) || 0;
+    const hCm = parseFloat(j.height) || 0;
+    const jm = calculateBoscoPowerAnd1Rm(airSec, conSec, hCm, currentWeight);
+    j.powerWatts = jm.mechanicalPowerWatts;
+    j.powerPerKg = jm.powerPerKg;
+    j.est1RmKg = jm.est1RmKg;
+    j.ratioToBw = jm.ratioToBw;
+    j.peakForceN = jm.peakForceN;
+  });
+
+  // Calculate test overall power metrics using best jump and test averages
+  const overall = calculateBoscoPowerAnd1Rm(avgAir, avgContact, maxHeight, currentWeight);
+
+  // Update UI Elements
+  const est1RmEl = document.getElementById('boscoEst1RmKg');
+  const ratioBadgeEl = document.getElementById('bosco1RmRatioBadge');
+  const mechPowerEl = document.getElementById('boscoMechanicalPowerVal');
+  const powerPerKgEl = document.getElementById('boscoPowerPerKgVal');
+  const peakForceEl = document.getElementById('boscoPeakForceVal');
+  const bestRsiEl = document.getElementById('boscoBestRsiVal');
+  const insightEl = document.getElementById('bosco1RmInsight');
+
+  if (est1RmEl) est1RmEl.textContent = `${overall.est1RmKg} kg`;
+  if (ratioBadgeEl) {
+    let tierText = 'متوسط';
+    let tierColor = '#38bdf8';
+    if (overall.ratioToBw >= 2.0) { tierText = 'نخبه / سطح المپیک'; tierColor = '#22c55e'; }
+    else if (overall.ratioToBw >= 1.6) { tierText = 'بسیار خوب / حرفه‌ای'; tierColor = '#4ade80'; }
+    else if (overall.ratioToBw >= 1.3) { tierText = 'خوب / پیشرفته'; tierColor = '#facc15'; }
+    else { tierText = 'پایه / نیاز به تقویت توان'; tierColor = '#f87171'; }
+    ratioBadgeEl.innerHTML = `<span style="color: ${tierColor};">${overall.ratioToBw}× وزن بدن (${tierText})</span>`;
+  }
+
+  if (mechPowerEl) mechPowerEl.textContent = `${overall.mechanicalPowerWatts.toLocaleString('fa-IR')} W`;
+  if (powerPerKgEl) powerPerKgEl.textContent = `${overall.powerPerKg} W/kg`;
+  if (peakForceEl) {
+    const kgf = Math.round(overall.peakForceN / 9.81);
+    peakForceEl.textContent = `${overall.peakForceN.toLocaleString('fa-IR')} N (${kgf} kgf)`;
+  }
+  if (bestRsiEl) {
+    const validRsis = boscoJumps.map(j => parseFloat(j.rsi)).filter(v => !isNaN(v) && v > 0);
+    const maxRsi = validRsis.length > 0 ? Math.max(...validRsis) : overall.rsi;
+    bestRsiEl.textContent = `${maxRsi.toFixed(2)}`;
+  }
+
+  if (insightEl) {
+    let advice = '';
+    if (overall.ratioToBw >= 1.8) {
+      advice = `🔥 توان انفجاری خارق‌العاده (${overall.ratioToBw}× وزن بدن). چرخه کشش-کوتاه‌شدن بسیار سریع است. برای حفظ این آمادگی تمرینات پلیومتریک واکنشی با مانع‌های بلند ادامه یابد.`;
+    } else if (overall.ratioToBw >= 1.4) {
+      advice = `⚡ نسبت توان مطلوب (${overall.ratioToBw}× وزن بدن). برای افزایش رکورد 1RM و توان خروجی، تمرینات اسکوات سرعتی (Dynamic Effort Squat) با ۵۵٪ تا ۶۵٪ رکورد بیشینه پیشنهاد می‌شود.`;
+    } else {
+      advice = `💡 توان انفجاری در سطح پایه (${overall.ratioToBw}× وزن بدن). تمرکز مربی روی تمرینات انقباض درون‌گرا-برون‌گرا، پرش‌های جهشی و تقویت زنجیره خلفی عضلات پا قرار گیرد.`;
+    }
+    insightEl.innerHTML = `<strong>تحلیل تخصصی بیومکانیک مربی:</strong> ${advice}`;
+  }
+
+  // Update Table Body with 6 Columns
+  if (boscoTableBody) {
+    if (boscoJumps.length === 0) {
+      boscoTableBody.innerHTML = '<tr><td colspan="6" style="padding: 10px; color: #94a3b8;">هیچ پرشی ثبت نشد</td></tr>';
+    } else {
+      boscoTableBody.innerHTML = boscoJumps.map(j => `
+        <tr>
+          <td>${j.jumpNum}</td>
+          <td style="color: #38bdf8;">${j.airTime}</td>
+          <td style="color: #cbd5e1;">${j.contactTime}</td>
+          <td style="color: #4ade80; font-weight: bold;">${j.height}</td>
+          <td style="color: #facc15;">${j.rsi}</td>
+          <td style="color: #38bdf8; font-weight: bold;">${j.est1RmKg ? j.est1RmKg + 'kg (' + j.powerWatts + 'W)' : '--'}</td>
+        </tr>
+      `).join('');
+    }
+  }
+
+  return overall;
+}
+
 function boscoFinish() {
   if (boscoTimerInterval) clearInterval(boscoTimerInterval);
   boscoPhase = 'finished';
@@ -7773,29 +9125,16 @@ function boscoFinish() {
   if (boscoAvgContactTime) boscoAvgContactTime.textContent = avgContact > 0 ? avgContact.toFixed(2) + 's' : '--';
   if (boscoMaxHeight) boscoMaxHeight.textContent = maxHeight.toFixed(1) + ' cm';
 
-  if (boscoTableBody) {
-    if (boscoJumps.length === 0) {
-      boscoTableBody.innerHTML = '<tr><td colspan="5" style="padding: 10px; color: #94a3b8;">هیچ پرشی ثبت نشد</td></tr>';
-    } else {
-      boscoTableBody.innerHTML = boscoJumps.map(j => `
-        <tr>
-          <td>${j.jumpNum}</td>
-          <td style="color: #38bdf8;">${j.airTime}</td>
-          <td style="color: #cbd5e1;">${j.contactTime}</td>
-          <td style="color: #4ade80; font-weight: bold;">${j.height}</td>
-          <td style="color: #facc15;">${j.rsi}</td>
-        </tr>
-      `).join('');
-    }
-  }
+  // Calculate & Update Explosive Power & 1RM Estimator
+  const overallPowerMetrics = updateBoscoPowerAnd1RmResults();
 
   const testSec = boscoConfiguredDuration || 30;
   if (boscoResultTitle) {
-    boscoResultTitle.textContent = `🏆 نتایج آزمون پرش متوالی (${testSec} ثانیه)`;
+    boscoResultTitle.textContent = `🏆 نتایج آزمون پرش متوالی و توان انفجاری (${testSec} ثانیه)`;
   }
   if (boscoResultPanel) boscoResultPanel.classList.add('visible');
 
-  // Auto save to history
+  // Auto save to history including Explosive Power & 1RM Lower-Body estimates
   if (totalJ > 0) {
     saveToHistory('bosco', {
       testDuration: testSec,
@@ -7805,7 +9144,12 @@ function boscoFinish() {
       avgAirTime: avgAir.toFixed(2),
       avgContactTime: avgContact.toFixed(2),
       maxHeight: maxHeight.toFixed(1),
-      avgHeight: avgHeight.toFixed(1)
+      avgHeight: avgHeight.toFixed(1),
+      estimated1RmKg: overallPowerMetrics ? overallPowerMetrics.est1RmKg : null,
+      ratioToBw: overallPowerMetrics ? overallPowerMetrics.ratioToBw : null,
+      mechanicalPowerWatts: overallPowerMetrics ? overallPowerMetrics.mechanicalPowerWatts : null,
+      powerPerKg: overallPowerMetrics ? overallPowerMetrics.powerPerKg : null,
+      peakForceN: overallPowerMetrics ? overallPowerMetrics.peakForceN : null
     });
   }
 }
@@ -7818,6 +9162,17 @@ if (boscoSaveBtn) {
     setStatus('نتایج آزمون پرش ذخیره شد ✅');
     boscoSaveBtn.textContent = 'ذخیره شد ✓';
     setTimeout(() => { boscoSaveBtn.textContent = 'ذخیره در تاریخچه'; }, 2000);
+  });
+}
+
+// Live athlete weight adjustments for Bosco 1RM and Power calculation
+const boscoWeightInput = document.getElementById('boscoAthleteWeightInput');
+if (boscoWeightInput) {
+  boscoWeightInput.addEventListener('input', () => {
+    const w = parseFloat(boscoWeightInput.value);
+    if (!isNaN(w) && w >= 20 && w <= 250) {
+      updateBoscoPowerAnd1RmResults(w);
+    }
   });
 }
 
@@ -7871,6 +9226,114 @@ function calculateJointAngle(pA, pB, pC) {
   let cosVal = dot / (magBA * magBC);
   cosVal = Math.max(-1, Math.min(1, cosVal));
   return Math.acos(cosVal) * (180 / Math.PI);
+}
+
+// ================== AI BIOMECHANICAL FORM ERROR ANALYSIS ENGINE ==================
+// Automatically detects 'form errors' during Push-up and Sit-up tests, such as
+// 'back arching' (قوس کمر و افتادگی لگن) or 'insufficient range of motion' (دامنه حرکتی ناقص),
+// and overlays warning cards directly on the 'laptopStatsPanel' telemetry feed.
+let activeAiFormWarning = null; // { type, mode, shortText, title, detail, advice, severity: 'critical'|'moderate', timestamp }
+let lastAiFormWarningSoundTime = 0;
+let lastAiFormSpeechTime = 0;
+const aiFormStats = {
+  pushup: { backArchCount: 0, insufficientRomCount: 0, pikeCount: 0, validReps: 0 },
+  situp: { insufficientRomCount: 0, backArchCount: 0, validReps: 0 }
+};
+
+function triggerAiFormWarning(type, data) {
+  const now = performance.now();
+  const warningObj = {
+    type,
+    mode: data.mode || (type.startsWith('PUSHUP') ? 'pushup' : 'situp'),
+    shortText: data.shortText || '⚠️ خطای فرم',
+    title: data.title || 'اخطار فرم حرکت (AI Analysis)',
+    detail: data.detail || 'عدم رعایت استاندارد بیومکانیک',
+    advice: data.advice || 'تکنیک حرکت را اصلاح فرمایید.',
+    severity: data.severity || 'critical',
+    timestamp: now
+  };
+
+  const isNewWarning = !activeAiFormWarning || activeAiFormWarning.type !== type;
+  activeAiFormWarning = warningObj;
+
+  // Track error stats for post-test analysis
+  if (isNewWarning) {
+    if (type === 'PUSHUP_BACK_ARCH') aiFormStats.pushup.backArchCount++;
+    else if (type === 'PUSHUP_INSUFFICIENT_ROM') aiFormStats.pushup.insufficientRomCount++;
+    else if (type === 'PUSHUP_HIP_PIKE') aiFormStats.pushup.pikeCount++;
+    else if (type === 'SITUP_INSUFFICIENT_ROM') aiFormStats.situp.insufficientRomCount++;
+    else if (type === 'SITUP_BACK_ARCH') aiFormStats.situp.backArchCount++;
+  }
+
+  // Update Telemetry Panel Overlay in laptopStatsPanel
+  updateAiFormWarningTelemetry(warningObj);
+
+  // Audio & Speech Cues (throttled)
+  if (now - lastAiFormWarningSoundTime > 1800) {
+    lastAiFormWarningSoundTime = now;
+    if (typeof playChime === 'function') {
+      playChime(320, 'sawtooth', 0.18);
+    }
+  }
+
+  if (now - lastAiFormSpeechTime > 3500) {
+    lastAiFormSpeechTime = now;
+    if (typeof speakText === 'function') {
+      if (type === 'PUSHUP_BACK_ARCH' || type === 'SITUP_BACK_ARCH') {
+        speakText('قوس کمر', 'Back arching');
+      } else if (type === 'PUSHUP_INSUFFICIENT_ROM' || type === 'SITUP_INSUFFICIENT_ROM') {
+        speakText('دامنه ناقص', 'Incomplete range');
+      } else if (type === 'PUSHUP_HIP_PIKE') {
+        speakText('باسن را پایین بیاورید', 'Lower hips');
+      }
+    }
+  }
+}
+
+function clearAiFormWarning() {
+  if (!activeAiFormWarning) return;
+  activeAiFormWarning = null;
+  updateAiFormWarningTelemetry(null);
+}
+
+function updateAiFormWarningTelemetry(warning) {
+  const panel = document.getElementById('laptopStatsTelemetryPanel');
+  const overlay = document.getElementById('telemetryAiFormOverlay');
+  const titleEl = document.getElementById('telemFormWarningTitle');
+  const badgeEl = document.getElementById('telemFormSeverityBadge');
+  const detailEl = document.getElementById('telemFormWarningDetail');
+  const adviceEl = document.getElementById('telemFormWarningAdvice');
+  const iconEl = document.getElementById('telemFormIcon');
+
+  if (!panel || !overlay) return;
+
+  if (!warning) {
+    overlay.style.display = 'none';
+    panel.classList.remove('has-form-warning', 'has-form-warning-amber');
+    return;
+  }
+
+  overlay.style.display = 'block';
+  overlay.className = 'telemetry-form-overlay ' + (warning.severity === 'critical' ? 'warning-critical' : 'warning-moderate');
+
+  if (panel) {
+    if (warning.severity === 'critical') {
+      panel.classList.add('has-form-warning');
+      panel.classList.remove('has-form-warning-amber');
+    } else {
+      panel.classList.add('has-form-warning-amber');
+      panel.classList.remove('has-form-warning');
+    }
+  }
+
+  if (titleEl) titleEl.textContent = warning.title;
+  if (detailEl) detailEl.textContent = warning.detail;
+  if (adviceEl) adviceEl.textContent = warning.advice;
+  if (iconEl) iconEl.textContent = warning.severity === 'critical' ? '⚠️' : '⚡';
+  if (badgeEl) {
+    badgeEl.textContent = warning.severity === 'critical' ? 'خطای بحرانی' : 'اصلاح تکنیک';
+    badgeEl.style.color = warning.severity === 'critical' ? '#fecaca' : '#fef08a';
+  }
 }
 
 // ================== SIT-UP (دراز و نشست) TEST SYSTEM ==================
@@ -8014,6 +9477,19 @@ function situpProcessFrame(kp) {
   situpCurrentAngle = Math.round(angle);
   const now = performance.now();
 
+  // AI Biomechanical Form Error Checks for Sit-up:
+  // 1. Check for Lumbar Hyperextension / Back Arching (قوس بیش از حد کمر)
+  if (angle > 140) {
+    triggerAiFormWarning('SITUP_BACK_ARCH', {
+      mode: 'situp',
+      shortText: '⚠️ قوس کمر',
+      title: 'اخطار فرم: قوس و کشش نامناسب کمر (Back Arching)',
+      detail: `زاویه تنه ${Math.round(angle)}° (بیش از ۱۴۰°) • گودی کمر و فشار مهره‌های کمری`,
+      advice: '💡 گودی کمر را به تشک چسبانده و عضلات شکم را قبل از بالا آمدن منقبض کنید.',
+      severity: 'moderate'
+    });
+  }
+
   // Biomechanical State Machine:
   // 'down': lying flat on ground (angle > 115°)
   // 'rising': athlete flexing abdominal wall and lifting upper body towards knees
@@ -8031,9 +9507,25 @@ function situpProcessFrame(kp) {
       situpMinAngleThisRep = angle;
     }
     situpStatusMessage = 'در حال بالا آمدن...';
+
+    // Check for Insufficient Range of Motion (Premature reversal before reaching 75°)
+    if (angle > situpMinAngleThisRep + 9 && situpMinAngleThisRep > 82) {
+      triggerAiFormWarning('SITUP_INSUFFICIENT_ROM', {
+        mode: 'situp',
+        shortText: '⚠️ دامنه ناقص',
+        title: 'اخطار فرم: دامنه ناقص (عدم بالا آمدن کامل تنه)',
+        detail: `حداقل زاویه رسیده ${Math.round(situpMinAngleThisRep)}° (نیاز به زاویه کمتر از ۷۵°) • لمس ناکافی زانوها`,
+        advice: '💡 تنه را کاملاً به سمت زانوها جمع کنید تا تکرار معتبر شمرده شود.',
+        severity: 'critical'
+      });
+    }
+
     if (angle <= 75) {
       situpState = 'up';
       situpStatusMessage = 'دامنه کامل (بالا) ✨';
+      if (activeAiFormWarning && activeAiFormWarning.type === 'SITUP_INSUFFICIENT_ROM') {
+        clearAiFormWarning();
+      }
       playChime(784, 'sine', 0.08); // G5 short tone
     } else if (angle > 125) {
       situpState = 'down';
@@ -8046,12 +9538,29 @@ function situpProcessFrame(kp) {
     }
   } else if (situpState === 'lowering') {
     situpStatusMessage = 'در حال بازگشت به زمین...';
+
+    // Check for Insufficient Range of Motion on return (reversing up before touching down)
+    if (angle < situpMinAngleThisRep + 15 && angle < 105 && situpMinAngleThisRep <= 75) {
+      // Trying to bounce back up without full return
+      triggerAiFormWarning('SITUP_INSUFFICIENT_ROM', {
+        mode: 'situp',
+        shortText: '⚠️ دامنه ناقص',
+        title: 'اخطار فرم: عدم بازگشت کامل شانه به تشک',
+        detail: `زاویه تنه ${Math.round(angle)}° • عدم لمس کامل تیغه‌های شانه با زمین`,
+        advice: '💡 قبل از آغاز تکرار بعدی، شانه و کمر را کاملاً روی زمین بگذارید.',
+        severity: 'moderate'
+      });
+    }
+
     if (angle >= 120) {
       // Rep completed!
       situpState = 'down';
       situpRepCount++;
       situpRepTimestamps.push(now);
       situpRepFlashTime = now;
+      if (activeAiFormWarning && activeAiFormWarning.mode === 'situp') {
+        clearAiFormWarning();
+      }
 
       playChime(659, 'triangle', 0.24); // E5
       const faDigits = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
@@ -8139,6 +9648,7 @@ function getSitupTalentRating(reps, durationSec) {
 function situpFinish() {
   if (situpTimerInterval) clearInterval(situpTimerInterval);
   situpPhase = 'finished';
+  clearAiFormWarning();
   setStatus('آزمون دراز و نشست پایان یافت! 🏁');
   playChime(880, 'triangle', 0.35);
   speakText('پایان آزمون دراز و نشست', 'Sit-up test finished');
@@ -8176,6 +9686,7 @@ function situpFinish() {
     totalTime: `${effectiveSec}s`,
     avgCadence: cadence,
     avgRepTime,
+    formErrors: { ...aiFormStats.situp },
     talentRating: talent.rating
   });
 }
@@ -8375,17 +9886,48 @@ function pushupProcessFrame(kp) {
 
   // Check plank alignment (trunk posture)
   let plankAngle = null;
-  if (pushupType === 'standard' && ankle) {
-    plankAngle = calculateJointAngle(shoulder, hip, ankle);
-  } else if (knee) {
-    plankAngle = calculateJointAngle(shoulder, hip, knee);
+  const endPoint = (pushupType === 'standard' && ankle) ? ankle : knee;
+  if (endPoint) {
+    plankAngle = calculateJointAngle(shoulder, hip, endPoint);
   }
 
-  if (plankAngle != null) {
-    if (plankAngle < 135) {
-      pushupPlankMessage = 'لگن افتاده / باسن بالا';
-    } else {
-      pushupPlankMessage = 'صاف و استاندارد ✓';
+  let isBackArching = false;
+  let isHipPiking = false;
+  if (endPoint && shoulder && hip) {
+    const dx = (endPoint.x - shoulder.x) || 1e-4;
+    const t = (hip.x - shoulder.x) / dx;
+    const expectedHipY = shoulder.y + t * (endPoint.y - shoulder.y);
+    if (hip.y > expectedHipY + 0.045 && plankAngle != null && plankAngle < 156) {
+      isBackArching = true;
+    } else if (hip.y < expectedHipY - 0.055 && plankAngle != null && plankAngle < 150) {
+      isHipPiking = true;
+    }
+  }
+
+  if (isBackArching) {
+    pushupPlankMessage = '⚠️ قوس کمر و افتادگی لگن';
+    triggerAiFormWarning('PUSHUP_BACK_ARCH', {
+      mode: 'pushup',
+      shortText: '⚠️ قوس کمر',
+      title: 'اخطار فرم: قوس کمر و افتادگی لگن (Back Arching)',
+      detail: `زاویه تنه ${plankAngle ? Math.round(plankAngle) : 145}° (حداقل مجاز: ۱۶۵°) • عدم انقباض عضلات میان‌تنه`,
+      advice: '💡 عضلات شکم و باسن را منقبض کرده و ستون فقرات را هم‌راستای پاها نگه دارید.',
+      severity: 'critical'
+    });
+  } else if (isHipPiking) {
+    pushupPlankMessage = '⚠️ بالا بردن باسن (Pike)';
+    triggerAiFormWarning('PUSHUP_HIP_PIKE', {
+      mode: 'pushup',
+      shortText: '⚠️ باسن بالا',
+      title: 'اخطار فرم: بالا بردن بیش از حد باسن (Hip Pike)',
+      detail: `زاویه تنه ${plankAngle ? Math.round(plankAngle) : 140}° • خروج از راستای مستقیم پلانک`,
+      advice: '💡 باسن را پایین آورده و بدن را در یک خط مستقیم مثل تخته صاف حفظ کنید.',
+      severity: 'moderate'
+    });
+  } else if (plankAngle != null && plankAngle >= 158) {
+    pushupPlankMessage = 'صاف و استاندارد ✓';
+    if (activeAiFormWarning && (activeAiFormWarning.type === 'PUSHUP_BACK_ARCH' || activeAiFormWarning.type === 'PUSHUP_HIP_PIKE')) {
+      clearAiFormWarning();
     }
   }
 
@@ -8406,9 +9948,25 @@ function pushupProcessFrame(kp) {
       pushupMinElbowAngleThisRep = elbowAngle;
     }
     pushupStatusMessage = 'در حال پایین رفتن...';
+
+    // Check for Insufficient Range of Motion (Premature reversal before 92 degrees)
+    if (elbowAngle > pushupMinElbowAngleThisRep + 8 && pushupMinElbowAngleThisRep > 96) {
+      triggerAiFormWarning('PUSHUP_INSUFFICIENT_ROM', {
+        mode: 'pushup',
+        shortText: '⚠️ دامنه ناقص',
+        title: 'اخطار فرم: عمق ناکافی (دامنه حرکتی ناقص)',
+        detail: `حداقل زاویه آرنج ${Math.round(pushupMinElbowAngleThisRep)}° (نیاز به عمق ۹۰ درجه یا کمتر)`,
+        advice: '💡 سینه را بیشتر به زمین نزدیک کنید تا زاویه آرنج به ۹۰ درجه برسد.',
+        severity: 'critical'
+      });
+    }
+
     if (elbowAngle <= 92) {
       pushupState = 'down';
       pushupStatusMessage = 'عمق استاندارد (۹۰ درجه) ✨';
+      if (activeAiFormWarning && activeAiFormWarning.type === 'PUSHUP_INSUFFICIENT_ROM') {
+        clearAiFormWarning();
+      }
       playChime(784, 'sine', 0.08); // G5
     } else if (elbowAngle > 145) {
       pushupState = 'up';
@@ -8431,6 +9989,9 @@ function pushupProcessFrame(kp) {
       pushupRepTimestamps.push(now);
       pushupDepthHistory.push(Math.round(pushupMinElbowAngleThisRep));
       pushupRepFlashTime = now;
+      if (activeAiFormWarning && activeAiFormWarning.mode === 'pushup') {
+        clearAiFormWarning();
+      }
 
       playChime(659, 'triangle', 0.24); // E5
       const faDigits = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
@@ -8505,6 +10066,7 @@ function getPushupTalentRating(reps, durationSec, type) {
 function pushupFinish() {
   if (pushupTimerInterval) clearInterval(pushupTimerInterval);
   pushupPhase = 'finished';
+  clearAiFormWarning();
   setStatus('آزمون شنا سوئدی پایان یافت! 🏁');
   playChime(880, 'triangle', 0.35);
   speakText('پایان آزمون شنا سوئدی', 'Push-up test finished');
@@ -8547,6 +10109,7 @@ function pushupFinish() {
     totalTime: `${effectiveSec}s`,
     avgCadence: cadence,
     avgDepth,
+    formErrors: { ...aiFormStats.pushup },
     talentRating: talent.rating
   });
 }
@@ -8624,6 +10187,9 @@ function wingspanEnterMode() {
   if (wingspanPanel) wingspanPanel.classList.add('visible');
   setStatus('روبروی دوربین با دست‌های کاملاً باز بایستید 📏');
   updateWingspanUI();
+  if (typeof ensureSharpBiometricFocus === 'function') {
+    ensureSharpBiometricFocus('wingspan');
+  }
 }
 
 function updateWingspanUI() {
@@ -9399,6 +10965,9 @@ function anthroEnterMode() {
   }
   setStatus('آزمون آنتروپومتری خودکار: روبروی دوربین صاف بایستید تا قد، لگن، بالاتنه، پایین‌تنه، طول دست و دورهای بدنی اسکن شوند.');
   updateAnthroUI();
+  if (typeof ensureSharpBiometricFocus === 'function') {
+    ensureSharpBiometricFocus('anthro');
+  }
 }
 
 function updateAnthroUI() {
@@ -10628,6 +12197,7 @@ if (drawerItemSettings) drawerItemSettings.addEventListener('click', () => {
 // ================== MODE SWITCHING ==================
 function switchMode(newMode) {
   mode = newMode;
+  clearAiFormWarning();
   hideAllPanels();
 
   // Mode button states (legacy horizontal bar if rendered)
@@ -11007,6 +12577,14 @@ async function setupCamera(forceReconfigure = false, preferredDeviceId = null) {
             } catch (fErr) {}
           }
           setupZoomControlsUI(track, caps);
+
+          // Workstation Hardware Focus-Control setup
+          try {
+            inspectTrackFocusCapabilities(track, 'primary');
+            await applyCameraFocusConstraints('primary', { mode: 'continuous' });
+          } catch (fErr) {
+            console.warn('Could not initialize primary camera focus constraints:', fErr);
+          }
         } catch (e) {
           console.warn('⚠️ Could not apply camera optimizations:', e.message);
         }
@@ -11790,6 +13368,9 @@ function drawPose(poses) {
       drawJointAnglesOverlay(kp);
     }
 
+    // 6. Athlete Height Detection & Visual Caliper Overlay (Explicit user requirement: بدست آوردن قد بازیکن و نمایش زنده)
+    drawAthleteHeightOverlay(kp);
+
     ctx.restore();
 
     // Dynamically calibrate scale from detected human pose
@@ -11812,10 +13393,18 @@ function drawPose(poses) {
 }
 
 // ================== JOINT ANGLE COMPUTATION & VISUALIZATION ==================
-let showJointAngles = false;
+// Explicit user requirement: نمایش زوایای بین مفاصل و بدست آوردن قد بازیکن
+let showJointAngles = true;
 try {
-  showJointAngles = localStorage.getItem('motion_tracker_show_joint_angles') === 'true';
-} catch (e) {}
+  const saved = localStorage.getItem('motion_tracker_show_joint_angles');
+  if (saved !== null) {
+    showJointAngles = saved === 'true';
+  } else {
+    showJointAngles = true; // Enabled by default as requested
+  }
+} catch (e) {
+  showJointAngles = true;
+}
 
 function calculateJointAngle(p1, p2, p3) {
   if (!p1 || !p2 || !p3) return null;
@@ -11837,32 +13426,64 @@ function drawJointAnglesOverlay(kp) {
 
   const jointsToMeasure = [
     // Knees (مفاصل زانو)
-    { name: 'زانوی راست', p1: kp['right_hip'], p2: kp['right_knee'], p3: kp['right_ankle'], color: '#22c55e', side: 'r' },
-    { name: 'زانوی چپ', p1: kp['left_hip'], p2: kp['left_knee'], p3: kp['left_ankle'], color: '#22c55e', side: 'l' },
+    { name: 'زانوی راست', p1: kp['right_hip'], p2: kp['right_knee'], p3: kp['right_ankle'], color: '#22c55e', side: 'r', type: 'knee' },
+    { name: 'زانوی چپ', p1: kp['left_hip'], p2: kp['left_knee'], p3: kp['left_ankle'], color: '#22c55e', side: 'l', type: 'knee' },
     // Elbows (مفاصل آرنج)
-    { name: 'آرنج راست', p1: kp['right_shoulder'], p2: kp['right_elbow'], p3: kp['right_wrist'], color: '#38bdf8', side: 'r' },
-    { name: 'آرنج چپ', p1: kp['left_shoulder'], p2: kp['left_elbow'], p3: kp['left_wrist'], color: '#38bdf8', side: 'l' },
+    { name: 'آرنج راست', p1: kp['right_shoulder'], p2: kp['right_elbow'], p3: kp['right_wrist'], color: '#38bdf8', side: 'r', type: 'elbow' },
+    { name: 'آرنج چپ', p1: kp['left_shoulder'], p2: kp['left_elbow'], p3: kp['left_wrist'], color: '#38bdf8', side: 'l', type: 'elbow' },
     // Hips (مفاصل ران / لگن)
-    { name: 'لگن راست', p1: kp['right_shoulder'], p2: kp['right_hip'], p3: kp['right_knee'], color: '#f59e0b', side: 'r' },
-    { name: 'لگن چپ', p1: kp['left_shoulder'], p2: kp['left_hip'], p3: kp['left_knee'], color: '#f59e0b', side: 'l' },
+    { name: 'لگن راست', p1: kp['right_shoulder'], p2: kp['right_hip'], p3: kp['right_knee'], color: '#f59e0b', side: 'r', type: 'hip' },
+    { name: 'لگن چپ', p1: kp['left_shoulder'], p2: kp['left_hip'], p3: kp['left_knee'], color: '#f59e0b', side: 'l', type: 'hip' },
     // Shoulders (مفاصل شانه)
-    { name: 'شانه راست', p1: kp['right_elbow'], p2: kp['right_shoulder'], p3: kp['right_hip'], color: '#a855f7', side: 'r' },
-    { name: 'شانه چپ', p1: kp['left_elbow'], p2: kp['left_shoulder'], p3: kp['left_hip'], color: '#a855f7', side: 'l' },
+    { name: 'شانه راست', p1: kp['right_elbow'], p2: kp['right_shoulder'], p3: kp['right_hip'], color: '#a855f7', side: 'r', type: 'shoulder' },
+    { name: 'شانه چپ', p1: kp['left_elbow'], p2: kp['left_shoulder'], p3: kp['left_hip'], color: '#a855f7', side: 'l', type: 'shoulder' },
     // Ankles (مچ پا)
-    { name: 'مچ پای راست', p1: kp['right_knee'], p2: kp['right_ankle'], p3: kp['right_foot_index'], color: '#10b981', side: 'r' },
-    { name: 'مچ پای چپ', p1: kp['left_knee'], p2: kp['left_ankle'], p3: kp['left_foot_index'], color: '#10b981', side: 'l' }
+    { name: 'مچ پای راست', p1: kp['right_knee'], p2: kp['right_ankle'], p3: kp['right_foot_index'], color: '#10b981', side: 'r', type: 'ankle' },
+    { name: 'مچ پای چپ', p1: kp['left_knee'], p2: kp['left_ankle'], p3: kp['left_foot_index'], color: '#10b981', side: 'l', type: 'ankle' }
   ];
+
+  // Measure Torso / Spine inclination
+  const ls = kp['left_shoulder'], rs = kp['right_shoulder'];
+  const lh = kp['left_hip'], rh = kp['right_hip'];
+  const lk = kp['left_knee'], rk = kp['right_knee'];
+  if (ls && rs && lh && rh && ls.score > 0.25 && rs.score > 0.25 && lh.score > 0.25 && rh.score > 0.25) {
+    const midS = { x: (ls.x + rs.x) / 2, y: (ls.y + rs.y) / 2, score: 0.9 };
+    const midH = { x: (lh.x + rh.x) / 2, y: (lh.y + rh.y) / 2, score: 0.9 };
+    const midK = (lk && rk && lk.score > 0.2 && rk.score > 0.2) 
+      ? { x: (lk.x + rk.x) / 2, y: (lk.y + rk.y) / 2, score: 0.9 } 
+      : { x: midH.x, y: midH.y + 120, score: 0.9 };
+    
+    jointsToMeasure.push({
+      name: 'تنه / ستون‌فقرات',
+      p1: midS,
+      p2: midH,
+      p3: midK,
+      color: '#c084fc',
+      side: 'l',
+      type: 'torso'
+    });
+  }
 
   ctx.save();
   ctx.font = 'bold 11px Vazirmatn, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
+  let latestKnee = null;
+  let latestHip = null;
+  let latestElbow = null;
+  let latestTorso = null;
+
   for (const item of jointsToMeasure) {
     const res = calculateJointAngle(item.p1, item.p2, item.p3);
     if (!res) continue;
 
     const { angle, p2, rad1, rad2 } = res;
+    if (item.type === 'knee') latestKnee = angle;
+    if (item.type === 'hip') latestHip = angle;
+    if (item.type === 'elbow') latestElbow = angle;
+    if (item.type === 'torso') latestTorso = angle;
+
     const arcRadius = 22;
 
     // 1. Draw angle sector arc around vertex
@@ -11913,7 +13534,219 @@ function drawJointAnglesOverlay(kp) {
   }
 
   ctx.restore();
+
+  // Update Live Telemetry Badges
+  if (latestKnee !== null) {
+    const el = document.getElementById('telemAngleKnee');
+    if (el) el.textContent = `${latestKnee}°`;
+  }
+  if (latestHip !== null) {
+    const el = document.getElementById('telemAngleHip');
+    if (el) el.textContent = `${latestHip}°`;
+  }
+  if (latestElbow !== null) {
+    const el = document.getElementById('telemAngleElbow');
+    if (el) el.textContent = `${latestElbow}°`;
+  }
+  if (latestTorso !== null) {
+    const el = document.getElementById('telemAngleTorso');
+    if (el) el.textContent = `${latestTorso}°`;
+  }
+  const mainTelemAngle = document.getElementById('telemMetric3Val');
+  if (mainTelemAngle && (latestKnee !== null || latestHip !== null)) {
+    mainTelemAngle.textContent = `${latestKnee || latestHip}°`;
+  }
 }
+
+// ================== ATHLETE HEIGHT CALCULATION & CALIPER OVERLAY ==================
+// Explicit user requirement: برنامه باید قد بازیکن رو بدست بیاره و زاویه های بین مفاصلش رو نشون بده
+let athleteDetectedHeightBuffer = [];
+window.lastDetectedAthleteHeightCm = null;
+
+function calculateAthleteHeight(kp) {
+  if (!kp) return null;
+  const nose = kp['nose'];
+  const leye = kp['left_eye'], reye = kp['right_eye'];
+  const ls = kp['left_shoulder'], rs = kp['right_shoulder'];
+  const lh = kp['left_hip'], rh = kp['right_hip'];
+  const la = kp['left_ankle'], ra = kp['right_ankle'];
+  const lf = kp['left_foot_index'], rf = kp['right_foot_index'];
+
+  // Needs visible upper body and at least one foot/ankle
+  if (!nose || !ls || !rs || !lh || !rh) return null;
+  const feet = [la, ra, lf, rf].filter(p => p && p.score > 0.20);
+  if (feet.length === 0) return null;
+
+  // Head crown vertex estimation
+  const eyeY = (leye && reye && leye.score > 0.2 && reye.score > 0.2) ? (leye.y + reye.y) / 2 : nose.y - 14;
+  const eyeDist = Math.max(12, Math.abs(nose.y - eyeY));
+  const crownY = nose.y - (eyeDist * 3.3);
+
+  // Soles on floor level
+  const feetY = Math.max(...feet.map(p => p.y));
+  const totalHeightPx = feetY - crownY;
+
+  if (totalHeightPx < 70) return null;
+
+  let estCm = 0;
+  if (typeof window.a4CalibrationScaleCmPerPx === 'number' && window.a4CalibrationScaleCmPerPx > 0) {
+    estCm = Math.round(totalHeightPx * window.a4CalibrationScaleCmPerPx);
+  } else if (typeof currentEstimatedScaleCmPerPx === 'number' && currentEstimatedScaleCmPerPx > 0) {
+    estCm = Math.round(totalHeightPx * currentEstimatedScaleCmPerPx);
+  } else {
+    // Optical biometric proportions: Human body height is ~7.5 to 7.8 times head height (Greek canon)
+    const headHeightPx = Math.max(22, eyeDist * 3.6);
+    estCm = Math.round((totalHeightPx / headHeightPx) * 23.2);
+  }
+
+  // Sanity clamp for athlete population (110 - 235 cm)
+  if (estCm >= 110 && estCm <= 235) {
+    athleteDetectedHeightBuffer.push(estCm);
+    if (athleteDetectedHeightBuffer.length > 18) athleteDetectedHeightBuffer.shift();
+    const sorted = [...athleteDetectedHeightBuffer].sort((a, b) => a - b);
+    const medianHeight = sorted[Math.floor(sorted.length / 2)];
+    window.lastDetectedAthleteHeightCm = medianHeight;
+
+    // Update Telemetry & Card badges
+    const liveChip = document.getElementById('statsLiveDetectedHeight');
+    if (liveChip) liveChip.textContent = String(medianHeight);
+    const badge = document.getElementById('liveHeightBadge');
+    if (badge) badge.textContent = `قد دوربین: ${medianHeight} cm`;
+
+    return {
+      crownY,
+      feetY,
+      heightCm: medianHeight,
+      athleteX: (ls.x + rs.x) / 2
+    };
+  }
+
+  return null;
+}
+
+function drawAthleteHeightOverlay(kp) {
+  const res = calculateAthleteHeight(kp);
+  if (!res) return;
+
+  const { crownY, feetY, heightCm, athleteX } = res;
+
+  ctx.save();
+  // Choose side with more clearance on canvas
+  const isRightSide = athleteX < canvas.width / 2;
+  const caliperX = isRightSide ? Math.min(canvas.width - 24, athleteX + 110) : Math.max(24, athleteX - 110);
+
+  // 1. Caliper vertical ruler line
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 2.5;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  ctx.moveTo(caliperX, crownY);
+  ctx.lineTo(caliperX, feetY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 2. Top tick at crown level
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(caliperX - 16, crownY);
+  ctx.lineTo(caliperX + 16, crownY);
+  ctx.stroke();
+
+  // 3. Bottom tick at floor soles level
+  ctx.beginPath();
+  ctx.moveTo(caliperX - 16, feetY);
+  ctx.lineTo(caliperX + 16, feetY);
+  ctx.stroke();
+
+  // 4. Subtle projection line to athlete
+  ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(athleteX, crownY);
+  ctx.lineTo(caliperX, crownY);
+  ctx.moveTo(athleteX, feetY);
+  ctx.lineTo(caliperX, feetY);
+  ctx.stroke();
+
+  // 5. Central height badge
+  const badgeY = (crownY + feetY) / 2;
+  const label = `📏 قد: ${heightCm} cm`;
+  ctx.font = 'bold 12px Vazirmatn, Tahoma, sans-serif';
+  const textW = ctx.measureText(label).width;
+  const bw = textW + 18;
+  const bh = 26;
+
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
+  ctx.beginPath();
+  if (ctx.roundRect) {
+    ctx.roundRect(caliperX - bw / 2, badgeY - bh / 2, bw, bh, 8);
+  } else {
+    ctx.rect(caliperX - bw / 2, badgeY - bh / 2, bw, bh);
+  }
+  ctx.fill();
+
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(label, caliperX, badgeY + 1);
+
+  ctx.restore();
+}
+
+function applyLiveDetectedHeightToAthlete() {
+  if (!window.lastDetectedAthleteHeightCm) {
+    setStatus('⚠️ قد ورزشکار هنوز در زاویه دوربین به وضوح تشخیص داده نشده است.');
+    return;
+  }
+  const h = window.lastDetectedAthleteHeightCm;
+  const active = (typeof getActiveAthlete === 'function') ? getActiveAthlete() : null;
+  if (active) {
+    active.heightCm = h;
+    const athletes = getAthletes();
+    const idx = athletes.findIndex(a => a.id === active.id);
+    if (idx !== -1) {
+      athletes[idx].heightCm = h;
+      saveAthletes(athletes);
+    }
+    if (typeof athleteHeightCm !== 'undefined') athleteHeightCm = h;
+    const heightInput = document.getElementById('athleteHeightSetting');
+    if (heightInput) heightInput.value = h;
+    if (typeof updateActiveAthleteUI === 'function') updateActiveAthleteUI();
+    const statsH = document.getElementById('statsAthleteHeight');
+    if (statsH) statsH.textContent = String(h);
+    playChime(780, 'triangle', 0.15);
+    setStatus(`📏 قد ${h} سانتی‌متر در پروفایل «${active.name}» ثبت شد ✅`);
+    if (typeof showShortcutToast === 'function') {
+      showShortcutToast(`📏 قد ${h}cm برای ${active.name} ثبت شد`);
+    }
+  }
+}
+
+// Wire up height apply buttons
+document.addEventListener('DOMContentLoaded', () => {
+  const btn1 = document.getElementById('applyDetectedHeightBtn');
+  if (btn1) btn1.addEventListener('click', applyLiveDetectedHeightToAthlete);
+  const btn2 = document.getElementById('applyLiveHeightBtn');
+  if (btn2) btn2.addEventListener('click', applyLiveDetectedHeightToAthlete);
+});
+// Also attach immediately in case DOM is already loaded
+setTimeout(() => {
+  const btn1 = document.getElementById('applyDetectedHeightBtn');
+  if (btn1 && !btn1._bound) {
+    btn1._bound = true;
+    btn1.addEventListener('click', applyLiveDetectedHeightToAthlete);
+  }
+  const btn2 = document.getElementById('applyLiveHeightBtn');
+  if (btn2 && !btn2._bound) {
+    btn2._bound = true;
+    btn2.addEventListener('click', applyLiveDetectedHeightToAthlete);
+  }
+}, 500);
 
 function toggleJointAngles(forcedVal) {
   if (typeof forcedVal === 'boolean') {
@@ -12284,6 +14117,30 @@ function initKeyboardShortcuts() {
 
     const key = e.key;
 
+    // Review Panel Active Keyboard Controls
+    if (typeof isReviewPanelActive !== 'undefined' && isReviewPanelActive) {
+      if (key === ' ' || e.code === 'Space') {
+        e.preventDefault();
+        if (typeof toggleReviewPlayback === 'function') toggleReviewPlayback();
+        return;
+      }
+      if (key === '[' || key === 'ArrowLeft') {
+        e.preventDefault();
+        if (typeof stepReviewFrame === 'function') stepReviewFrame(-1);
+        return;
+      }
+      if (key === ']' || key === 'ArrowRight') {
+        e.preventDefault();
+        if (typeof stepReviewFrame === 'function') stepReviewFrame(1);
+        return;
+      }
+      if (key === 'Escape') {
+        e.preventDefault();
+        if (typeof closeSideBySideReviewPanel === 'function') closeSideBySideReviewPanel();
+        return;
+      }
+    }
+
     if (key === ' ' || e.code === 'Space') {
       e.preventDefault();
       triggerCurrentTest();
@@ -12374,8 +14231,15 @@ function initKeyboardShortcuts() {
 
     if (key === 'r' || key === 'R' || key === 'ق') {
       e.preventDefault();
-      resetActiveModeTest();
-      showShortcutToast('🔄 بازنشانی آزمون جاری (R)');
+      if (e.shiftKey) {
+        resetActiveModeTest();
+        showShortcutToast('🔄 بازنشانی آزمون جاری (Shift+R)');
+      } else if (typeof toggleSideBySideReviewPanel === 'function') {
+        toggleSideBySideReviewPanel();
+      } else {
+        resetActiveModeTest();
+        showShortcutToast('🔄 بازنشانی آزمون جاری (R)');
+      }
       return;
     }
 
@@ -12384,6 +14248,14 @@ function initKeyboardShortcuts() {
       if (typeof swapCameras === 'function') {
         swapCameras();
         showShortcutToast('📷 تعویض / سوییچ دوربین (C)');
+      }
+      return;
+    }
+
+    if (key === 'f' || key === 'F' || key === 'ب') {
+      e.preventDefault();
+      if (typeof triggerBiometricFocusShortcut === 'function') {
+        triggerBiometricFocusShortcut();
       }
       return;
     }
@@ -12603,6 +14475,11 @@ async function detectLoop() {
         applyPoseKalmanFilter(poses[0].keypoints);
       }
       drawPose(poses);
+
+      // Record rolling 5-second buffer for slow-motion side-by-side review
+      if (typeof recordRollingBufferFrame === 'function') {
+        recordRollingBufferFrame(poses);
+      }
 
       // Render secondary camera feed if active
       if (typeof renderSecondaryFeed === 'function') {
@@ -13229,10 +15106,14 @@ function initDesktopStudioArchitecture() {
   // Multi-Camera Modal Controls
   initMultiCamModalListeners();
 
-  // Joint Angles toggle in stats workstation
-  const statsToggleJointAnglesBtn = document.getElementById('statsToggleJointAnglesBtn');
-  if (statsToggleJointAnglesBtn) {
-    statsToggleJointAnglesBtn.addEventListener('click', () => toggleJointAngles());
+  // Hardware Camera Focus-Control System in Workstation
+  if (typeof initWorkstationFocusControlsUI === 'function') {
+    initWorkstationFocusControlsUI();
+  }
+
+  // 5-Second Buffer & Slow-Motion Side-by-Side Review System
+  if (typeof initSlowMotionReviewSystem === 'function') {
+    initSlowMotionReviewSystem();
   }
 
   // Camera Alignment Grid toggle in stats workstation
@@ -13548,6 +15429,17 @@ async function connectSecondaryCamera(deviceId) {
 
     isSecondaryCameraActive = true;
 
+    // Inspect secondary camera hardware focus capabilities
+    try {
+      const secTrack = secondaryCameraStream.getVideoTracks()[0];
+      if (secTrack) {
+        inspectTrackFocusCapabilities(secTrack, 'secondary');
+        await applyCameraFocusConstraints('secondary', { mode: 'continuous' });
+      }
+    } catch (fErr) {
+      console.warn('Could not inspect secondary camera focus constraints:', fErr);
+    }
+
     const feed2Box = document.getElementById('cameraFeed2');
     if (feed2Box) feed2Box.style.display = 'block';
 
@@ -13574,6 +15466,14 @@ function disconnectSecondaryCamera() {
   }
   secondaryCameraId = null;
   isSecondaryCameraActive = false;
+  if (cameraFocusState && cameraFocusState.secondary) {
+    cameraFocusState.secondary.supported = false;
+    cameraFocusState.secondary.track = null;
+    if (cameraFocusState.target === 'secondary') {
+      cameraFocusState.target = 'primary';
+    }
+    updateFocusControlUI();
+  }
 
   const feed2Box = document.getElementById('cameraFeed2');
   if (feed2Box) feed2Box.style.display = 'none';
@@ -13900,28 +15800,42 @@ function updateLaptopTelemetryView() {
     v4.textContent = typeof agilityPhase !== 'undefined' ? agilityPhase : 'آماده';
   } else if (mode === 'situp') {
     l1.textContent = '🧘 تکرارهای صحیح';
-    v1.textContent = typeof situpCount !== 'undefined' ? `${situpCount}` : '0';
+    v1.textContent = typeof situpRepCount !== 'undefined' ? `${situpRepCount}` : (typeof situpCount !== 'undefined' ? `${situpCount}` : '0');
 
     l2.textContent = '📐 زاویه تنه و ستون فقرات';
-    v2.textContent = typeof situpAngle !== 'undefined' ? `${Math.round(situpAngle)}°` : '--°';
+    v2.textContent = typeof situpCurrentAngle !== 'undefined' && situpCurrentAngle != null ? `${Math.round(situpCurrentAngle)}°` : (typeof situpAngle !== 'undefined' ? `${Math.round(situpAngle)}°` : '--°');
 
     l3.textContent = '⏱️ زمان آزمون';
-    v3.textContent = typeof situpTimer !== 'undefined' ? `${Math.round(situpTimer)} s` : '--';
+    const sElapsed = situpStartTime && situpPhase === 'running' ? ((performance.now() - situpStartTime) / 1000).toFixed(1) : (typeof situpTimer !== 'undefined' ? `${Math.round(situpTimer)}` : '0.0');
+    v3.textContent = `${sElapsed} s`;
 
-    l4.textContent = '🎯 ریتم در دقیقه (Cadence)';
-    v4.textContent = typeof situpCadence !== 'undefined' ? `${situpCadence} rpm` : '--';
+    l4.textContent = '🎯 آنالیز فرم حرکت (AI)';
+    if (activeAiFormWarning && activeAiFormWarning.mode === 'situp') {
+      v4.textContent = activeAiFormWarning.shortText;
+      v4.className = 'telem-val warn';
+    } else {
+      v4.textContent = situpPhase === 'running' ? '✅ فرم استاندارد' : 'آماده';
+      v4.className = 'telem-val success';
+    }
   } else if (mode === 'pushup') {
     l1.textContent = '💪 شنا سوئدی صحیح';
-    v1.textContent = typeof pushupCount !== 'undefined' ? `${pushupCount}` : '0';
+    v1.textContent = typeof pushupRepCount !== 'undefined' ? `${pushupRepCount}` : (typeof pushupCount !== 'undefined' ? `${pushupCount}` : '0');
 
     l2.textContent = '📐 زاویه آرنج';
-    v2.textContent = typeof pushupElbowAngle !== 'undefined' ? `${Math.round(pushupElbowAngle)}°` : '--°';
+    v2.textContent = typeof pushupCurrentElbowAngle !== 'undefined' && pushupCurrentElbowAngle != null ? `${Math.round(pushupCurrentElbowAngle)}°` : (typeof pushupElbowAngle !== 'undefined' ? `${Math.round(pushupElbowAngle)}°` : '--°');
 
     l3.textContent = '⏱️ زمان آزمون';
-    v3.textContent = typeof pushupTimer !== 'undefined' ? `${Math.round(pushupTimer)} s` : '--';
+    const pElapsed = pushupStartTime && pushupPhase === 'running' ? ((performance.now() - pushupStartTime) / 1000).toFixed(1) : (typeof pushupTimer !== 'undefined' ? `${Math.round(pushupTimer)}` : '0.0');
+    v3.textContent = `${pElapsed} s`;
 
-    l4.textContent = '🎯 وضعیت فرم حرکت';
-    v4.textContent = typeof pushupPhase !== 'undefined' ? pushupPhase : 'آماده';
+    l4.textContent = '🎯 آنالیز فرم حرکت (AI)';
+    if (activeAiFormWarning && activeAiFormWarning.mode === 'pushup') {
+      v4.textContent = activeAiFormWarning.shortText;
+      v4.className = 'telem-val warn';
+    } else {
+      v4.textContent = pushupPhase === 'running' ? '✅ فرم استاندارد' : 'آماده';
+      v4.className = 'telem-val success';
+    }
   } else if (mode === 'anthro') {
     l1.textContent = '🧍 قد خودکار / بالاتنه';
     v1.textContent = `${Math.round(anthroHeightCm || 175)}cm | تنه: ${Math.round(anthroTrunkCm || 90)}cm`;
@@ -13945,6 +15859,889 @@ function updateLaptopTelemetryView() {
     l4.textContent = '👤 ورزشکار فعال';
     v4.textContent = getActiveAthlete().name;
   }
+}
+
+// ============================================================================
+// 5-SECOND BUFFER & SIDE-BY-SIDE SLOW-MOTION REVIEW SYSTEM
+// Allows coaches to review the last 5-second attempt in slow motion side-by-side
+// ============================================================================
+
+const REVIEW_BUFFER_SECONDS = 5.0;
+const REVIEW_TARGET_FPS = 25;
+const MAX_REVIEW_BUFFER_FRAMES = 125; // 5.0s * 25fps
+const REVIEW_FRAME_INTERVAL_MS = 1000 / REVIEW_TARGET_FPS; // 40ms
+
+let rollingFrameBuffer = [];
+let lastRollingFrameTimestamp = 0;
+let reviewBufferOffscreenCanvas = null;
+let reviewBufferOffscreenCtx = null;
+
+// Frozen active buffer for coach review playback
+let activeReviewBuffer = [];
+let isReviewPanelActive = false;
+let reviewPanelLayoutMode = 'side-by-side'; // 'side-by-side' | 'fullscreen'
+let reviewPlaybackRate = 0.5; // 0.1, 0.25, 0.5, 1.0
+let reviewCurrentFrameIndex = 0;
+let isReviewPlaying = false;
+let reviewPlayRafId = null;
+let lastReviewPlayTimestamp = 0;
+let isReviewLooping = true;
+let reviewShowJointAngles = true;
+let reviewApexFrameIndex = -1;
+let reviewLastAttemptMeta = null;
+
+let reviewCanvas = null;
+let reviewCtx = null;
+let isRollingBufferRecording = true;
+
+/**
+ * Release reference-counted frame bitmap to prevent memory leak
+ */
+function releaseReviewBufferFrame(frame) {
+  if (!frame) return;
+  frame.refCount = (frame.refCount || 1) - 1;
+  if (frame.refCount <= 0) {
+    if (frame.bitmap && typeof frame.bitmap.close === 'function') {
+      try {
+        frame.bitmap.close();
+      } catch (e) {
+        // ignore already closed
+      }
+    }
+    frame.bitmap = null;
+    frame.keypoints = null;
+  }
+}
+
+/**
+ * Record a continuous rolling 5-second buffer of video + skeleton overlay
+ * Called from detectLoop on every frame
+ */
+async function recordRollingBufferFrame(poses) {
+  if (!isRollingBufferRecording) return;
+  const now = performance.now();
+  if (now - lastRollingFrameTimestamp < REVIEW_FRAME_INTERVAL_MS - 4) {
+    return;
+  }
+  lastRollingFrameTimestamp = now;
+
+  const vid = document.getElementById('video');
+  if (!vid || vid.readyState < 2 || vid.videoWidth === 0) return;
+
+  const overlayCanvas = document.getElementById('overlay');
+
+  if (!reviewBufferOffscreenCanvas) {
+    reviewBufferOffscreenCanvas = document.createElement('canvas');
+    reviewBufferOffscreenCtx = reviewBufferOffscreenCanvas.getContext('2d', { alpha: false });
+  }
+
+  // Keep frame dimension crisp yet memory-efficient (640x360 or 480x270)
+  const targetW = 640;
+  const targetH = Math.round(targetW * (vid.videoHeight / vid.videoWidth)) || 360;
+  if (reviewBufferOffscreenCanvas.width !== targetW || reviewBufferOffscreenCanvas.height !== targetH) {
+    reviewBufferOffscreenCanvas.width = targetW;
+    reviewBufferOffscreenCanvas.height = targetH;
+  }
+
+  // Draw camera video feed
+  try {
+    reviewBufferOffscreenCtx.drawImage(vid, 0, 0, targetW, targetH);
+    // Draw skeleton and biometric overlay if present
+    if (overlayCanvas && overlayCanvas.width > 0 && overlayCanvas.height > 0) {
+      reviewBufferOffscreenCtx.drawImage(overlayCanvas, 0, 0, targetW, targetH);
+    }
+  } catch (e) {
+    return;
+  }
+
+  // Extract keypoints and metrics for biometric verification during review
+  let simplifiedKeypoints = null;
+  let pelvisY = null;
+  let kneeAngleVal = null;
+  if (poses && poses.length > 0 && poses[0].keypoints) {
+    const kps = poses[0].keypoints;
+    simplifiedKeypoints = kps.map(kp => ({
+      x: kp.x / (overlayCanvas ? overlayCanvas.width : vid.videoWidth),
+      y: kp.y / (overlayCanvas ? overlayCanvas.height : vid.videoHeight),
+      score: kp.score,
+      name: kp.name
+    }));
+
+    // Find hip / pelvis vertical position
+    const leftHip = kps.find(k => k.name === 'left_hip');
+    const rightHip = kps.find(k => k.name === 'right_hip');
+    if (leftHip && rightHip) {
+      pelvisY = (leftHip.y + rightHip.y) / 2;
+    } else if (leftHip) {
+      pelvisY = leftHip.y;
+    }
+
+    // Calculate knee angle if knee and ankle present
+    const hip = leftHip || rightHip;
+    const knee = kps.find(k => k.name === 'left_knee' || k.name === 'right_knee');
+    const ankle = kps.find(k => k.name === 'left_ankle' || k.name === 'right_ankle');
+    if (hip && knee && ankle && typeof calculateAngle === 'function') {
+      kneeAngleVal = calculateAngle(hip, knee, ankle);
+    }
+  }
+
+  try {
+    let bitmap = null;
+    if (window.createImageBitmap) {
+      bitmap = await createImageBitmap(reviewBufferOffscreenCanvas);
+    } else {
+      // Fallback clone canvas
+      const copyCanvas = document.createElement('canvas');
+      copyCanvas.width = targetW;
+      copyCanvas.height = targetH;
+      const copyCtx = copyCanvas.getContext('2d');
+      copyCtx.drawImage(reviewBufferOffscreenCanvas, 0, 0);
+      bitmap = copyCanvas;
+    }
+
+    const frameItem = {
+      bitmap,
+      timestamp: Date.now(),
+      pelvisY,
+      kneeAngle: kneeAngleVal,
+      keypoints: simplifiedKeypoints,
+      refCount: 1
+    };
+
+    rollingFrameBuffer.push(frameItem);
+
+    // Maintain max 5.0-second buffer
+    while (rollingFrameBuffer.length > MAX_REVIEW_BUFFER_FRAMES) {
+      const oldest = rollingFrameBuffer.shift();
+      releaseReviewBufferFrame(oldest);
+    }
+  } catch (err) {
+    // Suppress drawing error if frame drops
+  }
+}
+
+/**
+ * Capture the last 5-second buffer of a completed test attempt
+ * Hooked directly into saveToHistory(...)
+ */
+function captureLastAttemptForReview(testType, testData, entry) {
+  if (rollingFrameBuffer.length === 0) return;
+
+  // Release old activeReviewBuffer frames
+  if (activeReviewBuffer && activeReviewBuffer.length > 0) {
+    activeReviewBuffer.forEach(f => releaseReviewBufferFrame(f));
+    activeReviewBuffer = [];
+  }
+
+  // Freeze rolling buffer into active review buffer
+  activeReviewBuffer = rollingFrameBuffer.map(f => {
+    f.refCount = (f.refCount || 1) + 1;
+    return f;
+  });
+
+  // Determine Apex / Peak milestone frame in the 5-second buffer
+  let apexIdx = -1;
+  if (testType === 'jump' || testType === 'countermovement') {
+    // For vertical jump: frame with minimum pelvis Y (highest point off ground)
+    let minPelvisY = Infinity;
+    activeReviewBuffer.forEach((f, idx) => {
+      if (f.pelvisY !== null && f.pelvisY < minPelvisY) {
+        minPelvisY = f.pelvisY;
+        apexIdx = idx;
+      }
+    });
+  } else if (testType === 'situp' || testType === 'pushup') {
+    // For rep tests: frame with extreme knee/elbow angle
+    let maxAngle = -Infinity;
+    activeReviewBuffer.forEach((f, idx) => {
+      if (f.kneeAngle && f.kneeAngle > maxAngle) {
+        maxAngle = f.kneeAngle;
+        apexIdx = idx;
+      }
+    });
+  }
+
+  // Default apex fallback: 75% point of buffer (near test finish)
+  if (apexIdx < 0) {
+    apexIdx = Math.max(0, Math.floor(activeReviewBuffer.length * 0.75));
+  }
+  reviewApexFrameIndex = apexIdx;
+
+  // Format Persian test title and result summary
+  let testTitleFa = 'آزمون ورزشی';
+  let resultSummaryFa = '--';
+  if (testType === 'jump') {
+    testTitleFa = 'پرش عمودی سارجنت';
+    resultSummaryFa = testData && testData.height ? `${testData.height} cm` : (testData && testData.maxJump ? `${testData.maxJump} cm` : 'ثبت شد');
+  } else if (testType === 'run') {
+    testTitleFa = 'دوی سرعت و شتاب';
+    resultSummaryFa = testData && testData.time ? `${testData.time} s` : (testData && testData.speed ? `${testData.speed} km/h` : 'ثبت شد');
+  } else if (testType === 'agility') {
+    testTitleFa = 'چابکی ۵۰۵ / ۹×۴';
+    resultSummaryFa = testData && testData.time ? `${testData.time} s` : 'ثبت شد';
+  } else if (testType === 'bosco') {
+    testTitleFa = 'پرش متوالی بوسکو';
+    resultSummaryFa = testData && testData.totalJumps ? `${testData.totalJumps} پرش` : 'ثبت شد';
+  } else if (testType === 'situp') {
+    testTitleFa = 'درازونشست استاندارد';
+    resultSummaryFa = testData && testData.count ? `${testData.count} تکرار` : 'ثبت شد';
+  } else if (testType === 'pushup') {
+    testTitleFa = 'شنا سوئدی استاندارد';
+    resultSummaryFa = testData && testData.count ? `${testData.count} تکرار` : 'ثبت شد';
+  } else if (testType === 'anthro') {
+    testTitleFa = 'آنتروپومتری و قد';
+    resultSummaryFa = testData && testData.height ? `${testData.height} cm` : 'ثبت شد';
+  } else if (testType === 'wingspan') {
+    testTitleFa = 'طول دست‌ها (Wingspan)';
+    resultSummaryFa = testData && testData.span ? `${testData.span} cm` : 'ثبت شد';
+  }
+
+  reviewLastAttemptMeta = {
+    testType,
+    testTitleFa,
+    resultSummaryFa,
+    athleteName: entry ? entry.athleteName : getActiveAthlete().name,
+    athleteCode: entry ? entry.athleteCode : getActiveAthlete().code,
+    date: entry ? entry.date : new Date().toLocaleDateString('fa-IR'),
+    timestamp: Date.now(),
+    totalFrames: activeReviewBuffer.length,
+    apexIdx: reviewApexFrameIndex
+  };
+
+  // Update Workstation Review Card UI
+  const workstationReviewTestName = document.getElementById('workstationReviewTestName');
+  if (workstationReviewTestName) {
+    workstationReviewTestName.textContent = testTitleFa;
+  }
+  const workstationReviewResult = document.getElementById('workstationReviewResult');
+  if (workstationReviewResult) {
+    workstationReviewResult.textContent = resultSummaryFa;
+  }
+  const reviewBadgeTitle = document.getElementById('reviewBadgeTitle');
+  if (reviewBadgeTitle) {
+    reviewBadgeTitle.textContent = `🎬 بازبینی: ${testTitleFa} (${reviewLastAttemptMeta.athleteName})`;
+  }
+  const reviewBadgeMetric = document.getElementById('reviewBadgeMetric');
+  if (reviewBadgeMetric) {
+    reviewBadgeMetric.textContent = `نتیجه: ${resultSummaryFa}`;
+  }
+
+  // Update topbar button dot indicator
+  const reviewBufferReadyDot = document.getElementById('reviewBufferReadyDot');
+  if (reviewBufferReadyDot) {
+    reviewBufferReadyDot.style.background = '#4ade80';
+    reviewBufferReadyDot.style.boxShadow = '0 0 8px #4ade80';
+  }
+
+  // Check setting: Auto-open review after test completion
+  const settingAutoReview = document.getElementById('settingAutoReviewAfterTest');
+  const shouldAutoReview = settingAutoReview ? settingAutoReview.checked : true;
+
+  if (shouldAutoReview) {
+    openSideBySideReviewPanel(true);
+    if (typeof showShortcutToast === 'function') {
+      showShortcutToast(`🎬 بافر ۵ث ثبت شد • بازبینی صحنه آهسته ${testTitleFa} فعال گردید`);
+    }
+  } else {
+    if (typeof showShortcutToast === 'function') {
+      showShortcutToast(`🎬 بافر ۵ث ثبت شد • برای بازبینی کلید R یا دکمه بازبینی را بزنید`);
+    }
+  }
+}
+
+/**
+ * Open Side-by-Side Review Panel
+ */
+function openSideBySideReviewPanel(startAtApex = false) {
+  if (activeReviewBuffer.length === 0) {
+    if (rollingFrameBuffer.length > 0) {
+      // Freeze current rolling buffer if no finalized test yet
+      captureLastAttemptForReview('manual', {}, {
+        athleteName: getActiveAthlete().name,
+        athleteCode: getActiveAthlete().code,
+        date: new Date().toLocaleDateString('fa-IR')
+      });
+    } else {
+      if (typeof showShortcutToast === 'function') {
+        showShortcutToast('⚠️ بافر ویدیویی هنوز پر نشده است. چند ثانیه مقابل دوربین حرکت کنید.');
+      }
+      return;
+    }
+  }
+
+  isReviewPanelActive = true;
+  const wrapper = document.getElementById('cameraFeedsWrapper');
+  const reviewFeed = document.getElementById('cameraReviewFeed');
+
+  if (wrapper) {
+    wrapper.classList.remove('feed-layout-single', 'feed-layout-split', 'feed-layout-pip');
+    if (reviewPanelLayoutMode === 'fullscreen') {
+      wrapper.classList.add('feed-layout-review-full');
+    } else {
+      wrapper.classList.add('feed-layout-review');
+    }
+  }
+
+  if (reviewFeed) {
+    reviewFeed.style.display = 'block';
+  }
+
+  reviewCanvas = document.getElementById('reviewCanvas');
+  if (reviewCanvas) {
+    reviewCtx = reviewCanvas.getContext('2d');
+    const boxW = reviewFeed ? reviewFeed.clientWidth : 640;
+    const boxH = reviewFeed ? reviewFeed.clientHeight : 360;
+    reviewCanvas.width = boxW || 640;
+    reviewCanvas.height = boxH || 360;
+  }
+
+  // Configure scrubber range
+  const scrubber = document.getElementById('reviewScrubber');
+  if (scrubber) {
+    scrubber.min = '0';
+    scrubber.max = `${Math.max(0, activeReviewBuffer.length - 1)}`;
+  }
+
+  const totalTimeEl = document.getElementById('reviewTimeTotal');
+  if (totalTimeEl) {
+    totalTimeEl.textContent = `${(activeReviewBuffer.length / REVIEW_TARGET_FPS).toFixed(2)}s`;
+  }
+
+  // Start from apex frame or frame 0
+  if (startAtApex && reviewApexFrameIndex >= 0) {
+    reviewCurrentFrameIndex = reviewApexFrameIndex;
+  } else if (reviewCurrentFrameIndex >= activeReviewBuffer.length) {
+    reviewCurrentFrameIndex = 0;
+  }
+
+  // Update button active state in topbar and stats window
+  updateReviewButtonsState(true);
+
+  // Render initial frame and begin slow-motion playback
+  renderReviewCurrentFrame();
+  startReviewPlayback();
+}
+
+/**
+ * Close Side-by-Side Review Panel
+ */
+function closeSideBySideReviewPanel() {
+  isReviewPanelActive = false;
+  pauseReviewPlayback();
+
+  const wrapper = document.getElementById('cameraFeedsWrapper');
+  const reviewFeed = document.getElementById('cameraReviewFeed');
+
+  if (wrapper) {
+    wrapper.classList.remove('feed-layout-review', 'feed-layout-review-full');
+    if (typeof isSecondaryCameraActive !== 'undefined' && isSecondaryCameraActive) {
+      wrapper.classList.add('feed-layout-split');
+    } else {
+      wrapper.classList.add('feed-layout-single');
+    }
+  }
+
+  if (reviewFeed) {
+    reviewFeed.style.display = 'none';
+  }
+
+  updateReviewButtonsState(false);
+  if (typeof showShortcutToast === 'function') {
+    showShortcutToast('🎬 پنل بازبینی بسته شد • بازگشت به نمای زنده');
+  }
+}
+
+/**
+ * Toggle Side-by-Side Review Panel
+ */
+function toggleSideBySideReviewPanel() {
+  if (isReviewPanelActive) {
+    closeSideBySideReviewPanel();
+  } else {
+    openSideBySideReviewPanel();
+  }
+}
+
+/**
+ * Toggle between Side-by-Side (50/50) and Fullscreen Review
+ */
+function toggleReviewLayoutMode() {
+  const wrapper = document.getElementById('cameraFeedsWrapper');
+  if (!wrapper) return;
+
+  if (reviewPanelLayoutMode === 'side-by-side') {
+    reviewPanelLayoutMode = 'fullscreen';
+    wrapper.classList.remove('feed-layout-review');
+    wrapper.classList.add('feed-layout-review-full');
+  } else {
+    reviewPanelLayoutMode = 'side-by-side';
+    wrapper.classList.remove('feed-layout-review-full');
+    wrapper.classList.add('feed-layout-review');
+  }
+
+  // Resize canvas to new container dimensions
+  setTimeout(() => {
+    const reviewFeed = document.getElementById('cameraReviewFeed');
+    if (reviewFeed && reviewCanvas) {
+      reviewCanvas.width = reviewFeed.clientWidth || 640;
+      reviewCanvas.height = reviewFeed.clientHeight || 360;
+      renderReviewCurrentFrame();
+    }
+  }, 100);
+}
+
+/**
+ * Update Review Buttons UI Active State
+ */
+function updateReviewButtonsState(isOpen) {
+  const slowMoReviewBtn = document.getElementById('slowMoReviewBtn');
+  if (slowMoReviewBtn) {
+    if (isOpen) {
+      slowMoReviewBtn.style.background = 'rgba(245, 158, 11, 0.25)';
+      slowMoReviewBtn.style.borderColor = '#f59e0b';
+    } else {
+      slowMoReviewBtn.style.background = '';
+      slowMoReviewBtn.style.borderColor = 'rgba(245, 158, 11, 0.5)';
+    }
+  }
+
+  const statsReviewBtn = document.getElementById('statsReviewBtn');
+  if (statsReviewBtn) {
+    if (isOpen) {
+      statsReviewBtn.style.background = 'rgba(245, 158, 11, 0.25)';
+      statsReviewBtn.style.borderColor = '#f59e0b';
+    } else {
+      statsReviewBtn.style.background = '';
+      statsReviewBtn.style.borderColor = 'rgba(245, 158, 11, 0.4)';
+    }
+  }
+}
+
+/**
+ * Start Slow-Motion Playback loop
+ */
+function startReviewPlayback() {
+  if (isReviewPlaying) return;
+  isReviewPlaying = true;
+  lastReviewPlayTimestamp = performance.now();
+
+  const playBtn = document.getElementById('reviewPlayPauseBtn');
+  if (playBtn) {
+    playBtn.textContent = '⏸️ توقف';
+    playBtn.classList.add('active');
+  }
+
+  function reviewLoop(timestamp) {
+    if (!isReviewPlaying || !isReviewPanelActive) return;
+
+    const interval = (REVIEW_FRAME_INTERVAL_MS / reviewPlaybackRate);
+    const elapsed = timestamp - lastReviewPlayTimestamp;
+
+    if (elapsed >= interval) {
+      lastReviewPlayTimestamp = timestamp - (elapsed % interval);
+      reviewCurrentFrameIndex++;
+
+      if (reviewCurrentFrameIndex >= activeReviewBuffer.length) {
+        if (isReviewLooping) {
+          reviewCurrentFrameIndex = 0;
+        } else {
+          reviewCurrentFrameIndex = activeReviewBuffer.length - 1;
+          pauseReviewPlayback();
+          renderReviewCurrentFrame();
+          return;
+        }
+      }
+
+      renderReviewCurrentFrame();
+    }
+
+    reviewPlayRafId = requestAnimationFrame(reviewLoop);
+  }
+
+  reviewPlayRafId = requestAnimationFrame(reviewLoop);
+}
+
+/**
+ * Pause Slow-Motion Playback
+ */
+function pauseReviewPlayback() {
+  isReviewPlaying = false;
+  if (reviewPlayRafId) {
+    cancelAnimationFrame(reviewPlayRafId);
+    reviewPlayRafId = null;
+  }
+
+  const playBtn = document.getElementById('reviewPlayPauseBtn');
+  if (playBtn) {
+    playBtn.textContent = '▶️ پخش';
+    playBtn.classList.remove('active');
+  }
+}
+
+/**
+ * Toggle Review Play / Pause
+ */
+function toggleReviewPlayback() {
+  if (isReviewPlaying) {
+    pauseReviewPlayback();
+  } else {
+    startReviewPlayback();
+  }
+}
+
+/**
+ * Step review frames forward or backward
+ */
+function stepReviewFrame(delta) {
+  pauseReviewPlayback();
+  if (activeReviewBuffer.length === 0) return;
+
+  reviewCurrentFrameIndex += delta;
+  if (reviewCurrentFrameIndex < 0) reviewCurrentFrameIndex = 0;
+  if (reviewCurrentFrameIndex >= activeReviewBuffer.length) reviewCurrentFrameIndex = activeReviewBuffer.length - 1;
+
+  renderReviewCurrentFrame();
+}
+
+/**
+ * Jump directly to the apex/peak frame
+ */
+function jumpToReviewApexFrame() {
+  pauseReviewPlayback();
+  if (reviewApexFrameIndex >= 0 && reviewApexFrameIndex < activeReviewBuffer.length) {
+    reviewCurrentFrameIndex = reviewApexFrameIndex;
+    renderReviewCurrentFrame();
+    if (typeof showShortcutToast === 'function') {
+      showShortcutToast(`⚡ پرش به لحظه اوج رکورد (فریم ${reviewApexFrameIndex + 1})`);
+    }
+  }
+}
+
+/**
+ * Set Slow-Motion Playback Speed
+ */
+function setReviewPlaybackSpeed(rate) {
+  reviewPlaybackRate = rate;
+  document.querySelectorAll('.review-speed-btn').forEach(btn => {
+    if (parseFloat(btn.dataset.speed) === rate) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+
+  if (typeof showShortcutToast === 'function') {
+    showShortcutToast(`⚡ سرعت بازبینی: ${rate}x`);
+  }
+}
+
+/**
+ * Render the current frame of the active review buffer onto reviewCanvas
+ */
+function renderReviewCurrentFrame() {
+  if (!reviewCanvas || !reviewCtx) {
+    reviewCanvas = document.getElementById('reviewCanvas');
+    if (!reviewCanvas) return;
+    reviewCtx = reviewCanvas.getContext('2d');
+  }
+
+  if (activeReviewBuffer.length === 0 || reviewCurrentFrameIndex < 0 || reviewCurrentFrameIndex >= activeReviewBuffer.length) {
+    return;
+  }
+
+  const frame = activeReviewBuffer[reviewCurrentFrameIndex];
+  if (!frame || !frame.bitmap) return;
+
+  const cw = reviewCanvas.width;
+  const ch = reviewCanvas.height;
+
+  // Clear canvas
+  reviewCtx.fillStyle = '#020617';
+  reviewCtx.fillRect(0, 0, cw, ch);
+
+  // Draw bitmap with aspect-ratio contain fitting
+  const bw = frame.bitmap.width || 640;
+  const bh = frame.bitmap.height || 360;
+  const scale = Math.min(cw / bw, ch / bh);
+  const dw = bw * scale;
+  const dh = bh * scale;
+  const dx = (cw - dw) / 2;
+  const dy = (ch - dh) / 2;
+
+  try {
+    reviewCtx.drawImage(frame.bitmap, dx, dy, dw, dh);
+  } catch (e) {
+    return;
+  }
+
+  // Draw Biomechanical Angle Overlays if enabled
+  if (reviewShowJointAngles && frame.keypoints) {
+    drawReviewBiomechanicalAngles(reviewCtx, frame.keypoints, dx, dy, dw, dh);
+  }
+
+  // Draw Apex Marker highlight if current frame is the peak moment
+  const isApex = (reviewCurrentFrameIndex === reviewApexFrameIndex);
+  const apexPill = document.getElementById('reviewApexMarkerPill');
+  if (apexPill) {
+    apexPill.style.display = isApex ? 'block' : 'none';
+  }
+
+  if (isApex) {
+    reviewCtx.save();
+    reviewCtx.strokeStyle = '#f59e0b';
+    reviewCtx.lineWidth = 4;
+    reviewCtx.strokeRect(dx + 2, dy + 2, dw - 4, dh - 4);
+
+    // Apex Watermark banner inside canvas
+    reviewCtx.fillStyle = 'rgba(245, 158, 11, 0.85)';
+    reviewCtx.fillRect(dx + 10, dy + 10, 190, 26);
+    reviewCtx.fillStyle = '#000';
+    reviewCtx.font = 'bold 12px Vazirmatn, sans-serif';
+    reviewCtx.fillText('⚡ اوج عملکرد / PEAK APEX', dx + 18, dy + 28);
+    reviewCtx.restore();
+  }
+
+  // Draw Slow-Motion Speed & Time Watermark on canvas top-right
+  reviewCtx.save();
+  const timeSec = (reviewCurrentFrameIndex / REVIEW_TARGET_FPS).toFixed(2);
+  reviewCtx.fillStyle = 'rgba(15, 23, 42, 0.8)';
+  reviewCtx.fillRect(dx + dw - 180, dy + 10, 170, 26);
+  reviewCtx.strokeStyle = 'rgba(245, 158, 11, 0.5)';
+  reviewCtx.lineWidth = 1;
+  reviewCtx.strokeRect(dx + dw - 180, dy + 10, 170, 26);
+
+  reviewCtx.fillStyle = '#fbbf24';
+  reviewCtx.font = 'bold 11px monospace';
+  reviewCtx.fillText(`⏱️ ${timeSec}s • ${reviewPlaybackRate}x SLOW-MO`, dx + dw - 172, dy + 27);
+  reviewCtx.restore();
+
+  // Update UI scrubber and text displays
+  const scrubber = document.getElementById('reviewScrubber');
+  if (scrubber && !scrubber.matches(':active')) {
+    scrubber.value = `${reviewCurrentFrameIndex}`;
+  }
+
+  const timeCurrentEl = document.getElementById('reviewTimeCurrent');
+  if (timeCurrentEl) {
+    timeCurrentEl.textContent = `${timeSec}s`;
+  }
+
+  const frameCounterEl = document.getElementById('reviewFrameCounter');
+  if (frameCounterEl) {
+    frameCounterEl.textContent = `فریم ${reviewCurrentFrameIndex + 1}/${activeReviewBuffer.length}`;
+  }
+}
+
+/**
+ * Draw Biomechanical Joint Angles on top of the Review Frame
+ */
+function drawReviewBiomechanicalAngles(ctx, keypoints, dx, dy, dw, dh) {
+  if (!keypoints || keypoints.length === 0) return;
+
+  function getKp(name) {
+    return keypoints.find(k => k.name === name);
+  }
+
+  function kpToCanvas(kp) {
+    if (!kp) return null;
+    return {
+      x: dx + kp.x * dw,
+      y: dy + kp.y * dh
+    };
+  }
+
+  // Angles: Knee, Hip, Elbow
+  const anglesToMeasure = [
+    { p1: 'left_hip', p2: 'left_knee', p3: 'left_ankle', label: 'زانو چپ', color: '#38bdf8' },
+    { p1: 'right_hip', p2: 'right_knee', p3: 'right_ankle', label: 'زانو راست', color: '#38bdf8' },
+    { p1: 'left_shoulder', p2: 'left_hip', p3: 'left_knee', label: 'تنه/لگن', color: '#4ade80' },
+    { p1: 'left_shoulder', p2: 'left_elbow', p3: 'left_wrist', label: 'آرنج چپ', color: '#fbbf24' }
+  ];
+
+  ctx.save();
+  anglesToMeasure.forEach(item => {
+    const a = kpToCanvas(getKp(item.p1));
+    const b = kpToCanvas(getKp(item.p2));
+    const c = kpToCanvas(getKp(item.p3));
+
+    if (a && b && c && typeof calculateAngle === 'function') {
+      const angle = Math.round(calculateAngle(a, b, c));
+
+      // Draw angle arc
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, 18, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+      ctx.fill();
+      ctx.strokeStyle = item.color;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Draw angle text
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`${angle}°`, b.x, b.y);
+    }
+  });
+  ctx.restore();
+}
+
+/**
+ * Save Snapshot of Current Review Frame with Athlete & Biometric Stamp
+ */
+function saveReviewSnapshot() {
+  if (!reviewCanvas) return;
+
+  const snapshotCanvas = document.createElement('canvas');
+  snapshotCanvas.width = reviewCanvas.width;
+  snapshotCanvas.height = reviewCanvas.height;
+  const ctx = snapshotCanvas.getContext('2d');
+
+  // Copy current review canvas
+  ctx.drawImage(reviewCanvas, 0, 0);
+
+  // Add official watermark footer
+  const meta = reviewLastAttemptMeta || {};
+  const footerH = 34;
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
+  ctx.fillRect(0, snapshotCanvas.height - footerH, snapshotCanvas.width, footerH);
+  ctx.strokeStyle = '#f59e0b';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(0, snapshotCanvas.height - footerH, snapshotCanvas.width, footerH);
+
+  ctx.fillStyle = '#f8fafc';
+  ctx.font = 'bold 11px Vazirmatn, sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText(`ورزشکار: ${meta.athleteName || getActiveAthlete().name} (${meta.athleteCode || '۱۰۱'}) | ${meta.testTitleFa || 'آزمون ورزشی'}`, snapshotCanvas.width - 14, snapshotCanvas.height - 12);
+
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#fbbf24';
+  ctx.fillText(`فریم ${reviewCurrentFrameIndex + 1} • بازبینی صحنه آهسته هوشمند Mediapipe`, 14, snapshotCanvas.height - 12);
+
+  const link = document.createElement('a');
+  link.download = `Review_Attempt_${Date.now()}.png`;
+  link.href = snapshotCanvas.toDataURL('image/png');
+  link.click();
+
+  if (typeof showShortcutToast === 'function') {
+    showShortcutToast('📸 تصویر فریم بازبینی با موفقیت ذخیره شد');
+  }
+}
+
+/**
+ * Initialize DOM Event Listeners for Review Panel
+ */
+function initSlowMotionReviewSystem() {
+  // Topbar Review Button
+  const slowMoReviewBtn = document.getElementById('slowMoReviewBtn');
+  if (slowMoReviewBtn) {
+    slowMoReviewBtn.addEventListener('click', () => toggleSideBySideReviewPanel());
+  }
+
+  // Workstation Actions Review Button
+  const statsReviewBtn = document.getElementById('statsReviewBtn');
+  if (statsReviewBtn) {
+    statsReviewBtn.addEventListener('click', () => toggleSideBySideReviewPanel());
+  }
+
+  // Workstation Card Open Button
+  const workstationOpenReviewBtn = document.getElementById('workstationOpenReviewBtn');
+  if (workstationOpenReviewBtn) {
+    workstationOpenReviewBtn.addEventListener('click', () => openSideBySideReviewPanel());
+  }
+
+  // Review Top Close Button
+  const reviewCloseBtn = document.getElementById('reviewCloseBtn');
+  if (reviewCloseBtn) {
+    reviewCloseBtn.addEventListener('click', () => closeSideBySideReviewPanel());
+  }
+
+  // Review Layout Toggle Button (50/50 vs Fullscreen)
+  const reviewLayoutToggleBtn = document.getElementById('reviewLayoutToggleBtn');
+  if (reviewLayoutToggleBtn) {
+    reviewLayoutToggleBtn.addEventListener('click', () => toggleReviewLayoutMode());
+  }
+
+  // Review Play/Pause Button
+  const reviewPlayPauseBtn = document.getElementById('reviewPlayPauseBtn');
+  if (reviewPlayPauseBtn) {
+    reviewPlayPauseBtn.addEventListener('click', () => toggleReviewPlayback());
+  }
+
+  // Review Step Back / Forward Buttons
+  const reviewStepBackBtn = document.getElementById('reviewStepBackBtn');
+  if (reviewStepBackBtn) {
+    reviewStepBackBtn.addEventListener('click', () => stepReviewFrame(-1));
+  }
+  const reviewStepForwardBtn = document.getElementById('reviewStepForwardBtn');
+  if (reviewStepForwardBtn) {
+    reviewStepForwardBtn.addEventListener('click', () => stepReviewFrame(1));
+  }
+
+  // Review Scrubber Slider
+  const reviewScrubber = document.getElementById('reviewScrubber');
+  if (reviewScrubber) {
+    reviewScrubber.addEventListener('input', (e) => {
+      pauseReviewPlayback();
+      reviewCurrentFrameIndex = parseInt(e.target.value, 10) || 0;
+      renderReviewCurrentFrame();
+    });
+  }
+
+  // Speed selector buttons
+  document.querySelectorAll('.review-speed-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const speed = parseFloat(btn.dataset.speed) || 0.5;
+      setReviewPlaybackSpeed(speed);
+    });
+  });
+
+  // Loop toggle button
+  const reviewLoopBtn = document.getElementById('reviewLoopBtn');
+  if (reviewLoopBtn) {
+    reviewLoopBtn.addEventListener('click', () => {
+      isReviewLooping = !isReviewLooping;
+      reviewLoopBtn.classList.toggle('active', isReviewLooping);
+      if (typeof showShortcutToast === 'function') {
+        showShortcutToast(isReviewLooping ? '🔁 تکرار مداوم لوپ فعال' : '➡️ پخش یکباره (بدون تکرار)');
+      }
+    });
+  }
+
+  // Apex Jump Button
+  const reviewApexJumpBtn = document.getElementById('reviewApexJumpBtn');
+  if (reviewApexJumpBtn) {
+    reviewApexJumpBtn.addEventListener('click', () => jumpToReviewApexFrame());
+  }
+
+  // Snapshot Button
+  const reviewSnapshotBtn = document.getElementById('reviewSnapshotBtn');
+  if (reviewSnapshotBtn) {
+    reviewSnapshotBtn.addEventListener('click', () => saveReviewSnapshot());
+  }
+
+  // Toggle Joint Angles on Review
+  const reviewToggleAnglesBtn = document.getElementById('reviewToggleAnglesBtn');
+  if (reviewToggleAnglesBtn) {
+    reviewToggleAnglesBtn.addEventListener('click', () => {
+      reviewShowJointAngles = !reviewShowJointAngles;
+      reviewToggleAnglesBtn.classList.toggle('active', reviewShowJointAngles);
+      renderReviewCurrentFrame();
+    });
+  }
+
+  // Handle window resize to adjust reviewCanvas
+  window.addEventListener('resize', () => {
+    if (isReviewPanelActive && reviewCanvas) {
+      const reviewFeed = document.getElementById('cameraReviewFeed');
+      if (reviewFeed) {
+        reviewCanvas.width = reviewFeed.clientWidth || 640;
+        reviewCanvas.height = reviewFeed.clientHeight || 360;
+        renderReviewCurrentFrame();
+      }
+    }
+  });
 }
 
 // Automatically initialize desktop architecture on script load

@@ -7,9 +7,9 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>حرکت‌سنج</title>
-<meta name="description" content="سامانه استعدادیابی ورزشی و ارزیابی بیومکانیک: آزمون‌های چابکی و شاتل، پرش عمودی، سرعت دو، شنا و درازونشست، پروفایل استعدادیابی هندبال و رشته‌ها، کارنامه رسمی PDF با نمودار رادار">
+<meta name="description" content="سامانه استعدادیابی ورزشی و ارزیابی بیومکانیک: آزمون‌های چابکی و شاتل، پرش عمودی، سرعت دو، بافر بازبینی ۵ ثانیه‌ای صحنه آهسته (Slow-Motion Review Panel) در کادر کنار تصویر جهت راستی‌آزمایی عملکرد و زوایای بیومکانیکی توسط مربی، کنترل و ارسال محدودیت‌های فوکوس سخت‌افزاری دوربین (MediaStream Focus Constraints) جهت وضوح حداکثری لبه‌های بیومتریک، سنجش خودکار آنتروپومتری و ابعاد بدنی (قد، لگن، بالاتنه، پایین‌تنه، نسبت دست به قد، دور مچ، شکم و سینه)، نمودار Recharts مقایسه شاخص‌های بیومتریک و تکامل نسبت‌های اسکلتی در طول زمان، نمایش زنده زوایای مفاصل، مدیریت و ویرایش ورزشکاران، کارنامه رسمی PDF با نمودار رادار">
 <meta property="og:title" content="حرکت‌سنج">
-<meta property="og:description" content="سامانه استعدادیابی ورزشی و ارزیابی بیومکانیک: آزمون‌های چابکی و شاتل، پرش عمودی، سرعت دو، شنا و درازونشست، پروفایل استعدادیابی هندبال و رشته‌ها، کارنامه رسمی PDF با نمودار رادار">
+<meta property="og:description" content="سامانه استعدادیابی ورزشی و ارزیابی بیومکانیک: آزمون‌های چابکی و شاتل، پرش عمودی، سرعت دو، بافر بازبینی ۵ ثانیه‌ای صحنه آهسته (Slow-Motion Review Panel) در کادر کنار تصویر جهت راستی‌آزمایی عملکرد و زوایای بیومکانیکی توسط مربی، کنترل و ارسال محدودیت‌های فوکوس سخت‌افزاری دوربین (MediaStream Focus Constraints) جهت وضوح حداکثری لبه‌های بیومتریک، سنجش خودکار آنتروپومتری و ابعاد بدنی (قد، لگن، بالاتنه، پایین‌تنه، نسبت دست به قد، دور مچ، شکم و سینه)، نمودار Recharts مقایسه شاخص‌های بیومتریک و تکامل نسبت‌های اسکلتی در طول زمان، نمایش زنده زوایای مفاصل، مدیریت و ویرایش ورزشکاران، کارنامه رسمی PDF با نمودار رادار">
 
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0f172a">
@@ -1884,6 +1884,199 @@
     cursor: pointer;
   }
 
+  /* Side-by-Side Review Panel Layout */
+  #cameraFeedsWrapper.feed-layout-review {
+    flex-direction: row;
+  }
+  #cameraFeedsWrapper.feed-layout-review #cameraFeed1 {
+    flex: 1 1 50% !important;
+    width: 50% !important;
+    border-left: 2px solid rgba(245, 158, 11, 0.4);
+  }
+  #cameraFeedsWrapper.feed-layout-review #cameraReviewFeed {
+    flex: 1 1 50% !important;
+    width: 50% !important;
+    display: block !important;
+  }
+  #cameraFeedsWrapper.feed-layout-review #cameraFeed2 {
+    display: none !important;
+  }
+
+  /* Fullscreen review modifier */
+  #cameraFeedsWrapper.feed-layout-review-full #cameraFeed1 {
+    display: none !important;
+  }
+  #cameraFeedsWrapper.feed-layout-review-full #cameraReviewFeed {
+    flex: 1 1 100% !important;
+    width: 100% !important;
+    display: block !important;
+  }
+
+  @media (max-width: 680px) {
+    #cameraFeedsWrapper.feed-layout-review {
+      flex-direction: column !important;
+    }
+    #cameraFeedsWrapper.feed-layout-review #cameraFeed1 {
+      flex: 1 1 50% !important;
+      width: 100% !important;
+      height: 50% !important;
+      border-left: none !important;
+      border-bottom: 2px solid rgba(245, 158, 11, 0.4);
+    }
+    #cameraFeedsWrapper.feed-layout-review #cameraReviewFeed {
+      flex: 1 1 50% !important;
+      width: 100% !important;
+      height: 50% !important;
+    }
+  }
+
+  /* Review Feed Box & UI Components */
+  .review-feed-box {
+    background: #020617;
+    position: relative;
+    overflow: hidden;
+  }
+  .review-mini-btn {
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(245, 158, 11, 0.5);
+    color: #fbbf24;
+    border-radius: 6px;
+    font-size: 11px;
+    padding: 3px 8px;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+    transition: all 0.15s ease;
+  }
+  .review-mini-btn:hover {
+    background: rgba(245, 158, 11, 0.25);
+    border-color: #f59e0b;
+  }
+  .review-mini-btn.close {
+    border-color: rgba(239, 68, 68, 0.5);
+    color: #fca5a5;
+  }
+  .review-mini-btn.close:hover {
+    background: rgba(239, 68, 68, 0.25);
+    border-color: #ef4444;
+  }
+
+  /* Bottom Controls Bar for Review */
+  .review-controls-bar {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    right: 12px;
+    background: rgba(15, 23, 42, 0.92);
+    border: 1px solid rgba(245, 158, 11, 0.45);
+    border-radius: 12px;
+    padding: 8px 12px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(12px);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .review-scrub-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .review-time-text {
+    font-family: monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fbbf24;
+    min-width: 40px;
+  }
+  .review-frame-badge {
+    font-size: 10px;
+    background: rgba(245, 158, 11, 0.2);
+    color: #fde68a;
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    border-radius: 4px;
+    padding: 1px 6px;
+    white-space: nowrap;
+  }
+  .review-scrubber-slider {
+    flex: 1;
+    accent-color: #f59e0b;
+    cursor: pointer;
+    height: 6px;
+  }
+  .review-transport-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .review-speed-pills {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .review-speed-btn {
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid #475569;
+    border-radius: 6px;
+    color: #94a3b8;
+    font-size: 10px;
+    padding: 2px 7px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.15s ease;
+  }
+  .review-speed-btn.active {
+    background: rgba(245, 158, 11, 0.3);
+    border-color: #f59e0b;
+    color: #fbbf24;
+  }
+  .review-play-btns {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .review-btn {
+    background: rgba(30, 41, 59, 0.9);
+    border: 1px solid #475569;
+    border-radius: 8px;
+    color: #f8fafc;
+    font-size: 13px;
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .review-btn:hover {
+    background: rgba(51, 65, 85, 0.9);
+  }
+  .review-btn.play {
+    background: rgba(245, 158, 11, 0.3);
+    border-color: #f59e0b;
+    color: #fbbf24;
+    font-weight: bold;
+    padding: 4px 14px;
+  }
+  .review-btn.active {
+    border-color: #f59e0b;
+    color: #fbbf24;
+  }
+  .review-tool-btn {
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid #475569;
+    border-radius: 6px;
+    color: #cbd5e1;
+    font-size: 10.5px;
+    padding: 3px 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .review-tool-btn.active {
+    background: rgba(56, 189, 248, 0.2);
+    border-color: #38bdf8;
+    color: #38bdf8;
+  }
+
   /* Camera feed badges */
   .cam-feed-badge {
     position: absolute;
@@ -2211,6 +2404,77 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+  .stats-telemetry-panel.has-form-warning {
+    border-color: rgba(239, 68, 68, 0.85) !important;
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.35) !important;
+  }
+  .stats-telemetry-panel.has-form-warning-amber {
+    border-color: rgba(245, 158, 11, 0.85) !important;
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.35) !important;
+  }
+
+  /* AI Form Error Telemetry Overlay */
+  .telemetry-form-overlay {
+    border-radius: 10px;
+    padding: 9px 12px;
+    color: #fff;
+    direction: rtl;
+    text-align: right;
+    transition: all 0.25s ease;
+    margin-bottom: 2px;
+  }
+  .telemetry-form-overlay.warning-critical {
+    background: linear-gradient(135deg, rgba(185, 28, 28, 0.95), rgba(127, 29, 29, 0.92));
+    border: 1.5px solid #ef4444;
+    box-shadow: 0 4px 16px rgba(239, 68, 68, 0.35);
+    animation: telemPulseCritical 1.6s infinite ease-in-out;
+  }
+  .telemetry-form-overlay.warning-moderate {
+    background: linear-gradient(135deg, rgba(180, 83, 9, 0.95), rgba(120, 53, 15, 0.92));
+    border: 1.5px solid #f59e0b;
+    box-shadow: 0 4px 16px rgba(245, 158, 11, 0.35);
+    animation: telemPulseModerate 1.8s infinite ease-in-out;
+  }
+  .telemetry-form-overlay.status-optimal {
+    background: linear-gradient(135deg, rgba(20, 83, 45, 0.9), rgba(15, 23, 42, 0.92));
+    border: 1.5px solid rgba(34, 197, 94, 0.5);
+    animation: none;
+  }
+  @keyframes telemPulseCritical {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+    50% { box-shadow: 0 0 16px 3px rgba(239, 68, 68, 0.6); }
+  }
+  @keyframes telemPulseModerate {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+    50% { box-shadow: 0 0 14px 2px rgba(245, 158, 11, 0.6); }
+  }
+
+  /* Athlete Profile Modal Tab Buttons */
+  .athlete-tab-btn {
+    font-family: inherit;
+    transition: all 0.2s ease;
+  }
+  .athlete-tab-btn:hover {
+    filter: brightness(1.15);
+  }
+  .athlete-tab-btn.active {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  }
+  .forecast-horizon-btn {
+    transition: all 0.15s ease;
+  }
+  .forecast-horizon-btn:hover {
+    background: rgba(56, 189, 248, 0.2) !important;
+  }
+  .forecast-horizon-btn.active {
+    background: rgba(168, 85, 247, 0.28) !important;
+    border-color: #c084fc !important;
+    color: #e9d5ff !important;
+    font-weight: bold;
   }
   .telemetry-title {
     font-size: 12px;
@@ -2778,6 +3042,67 @@
             <span id="cam2AthleteBadge" class="cam-athlete-tag">زاویه دوم</span>
           </div>
         </div>
+
+        <!-- Feed 3: Side-by-Side Slow-Motion Review Feed (Last 5-Second Buffer) -->
+        <div id="cameraReviewFeed" class="camera-feed-box review-feed-box" style="display: none;">
+          <canvas id="reviewCanvas"></canvas>
+          
+          <!-- Review Feed Top Badge -->
+          <div class="cam-feed-badge review-badge" style="border-color: rgba(245, 158, 11, 0.7); background: rgba(15, 23, 42, 0.92); z-index: 10;">
+            <span class="cam-live-indicator" style="background: #f59e0b; box-shadow: 0 0 10px #f59e0b;"></span>
+            <span id="reviewBadgeTitle">🎬 بازبینی صحنه آهسته (۵ ثانیه اخیر)</span>
+            <span id="reviewBadgeMetric" class="cam-athlete-tag" style="background: #f59e0b; color: #000; font-weight: 800;">آماده بازبینی</span>
+          </div>
+
+          <!-- Review Top-Left Actions: Apex Jump, Snapshot, Toggle Layout, Close -->
+          <div class="review-top-actions" style="position: absolute; top: 56px; left: 12px; z-index: 10; display: flex; gap: 6px;">
+            <button type="button" id="reviewApexJumpBtn" class="review-mini-btn" title="پرش مستقیم به فریم اوج عملکرد / پرش / عبور از خط">⚡ لحظه اوج</button>
+            <button type="button" id="reviewSnapshotBtn" class="review-mini-btn" title="دانلود و ذخیره تصویر فریم جاری با مشخصات ورزشکار">📸 ذخیره فریم</button>
+            <button type="button" id="reviewLayoutToggleBtn" class="review-mini-btn" title="سوییچ بین نمای کنار هم ۵۰/۵۰ یا تمام‌صفحه بازبینی">◫ ابعاد</button>
+            <button type="button" id="reviewCloseBtn" class="review-mini-btn close" title="بستن پنل بازبینی (Esc)">✕ بستن</button>
+          </div>
+
+          <!-- Apex / Milestone Visual Marker Pill -->
+          <div id="reviewApexMarkerPill" style="display: none; position: absolute; top: 96px; left: 50%; transform: translateX(-50%); z-index: 10; background: rgba(245, 158, 11, 0.92); color: #000; font-size: 11px; font-weight: 800; padding: 4px 12px; border-radius: 999px; box-shadow: 0 0 14px rgba(245, 158, 11, 0.85); pointer-events: none;">
+            ⚡ اوج پرش / ثبت رکورد (Peak Moment)
+          </div>
+
+          <!-- Bottom Interactive Slow-Motion Controls Bar -->
+          <div id="reviewControlsBar" class="review-controls-bar">
+            <!-- Row 1: Scrubber Slider + Time/Frame Readout -->
+            <div class="review-scrub-row">
+              <span id="reviewTimeCurrent" class="review-time-text">0.00s</span>
+              <input type="range" id="reviewScrubber" min="0" max="100" value="0" step="1" class="review-scrubber-slider">
+              <span id="reviewTimeTotal" class="review-time-text">5.00s</span>
+              <span id="reviewFrameCounter" class="review-frame-badge">فریم ۱/۱۲۵</span>
+            </div>
+
+            <!-- Row 2: Transport & Playback Speed Pills -->
+            <div class="review-transport-row">
+              <!-- Speed selector pills -->
+              <div class="review-speed-pills">
+                <span style="font-size: 10px; color: #94a3b8; margin-left: 2px;">سرعت:</span>
+                <button type="button" class="review-speed-btn" data-speed="0.1">0.1x</button>
+                <button type="button" class="review-speed-btn" data-speed="0.25">0.25x</button>
+                <button type="button" class="review-speed-btn active" data-speed="0.5">0.5x</button>
+                <button type="button" class="review-speed-btn" data-speed="1.0">1.0x</button>
+              </div>
+
+              <!-- Playback buttons -->
+              <div class="review-play-btns">
+                <button type="button" id="reviewStepBackBtn" class="review-btn" title="یک فریم به عقب (الف / [)">⏮️</button>
+                <button type="button" id="reviewPlayPauseBtn" class="review-btn play" title="پخش / توقف (Space / فاصله)">⏯️ توقف</button>
+                <button type="button" id="reviewStepForwardBtn" class="review-btn" title="یک فریم به جلو (د / ])">⏭️</button>
+                <button type="button" id="reviewLoopBtn" class="review-btn active" title="تکرار مداوم لوپ">🔁</button>
+              </div>
+
+              <!-- Verification Tools -->
+              <div class="review-verify-tools">
+                <button type="button" id="reviewToggleAnglesBtn" class="review-tool-btn" title="نمایش زوایای بیومکانیکی مفاصل روی تصویر بازبینی">📐 زوایا</button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
   <!-- Live HUDs -->
@@ -3056,6 +3381,12 @@
   <!-- Floating Zoom Control for Multi-lens / Android -->
   <div id="cameraZoomControls" style="display: none;"></div>
 
+  <!-- Floating Focus Control Pill for High-End Camera Hardware -->
+  <div id="cameraFocusFloatingBadge" style="display: none; position: absolute; bottom: 90px; left: 14px; z-index: 9; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(10px); border: 1px solid rgba(56, 189, 248, 0.5); border-radius: 999px; padding: 4px 10px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5); align-items: center; gap: 6px; color: #38bdf8; font-size: 11px; cursor: pointer;" title="کنترل فوکوس دوربین و شفاف‌سازی بیومتریک (کلیک برای فوکوس مجدد سریع)">
+    <span>🎯</span>
+    <span id="floatingFocusText">AF: مداوم</span>
+  </div>
+
   <!-- Header Container: Compact Top Bar + Status + Collapsible Mode bar -->
   <div id="headerContainer">
     <!-- Sleek Compact Top Bar (Declutters screen on mobile) -->
@@ -3081,6 +3412,11 @@
 
       <!-- Desktop Studio & Multi-Camera Controls -->
       <div class="topBarGroup desktopStudioControls">
+        <button id="slowMoReviewBtn" class="quickToolBtn studioBtn" title="بازبینی صحنه آهسته ۵ ثانیه اخیر آخرین آزمون (کلید R)" style="border-color: rgba(245, 158, 11, 0.5); color: #fbbf24;">
+          <span>🎬</span>
+          <span id="slowMoReviewBtnText">بازبینی ۵ث</span>
+          <span id="reviewBufferReadyDot" style="width: 7px; height: 7px; border-radius: 50%; background: #f59e0b; box-shadow: 0 0 6px #f59e0b; display: inline-block;"></span>
+        </button>
         <button id="studioLayoutBtn" class="quickToolBtn studioBtn" title="تغییر نمای استودیو لپ‌تاپ (دوپنجره / تمام دوربین / مربی)">
           <span id="studioLayoutIcon">🖥️</span>
           <span id="studioLayoutText">دوپنجره</span>
@@ -3439,7 +3775,7 @@
   <div id="startOverlay">
     <h2>حرکت‌سنج</h2>
     <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin: 4px 0 12px 0;">
-      <span class="version" id="appVersionDisplay" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 2px 10px; border-radius: 9999px; font-size: 11px; border: 1px solid rgba(56, 189, 248, 0.3);">نسخه 1.7.0 (استعدادیابی و پروفایل)</span>
+      <span class="version" id="appVersionDisplay" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 2px 10px; border-radius: 9999px; font-size: 11px; border: 1px solid rgba(56, 189, 248, 0.3);">نسخه 1.8.0 (موتور توان انفجاری 1RM و تحلیل زاویه مفاصل)</span>
       <button type="button" id="clearCacheReloadBtn" style="background: rgba(255, 255, 255, 0.08); color: #cbd5e1; border: 1px solid #475569; border-radius: 8px; padding: 3px 10px; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 4px;" title="پاکسازی کش مرورگر و بارگذاری نسخه جدید">
         <span>🔄</span>
         <span>بروزرسانی کش</span>
@@ -3484,14 +3820,14 @@
   </div>
 
   <!-- Athlete Profile Modal -->
-  <div id="athleteProfileModal" class="panel" style="display: none; max-width: 500px; width: 95%; max-height: 88vh; z-index: 50; overflow-y: auto; text-align: right;">
+  <div id="athleteProfileModal" class="panel" style="display: none; max-width: 530px; width: 95%; max-height: 88vh; z-index: 50; overflow-y: auto; text-align: right;">
     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 8px; margin-bottom: 10px;">
-      <h3 style="margin: 0; color: #38bdf8; font-size: 16px;">👤 مدیریت و انتخاب پروفایل ورزشکار</h3>
+      <h3 style="margin: 0; color: #38bdf8; font-size: 16px;">👤 مدیریت، بیومتریک و پیش‌بینی عملکرد ورزشکار</h3>
       <button id="closeAthleteModalXBtn" style="background: none; border: none; color: #94a3b8; font-size: 18px; cursor: pointer; padding: 0 4px; width: auto; min-height: auto;">✕</button>
     </div>
 
     <!-- Active Athlete Banner -->
-    <div id="activeAthleteCard" style="background: linear-gradient(135deg, rgba(2,132,199,0.25), rgba(15,23,42,0.85)); border: 1px solid rgba(56,189,248,0.4); border-radius: 12px; padding: 12px; margin-bottom: 12px;">
+    <div id="activeAthleteCard" style="background: linear-gradient(135deg, rgba(2,132,199,0.25), rgba(15,23,42,0.85)); border: 1px solid rgba(56,189,248,0.4); border-radius: 12px; padding: 12px; margin-bottom: 10px;">
       <div style="display: flex; align-items: center; gap: 10px;">
         <div style="font-size: 28px; background: rgba(56,189,248,0.2); width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid #38bdf8;">👤</div>
         <div style="flex: 1;">
@@ -3505,105 +3841,220 @@
       </div>
     </div>
 
-    <!-- Biometric Evolution & Limb-Length Ratios Chart (Recharts) -->
-    <div id="athleteBiometricSection" style="background: rgba(15, 23, 42, 0.85); border: 1.5px solid rgba(56, 189, 248, 0.4); border-radius: 12px; padding: 12px; margin-bottom: 12px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-        <div style="display: flex; align-items: center; gap: 6px;">
-          <span style="font-size: 16px;">📈</span>
-          <strong style="color: #38bdf8; font-size: 13px;">نمودار مقایسه شاخص‌های بیومتریک (Recharts)</strong>
-        </div>
-        <span style="font-size: 10px; background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(56, 189, 248, 0.3);">
-          تکامل نسبت‌ها در زمان
-        </span>
-      </div>
+    <!-- Modal Navigation Tabs -->
+    <div style="display: flex; gap: 4px; background: rgba(15, 23, 42, 0.9); padding: 4px; border-radius: 10px; border: 1px solid #334155; margin-bottom: 12px;">
+      <button type="button" id="athleteTabBiometricBtn" class="athlete-tab-btn active" style="flex: 1; padding: 7px 4px; font-size: 11px; font-weight: bold; border-radius: 7px; border: none; cursor: pointer; background: #38bdf8; color: #0f172a;">
+        📈 تکامل بیومتریک
+      </button>
+      <button type="button" id="athleteTabForecastBtn" class="athlete-tab-btn" style="flex: 1; padding: 7px 4px; font-size: 11px; font-weight: bold; border-radius: 7px; border: none; cursor: pointer; background: transparent; color: #94a3b8;">
+        🔮 پیش‌بینی عملکرد (Forecasting)
+      </button>
+      <button type="button" id="athleteTabRosterBtn" class="athlete-tab-btn" style="flex: 1; padding: 7px 4px; font-size: 11px; font-weight: bold; border-radius: 7px; border: none; cursor: pointer; background: transparent; color: #94a3b8;">
+        👥 لیست و ثبت ورزشکار
+      </button>
+    </div>
 
-      <div style="display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-bottom: 8px;">
-        <select id="biometricMetricSelect" style="flex: 1; background: #1e293b; color: #f8fafc; border: 1px solid #475569; border-radius: 6px; padding: 6px 8px; font-size: 11px; outline: none; cursor: pointer;">
-          <option value="apeIndex">🦍 شاخص طول دست به قد (Ape Index)</option>
-          <option value="legRatio">🦵 نسبت پایین‌تنه به قد (Leg / Height Ratio)</option>
-          <option value="cormicIndex">🧍 نسبت بالاتنه به قد (Cormic Index)</option>
-          <option value="allRatios">📊 مقایسه همزمان هر ۳ نسبت (All Ratios)</option>
-          <option value="spanDiff">📏 تفاضل طول دست منهای قد (سانتی‌متر)</option>
-        </select>
-        <button type="button" id="biometricSimulateSampleBtn" title="تولید یا به‌روزرسانی جلسه جدید در سیر زمانی" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid #38bdf8; border-radius: 6px; padding: 5px 8px; font-size: 11px; cursor: pointer; white-space: nowrap;">
-          ➕ ثبت جلسه
-        </button>
-      </div>
-
-      <!-- Quick KPI Chips -->
-      <div id="biometricKpiChips" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px;">
-        <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 6px; padding: 4px 6px; text-align: center;">
-          <div style="font-size: 9.5px; color: #94a3b8;">Ape Index</div>
-          <div id="bioKpiApe" style="font-size: 12px; font-weight: bold; color: #38bdf8;">--</div>
+    <!-- Tab 1: Biometric Evolution & Limb-Length Ratios Chart (Recharts) -->
+    <div id="athleteTabBiometricContent">
+      <div id="athleteBiometricSection" style="background: rgba(15, 23, 42, 0.85); border: 1.5px solid rgba(56, 189, 248, 0.4); border-radius: 12px; padding: 12px; margin-bottom: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="font-size: 16px;">📈</span>
+            <strong style="color: #38bdf8; font-size: 13px;">نمودار مقایسه شاخص‌های بیومتریک (Recharts)</strong>
+          </div>
+          <span style="font-size: 10px; background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(56, 189, 248, 0.3);">
+            تکامل نسبت‌ها در زمان
+          </span>
         </div>
-        <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 6px; padding: 4px 6px; text-align: center;">
-          <div style="font-size: 9.5px; color: #94a3b8;">نسبت پا به قد</div>
-          <div id="bioKpiLeg" style="font-size: 12px; font-weight: bold; color: #22c55e;">--</div>
-        </div>
-        <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 6px; padding: 4px 6px; text-align: center;">
-          <div style="font-size: 9.5px; color: #94a3b8;">نسبت تنه به قد</div>
-          <div id="bioKpiTrunk" style="font-size: 12px; font-weight: bold; color: #f59e0b;">--</div>
-        </div>
-      </div>
 
-      <!-- Recharts Canvas Container -->
-      <div id="athleteBiometricChartContainer" style="width: 100%; height: 210px; min-height: 210px; position: relative;">
-        <!-- Recharts will mount here -->
-      </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-bottom: 8px;">
+          <select id="biometricMetricSelect" style="flex: 1; background: #1e293b; color: #f8fafc; border: 1px solid #475569; border-radius: 6px; padding: 6px 8px; font-size: 11px; outline: none; cursor: pointer;">
+            <option value="apeIndex">🦍 شاخص طول دست به قد (Ape Index)</option>
+            <option value="legRatio">🦵 نسبت پایین‌تنه به قد (Leg / Height Ratio)</option>
+            <option value="cormicIndex">🧍 نسبت بالاتنه به قد (Cormic Index)</option>
+            <option value="allRatios">📊 مقایسه همزمان هر ۳ نسبت (All Ratios)</option>
+            <option value="spanDiff">📏 تفاضل طول دست منهای قد (سانتی‌متر)</option>
+          </select>
+          <button type="button" id="biometricSimulateSampleBtn" title="تولید یا به‌روزرسانی جلسه جدید در سیر زمانی" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid #38bdf8; border-radius: 6px; padding: 5px 8px; font-size: 11px; cursor: pointer; white-space: nowrap;">
+            ➕ ثبت جلسه
+          </button>
+        </div>
 
-      <!-- Info / Interpretation note -->
-      <div id="biometricInterpretationBox" style="margin-top: 8px; font-size: 10.5px; color: #cbd5e1; line-height: 1.5; background: rgba(30, 41, 59, 0.5); border-radius: 6px; padding: 6px 8px; border-right: 3px solid #38bdf8;">
-        <!-- Filled dynamically -->
+        <!-- Quick KPI Chips -->
+        <div id="biometricKpiChips" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px;">
+          <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 6px; padding: 4px 6px; text-align: center;">
+            <div style="font-size: 9.5px; color: #94a3b8;">Ape Index</div>
+            <div id="bioKpiApe" style="font-size: 12px; font-weight: bold; color: #38bdf8;">--</div>
+          </div>
+          <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 6px; padding: 4px 6px; text-align: center;">
+            <div style="font-size: 9.5px; color: #94a3b8;">نسبت پا به قد</div>
+            <div id="bioKpiLeg" style="font-size: 12px; font-weight: bold; color: #22c55e;">--</div>
+          </div>
+          <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 6px; padding: 4px 6px; text-align: center;">
+            <div style="font-size: 9.5px; color: #94a3b8;">نسبت تنه به قد</div>
+            <div id="bioKpiTrunk" style="font-size: 12px; font-weight: bold; color: #f59e0b;">--</div>
+          </div>
+        </div>
+
+        <!-- Recharts Canvas Container -->
+        <div id="athleteBiometricChartContainer" style="width: 100%; height: 210px; min-height: 210px; position: relative;">
+          <!-- Recharts will mount here -->
+        </div>
+
+        <!-- Info / Interpretation note -->
+        <div id="biometricInterpretationBox" style="margin-top: 8px; font-size: 10.5px; color: #cbd5e1; line-height: 1.5; background: rgba(30, 41, 59, 0.5); border-radius: 6px; padding: 6px 8px; border-right: 3px solid #38bdf8;">
+          <!-- Filled dynamically -->
+        </div>
       </div>
     </div>
 
-    <!-- Profiles List -->
-    <div style="font-size: 12px; color: #94a3b8; margin-bottom: 6px;">انتخاب ورزشکار جهت ثبت آزمون:</div>
-    <div id="athletesListContainer" style="max-height: 180px; overflow-y: auto; margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;"></div>
+    <!-- Tab 2: Performance Forecasting Tab (Linear Regression & Biometric Growth) -->
+    <div id="athleteTabForecastContent" style="display: none;">
+      <div style="background: rgba(15, 23, 42, 0.85); border: 1.5px solid rgba(168, 85, 247, 0.45); border-radius: 12px; padding: 12px; margin-bottom: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="font-size: 16px;">🔮</span>
+            <strong style="color: #c084fc; font-size: 13px;">پیش‌بینی عملکرد آینده (Performance Forecasting)</strong>
+          </div>
+          <span style="font-size: 10px; background: rgba(168, 85, 247, 0.15); color: #c084fc; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(168, 85, 247, 0.3);">
+            رگرسیون خطی + نرخ رشد بیومتریک
+          </span>
+        </div>
 
-    <!-- Add/Edit Athlete Section -->
-    <div style="border-top: 1px solid #334155; padding-top: 10px;">
-      <button type="button" id="toggleAddAthleteBtn" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 8px; font-size: 12px; padding: 7px 12px; width: 100%; cursor: pointer;">
-        ➕ افزودن ورزشکار جدید
-      </button>
+        <!-- Metric & Action Selector -->
+        <div style="display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap;">
+          <select id="forecastMetricSelect" style="flex: 2; min-width: 180px; background: #1e293b; color: #f8fafc; border: 1px solid #475569; border-radius: 6px; padding: 6px 8px; font-size: 11px; outline: none; cursor: pointer;">
+            <option value="jump">🦘 پرش عمودی CMJ (ارتفاع - سانتی‌متر)</option>
+            <option value="run">⚡ سرعت دو ۳۰ متر (متر بر ثانیه)</option>
+            <option value="agility">🔄 آزمون چابکی شاتل (زمان - ثانیه)</option>
+            <option value="pushup">💪 شنا سوئدی (تعداد تکرار)</option>
+            <option value="situp">🧘 دراز و نشست (تعداد تکرار)</option>
+            <option value="height">🧍 تکامل و رشد قد بیومتریک (سانتی‌متر)</option>
+          </select>
+          <button type="button" id="forecastSimulateNextBtn" title="شبیه‌سازی یک جلسه جدید آزمون جهت مشاهده پویایی رگرسیون" style="flex: 1; background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid #a855f7; border-radius: 6px; padding: 5px 8px; font-size: 11px; cursor: pointer; white-space: nowrap;">
+            ➕ شبیه‌سازی جلسه
+          </button>
+        </div>
 
-      <form id="addAthleteForm" style="display: none; margin-top: 10px; background: rgba(30,41,59,0.7); border: 1px solid #475569; border-radius: 10px; padding: 10px;">
-        <div style="display: flex; gap: 6px; margin-bottom: 6px;">
-          <div style="flex: 2;">
-            <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 2px;">نام و نام خانوادگی:</label>
-            <input type="text" id="newAthleteName" required placeholder="مثال: علی رضایی" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; font-size: 12px;">
+        <!-- Horizon Selection Chips -->
+        <div style="display: flex; gap: 4px; margin-bottom: 8px; align-items: center;">
+          <span style="font-size: 10px; color: #94a3b8; white-space: nowrap;">افق پیش‌بینی:</span>
+          <button type="button" class="forecast-horizon-btn" data-months="1" style="flex: 1; padding: 4px 6px; font-size: 10px; background: rgba(30, 41, 59, 0.8); border: 1px solid #475569; border-radius: 5px; color: #cbd5e1; cursor: pointer;">۱ ماه</button>
+          <button type="button" class="forecast-horizon-btn" data-months="3" style="flex: 1; padding: 4px 6px; font-size: 10px; background: rgba(30, 41, 59, 0.8); border: 1px solid #475569; border-radius: 5px; color: #cbd5e1; cursor: pointer;">۳ ماه</button>
+          <button type="button" class="forecast-horizon-btn active" data-months="6" style="flex: 1; padding: 4px 6px; font-size: 10px; background: rgba(168, 85, 247, 0.28); border: 1px solid #c084fc; border-radius: 5px; color: #e9d5ff; font-weight: bold; cursor: pointer;">۶ ماه</button>
+          <button type="button" class="forecast-horizon-btn" data-months="12" style="flex: 1; padding: 4px 6px; font-size: 10px; background: rgba(30, 41, 59, 0.8); border: 1px solid #475569; border-radius: 5px; color: #cbd5e1; cursor: pointer;">۱۲ ماه</button>
+        </div>
+
+        <!-- 4 Forecasting KPI Cards -->
+        <div id="forecastKpiGrid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 8px;">
+          <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 6px; padding: 5px 6px; text-align: center;">
+            <div style="font-size: 9px; color: #94a3b8;">رکورد مبنا (فعلی)</div>
+            <div id="forecastKpiCurrent" style="font-size: 11.5px; font-weight: bold; color: #38bdf8;">--</div>
           </div>
-          <div style="flex: 1;">
-            <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 2px;">کد / شناسه:</label>
-            <input type="text" id="newAthleteCode" placeholder="۱۰۲" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; font-size: 12px;">
+          <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(168, 85, 247, 0.4); border-radius: 6px; padding: 5px 6px; text-align: center;">
+            <div style="font-size: 9px; color: #94a3b8;" id="forecastProjectedLabel">پیش‌بینی ۶ ماهه</div>
+            <div id="forecastKpiProjected" style="font-size: 11.5px; font-weight: bold; color: #c084fc;">--</div>
+          </div>
+          <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 6px; padding: 5px 6px; text-align: center;">
+            <div style="font-size: 9px; color: #94a3b8;">شیب رشد ماهانه (m)</div>
+            <div id="forecastKpiSlope" style="font-size: 11.5px; font-weight: bold; color: #22c55e;">--</div>
+          </div>
+          <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 6px; padding: 5px 6px; text-align: center;">
+            <div style="font-size: 9px; color: #94a3b8;">دقت رگرسیون (R²)</div>
+            <div id="forecastKpiR2" style="font-size: 11.5px; font-weight: bold; color: #f59e0b;">--</div>
           </div>
         </div>
-        <div style="display: flex; gap: 6px; margin-bottom: 6px;">
-          <div style="flex: 1;">
-            <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 2px;">قد (cm):</label>
-            <input type="number" id="newAthleteHeight" min="100" max="230" value="175" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; font-size: 12px;">
+
+        <!-- Recharts Forecasting Canvas Container -->
+        <div id="athleteForecastChartContainer" style="width: 100%; height: 210px; min-height: 210px; position: relative;">
+          <!-- Recharts or SVG will mount here -->
+        </div>
+
+        <!-- Linear Regression Diagnostics Bar -->
+        <div style="margin-top: 8px; display: flex; justify-content: space-between; align-items: center; background: rgba(30, 41, 59, 0.6); border-radius: 6px; padding: 6px 8px; font-size: 10px; flex-wrap: wrap; gap: 6px;">
+          <div>
+            <span style="color: #94a3b8;">معادله رگرسیون: </span>
+            <code id="forecastEquationReadout" style="color: #c084fc; font-weight: bold; font-family: monospace;">y = m·x + b</code>
           </div>
-          <div style="flex: 1;">
-            <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 2px;">سن (سال):</label>
-            <input type="number" id="newAthleteAge" min="5" max="90" value="16" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; font-size: 12px;">
-          </div>
-          <div style="flex: 1;">
-            <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 2px;">جنسیت:</label>
-            <select id="newAthleteGender" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; font-size: 12px;">
-              <option value="male">پسر / آقا</option>
-              <option value="female">دختر / خانم</option>
-            </select>
+          <div style="display: flex; align-items: center; gap: 4px;">
+            <span style="color: #94a3b8;">نرخ رشد بیومتریک: </span>
+            <strong id="forecastBioGrowthRateReadout" style="color: #38bdf8;">+۰.۷٪ ماهانه</strong>
           </div>
         </div>
-        <div style="margin-bottom: 8px;">
-          <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 2px;">رشته ورزشی (اختیاری):</label>
-          <input type="text" id="newAthleteSport" placeholder="مثال: بسکتبال، والیبال، دو و میدانی" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; font-size: 12px;">
+
+        <!-- Biomechanical & Physiological Interpretation Note -->
+        <div id="forecastInterpretationBox" style="margin-top: 6px; font-size: 10.5px; color: #cbd5e1; line-height: 1.5; background: rgba(30, 41, 59, 0.5); border-radius: 6px; padding: 6px 8px; border-right: 3px solid #c084fc;">
+          <!-- Filled dynamically -->
         </div>
-        <div style="display: flex; gap: 6px;">
-          <button type="submit" style="flex: 2; background: #22c55e; color: #052e16; font-size: 12px; padding: 7px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">ثبت ورزشکار</button>
-          <button type="button" id="cancelAddAthleteBtn" style="flex: 1; background: transparent; color: #94a3b8; border: 1px solid #475569; font-size: 12px; padding: 7px; border-radius: 6px; cursor: pointer;">انصراف</button>
+
+        <!-- Milestone Target Goal Calculator -->
+        <div style="margin-top: 8px; background: rgba(15, 23, 42, 0.7); border: 1px solid #334155; border-radius: 8px; padding: 8px 10px;">
+          <div style="font-size: 10.5px; font-weight: bold; color: #38bdf8; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center;">
+            <span>🎯 ماشین حساب پیش‌بینی زمان رسیدن به حدنصاب هدف (Milestone ETA):</span>
+            <span id="forecastMilestoneEta" style="color: #22c55e; font-size: 10px; font-weight: bold;">--</span>
+          </div>
+          <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+            <span style="font-size: 10px; color: #94a3b8; white-space: nowrap;">رکورد هدف مربی:</span>
+            <input type="number" id="forecastTargetGoalInput" step="0.5" placeholder="۴۵" style="width: 75px; padding: 4px 6px; border-radius: 5px; border: 1px solid #475569; background: #0f172a; color: #fff; font-size: 11px; text-align: center;">
+            <span id="forecastTargetGoalUnit" style="font-size: 10px; color: #94a3b8;">cm</span>
+            <button type="button" id="calcMilestoneBtn" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid #38bdf8; border-radius: 5px; font-size: 10px; padding: 4px 8px; cursor: pointer; white-space: nowrap;">
+              محاسبه زمان پیش‌بینی‌شده
+            </button>
+          </div>
         </div>
-      </form>
+      </div>
+    </div>
+
+    <!-- Tab 3: Roster & Profiles List -->
+    <div id="athleteTabRosterContent" style="display: none;">
+      <!-- Profiles List -->
+      <div style="font-size: 12px; color: #94a3b8; margin-bottom: 6px;">انتخاب ورزشکار جهت ثبت آزمون:</div>
+      <div id="athletesListContainer" style="max-height: 180px; overflow-y: auto; margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;"></div>
+
+      <!-- Add/Edit Athlete Section -->
+      <div style="border-top: 1px solid #334155; padding-top: 10px;">
+        <button type="button" id="toggleAddAthleteBtn" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 8px; font-size: 12px; padding: 7px 12px; width: 100%; cursor: pointer;">
+          ➕ افزودن ورزشکار جدید
+        </button>
+
+        <form id="addAthleteForm" style="display: none; margin-top: 10px; background: rgba(30,41,59,0.7); border: 1px solid #475569; border-radius: 10px; padding: 10px;">
+          <div style="display: flex; gap: 6px; margin-bottom: 6px;">
+            <div style="flex: 2;">
+              <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 2px;">نام و نام خانوادگی:</label>
+              <input type="text" id="newAthleteName" required placeholder="مثال: علی رضایی" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; font-size: 12px;">
+            </div>
+            <div style="flex: 1;">
+              <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 2px;">کد / شناسه:</label>
+              <input type="text" id="newAthleteCode" placeholder="۱۰۲" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; font-size: 12px;">
+            </div>
+          </div>
+          <div style="display: flex; gap: 6px; margin-bottom: 6px;">
+            <div style="flex: 1;">
+              <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 2px;">قد (cm):</label>
+              <input type="number" id="newAthleteHeight" min="100" max="230" value="175" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; font-size: 12px;">
+            </div>
+            <div style="flex: 1;">
+              <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 2px;">سن (سال):</label>
+              <input type="number" id="newAthleteAge" min="5" max="90" value="16" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; font-size: 12px;">
+            </div>
+            <div style="flex: 1;">
+              <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 2px;">جنسیت:</label>
+              <select id="newAthleteGender" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; font-size: 12px;">
+                <option value="male">پسر / آقا</option>
+                <option value="female">دختر / خانم</option>
+              </select>
+            </div>
+          </div>
+          <div style="margin-bottom: 8px;">
+            <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 2px;">رشته ورزشی (اختیاری):</label>
+            <input type="text" id="newAthleteSport" placeholder="مثال: بسکتبال، والیبال، دو و میدانی" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; font-size: 12px;">
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <button type="submit" style="flex: 2; background: #22c55e; color: #052e16; font-size: 12px; padding: 7px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">ثبت ورزشکار</button>
+            <button type="button" id="cancelAddAthleteBtn" style="flex: 1; background: transparent; color: #94a3b8; border: 1px solid #475569; font-size: 12px; padding: 7px; border-radius: 6px; cursor: pointer;">انصراف</button>
+          </div>
+        </form>
+      </div>
     </div>
 
     <!-- Handball & Multi-Sport Talent Scouting Callout -->
@@ -3836,6 +4287,22 @@
       نمایش شبکه ۳×۳، نشانگر تراز مرکزی و خط زمین جهت تنظیم دقیق زاویه دوربین با زمین و محیط اجرای تست (کلید G).
     </p>
 
+    <label class="toggle-label" style="margin-top: 6px;">
+      <span>فوکوس خودکار مداوم سنسور دوربین (Continuous Focus) 🎯</span>
+      <input type="checkbox" id="settingCameraFocusControl" checked>
+    </label>
+    <p class="hint-text">
+      ارسال خودکار محدودیت‌های فوکوس به درایور و API سخت‌افزاری دوربین‌های پیشرفته استودیو جهت حفظ حداکثر شفافیت لبه‌های بیومتریک و جلوگیری از تاری حرکتی.
+    </p>
+
+    <label class="toggle-label" style="margin-top: 6px;">
+      <span>بازبینی خودکار صحنه آهسته پس از پایان آزمون (Auto Slow-Mo Review) 🎬</span>
+      <input type="checkbox" id="settingAutoReviewAfterTest" checked>
+    </label>
+    <p class="hint-text">
+      پس از تکمیل پرش، دوی سرعت یا آزمون ورزشی، بافر ۵ ثانیه اخیر را به‌صورت صحنه آهسته در کادر کنار دوربین نمایش می‌دهد تا مربی بتواند زوایای بیومکانیکی را بازبینی کند (کلید R).
+    </p>
+
     <label>حساسیت تشخیص پرش</label>
     <input type="range" id="jumpSensitivity" min="0.05" max="0.25" step="0.01" value="0.12">
     <div class="value" id="jumpSensValue">12%</div>
@@ -3869,7 +4336,7 @@
 
     <div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid #334155; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px;">
       <button type="button" id="openCameraSettingsBtn" style="background: rgba(56, 189, 248, 0.12); color: #38bdf8; font-size: 12px; padding: 7px 14px; border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; cursor: pointer; width: 100%;">📷 انتخاب دوربین و تعویض لنز (فوق‌عریض / زوم)</button>
-      <span style="font-size: 11px; color: #94a3b8;">نسخه فعلی: <strong style="color: #38bdf8;">1.7.0 (استعدادیابی و پروفایل)</strong></span>
+      <span style="font-size: 11px; color: #94a3b8;">نسخه فعلی: <strong style="color: #38bdf8;">1.8.0 (موتور توان انفجاری 1RM و تحلیل زاویه مفاصل)</strong></span>
       <button type="button" id="clearCacheFromSettingsBtn" style="background: rgba(239, 68, 68, 0.15); color: #fca5a5; font-size: 11px; padding: 6px 14px; border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; cursor: pointer;">🔄 پاکسازی کش و تازه‌سازی کامل</button>
     </div>
 
@@ -3960,6 +4427,16 @@
       <div class="shortcut-row-item">
         <span>روشن / خاموش زوایای بین مفاصل (زانو، آرنج و...)</span>
         <span class="kbd-key">A</span>
+      </div>
+
+      <div class="shortcut-row-item">
+        <span>فوکوس سریع بیومتریک و شفاف‌سازی دوربین</span>
+        <span class="kbd-key">F</span>
+      </div>
+
+      <div class="shortcut-row-item">
+        <span>بازبینی صحنه آهسته ۵ ثانیه اخیر آزمون (Review)</span>
+        <span class="kbd-key">R</span>
       </div>
 
       <div class="shortcut-row-item">
@@ -4348,6 +4825,52 @@
       </div>
     </div>
 
+    <!-- Explosive Power & 1RM Lower-Body Estimator Card (مدل توان مکانیکی کارملو بوسکو و تخمین 1RM) -->
+    <div id="bosco1RmPowerCard" style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.92), rgba(15, 23, 42, 0.98)); border: 1.5px solid rgba(56, 189, 248, 0.35); border-radius: 12px; padding: 10px 12px; margin: 10px 0; box-shadow: 0 8px 20px rgba(0,0,0,0.45);">
+      <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 6px; margin-bottom: 8px;">
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span style="font-size: 17px;">💥</span>
+          <div>
+            <span style="font-weight: bold; font-size: 12.5px; color: #38bdf8; display: block;">برآوردگر توان انفجاری و 1RM پایین‌تنه</span>
+            <span style="font-size: 9.5px; color: #94a3b8;">Explosive Power & Lower-Body 1RM Estimator (Bosco Model)</span>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 4px; font-size: 10.5px; color: #cbd5e1; background: rgba(15, 23, 42, 0.8); padding: 2px 6px; border-radius: 6px; border: 1px solid #334155;">
+          <span>وزن:</span>
+          <input type="number" id="boscoAthleteWeightInput" min="25" max="180" step="1" value="70" style="width: 44px; padding: 2px 4px; font-size: 11px; text-align: center; border-radius: 5px; border: 1px solid #0284c7; background: #0b1329; color: #38bdf8; font-weight: bold;">
+          <span>kg</span>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+        <div style="background: rgba(2, 132, 199, 0.16); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 8px; padding: 8px; text-align: center;">
+          <div style="font-size: 10.5px; color: #94a3b8;">تخمین ۱ تکرار بیشینه (1RM پایین‌تنه):</div>
+          <div id="boscoEst1RmKg" style="font-size: 22px; font-weight: 800; color: #38bdf8; font-family: Tahoma, sans-serif; letter-spacing: -0.5px;">-- kg</div>
+          <div id="bosco1RmRatioBadge" style="font-size: 10px; color: #4ade80; margin-top: 2px; font-weight: 500;">--× وزن بدن</div>
+        </div>
+        <div style="background: rgba(34, 197, 94, 0.14); border: 1px solid rgba(34, 197, 94, 0.35); border-radius: 8px; padding: 8px; text-align: center;">
+          <div style="font-size: 10.5px; color: #94a3b8;">توان مکانیکی بوسکو (P<sub>max</sub>):</div>
+          <div id="boscoMechanicalPowerVal" style="font-size: 20px; font-weight: 800; color: #4ade80; font-family: Tahoma, sans-serif; letter-spacing: -0.5px;">-- W</div>
+          <div id="boscoPowerPerKgVal" style="font-size: 10px; color: #86efac; margin-top: 2px;">-- W/kg</div>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 10px; text-align: center;">
+        <div style="background: rgba(15, 23, 42, 0.65); padding: 5px 6px; border-radius: 6px; border: 1px solid #334155;">
+          <span style="color: #94a3b8; display: block;">اوج نیروی دینامیک زمین (vGRF):</span>
+          <strong id="boscoPeakForceVal" style="color: #facc15; font-size: 12px; margin-top: 2px; display: block;">-- N</strong>
+        </div>
+        <div style="background: rgba(15, 23, 42, 0.65); padding: 5px 6px; border-radius: 6px; border: 1px solid #334155;">
+          <span style="color: #94a3b8; display: block;">بهترین شاخص کشش-کوتاه‌شدن (RSI):</span>
+          <strong id="boscoBestRsiVal" style="color: #e879f9; font-size: 12px; margin-top: 2px; display: block;">--</strong>
+        </div>
+      </div>
+
+      <div id="bosco1RmInsight" style="margin-top: 6px; font-size: 10px; color: #cbd5e1; line-height: 1.5; background: rgba(0,0,0,0.3); padding: 6px 8px; border-radius: 6px; border-right: 3px solid #38bdf8;">
+        💡 برآورد 1RM از رابطه زمان پرواز، زمان تماس و ایمپالس عمودی طبق فرمول کارملو بوسکو محاسبه شده است.
+      </div>
+    </div>
+
     <div style="font-size: 11px; color: #94a3b8; text-align: right; margin-top: 4px;">جزئیات تک‌تک پرش‌ها:</div>
     <div class="boscoTableWrap">
       <table class="boscoTable">
@@ -4358,6 +4881,7 @@
             <th>تماس زمین (s)</th>
             <th>ارتفاع (cm)</th>
             <th>شاخص RSI</th>
+            <th>توان / 1RM</th>
           </tr>
         </thead>
         <tbody id="boscoTableBody"></tbody>
@@ -4674,12 +5198,36 @@
       </div>
     </div>
     <div class="stats-win-actions">
+      <button id="statsReviewBtn" class="stats-tool-btn" style="color: #fbbf24; border-color: rgba(245, 158, 11, 0.4);" title="بازبینی صحنه آهسته ۵ ثانیه اخیر آزمون (کلید R)">🎬 بازبینی ۵ث</button>
+      <button id="statsFocusControlBtn" class="stats-tool-btn" title="کنترل و قفل فوکوس سخت‌افزاری دوربین (F)">🎯 فوکوس بیومتریک</button>
       <button id="statsToggleJointAnglesBtn" class="stats-tool-btn" title="نمایش یا پنهان‌سازی زوایای بین مفاصل روی اسکلت (A)">📐 زوایای مفاصل</button>
       <button id="statsToggleGridBtn" class="stats-tool-btn" title="تراز دوربین ۳×۳ و خط زمین (G)">📐 تراز ۳×۳</button>
       <button id="statsShortcutsBtn" class="stats-tool-btn" title="راهنمای کلیدهای میانبر مربی (?)">⌨️ میانبرها</button>
       <button id="statsLayoutSplitBtn" class="stats-tool-btn active" title="نمای دوپنجره (دوربین + مشخصات)">🖥️ دوپنجره</button>
       <button id="statsLayoutCamBtn" class="stats-tool-btn" title="فقط کادر دوربین">📷 دوربین</button>
       <button id="statsPopoutBtn" class="stats-tool-btn" title="باز کردن در دو پنجره مجزا (Pop-Out)">🪟 پنجره مجزا</button>
+    </div>
+  </div>
+
+  <!-- Workstation Review Card: Quick Slow-Mo Replay of Last Attempt -->
+  <div id="workstationReviewCard" class="stats-card" style="margin-bottom: 12px; border: 1px solid rgba(245, 158, 11, 0.4); background: linear-gradient(180deg, #0f172a 0%, #1e1b2e 100%); border-radius: 10px; padding: 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.4);">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(245, 158, 11, 0.25); padding-bottom: 8px; margin-bottom: 10px;">
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <span style="font-size: 16px;">🎬</span>
+        <h4 style="margin: 0; font-size: 12.5px; font-weight: 800; color: #fbbf24;">بافر بازبینی صحنه آهسته (Review Panel)</h4>
+      </div>
+      <span id="workstationReviewBadge" class="hudBadge" style="font-size: 10px; background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); padding: 2px 7px; border-radius: 999px;">
+        بافر ۵ ثانیه اخیر
+      </span>
+    </div>
+    <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+      <div style="font-size: 11px; color: #cbd5e1; line-height: 1.6;">
+        <div>آخرین آزمون: <strong id="workstationReviewTestName" style="color: #38bdf8;">--</strong></div>
+        <div>نتیجه / رکورد: <strong id="workstationReviewResult" style="color: #4ade80;">--</strong></div>
+      </div>
+      <button type="button" id="workstationOpenReviewBtn" class="stats-tool-btn" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1.5px solid #f59e0b; padding: 7px 12px; font-weight: bold; border-radius: 8px;" title="باز کردن پنل بازبینی در کنار دوربین (کلید R)">
+        👁️ بازبینی کنار تصویر
+      </button>
     </div>
   </div>
 
@@ -4702,6 +5250,76 @@
     </div>
   </div>
 
+  <!-- Workstation Hardware Camera Focus & Biometric Sharpness Card -->
+  <div id="workstationFocusCard" class="stats-card" style="margin-bottom: 12px; border: 1px solid rgba(56, 189, 248, 0.35); background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%); border-radius: 10px; padding: 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.4);">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(51, 65, 85, 0.8); padding-bottom: 8px; margin-bottom: 10px;">
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <span style="font-size: 16px;">🎯</span>
+        <h4 style="margin: 0; font-size: 12.5px; font-weight: 800; color: #38bdf8;">کنترل فوکوس و شفافیت سخت‌افزاری دوربین</h4>
+      </div>
+      <span id="focusHardwareBadge" class="hudBadge" style="font-size: 10px; background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); padding: 2px 7px; border-radius: 999px;">
+        بررسی سنسور...
+      </span>
+    </div>
+
+    <!-- Target Camera Switcher (Active if dual camera connected) -->
+    <div id="focusTargetCamRow" style="display: flex; gap: 6px; margin-bottom: 10px;">
+      <button type="button" id="focusTargetCam1Btn" class="stats-tool-btn active" style="flex: 1; font-size: 11px; padding: 5px;">📷 دوربین ۱ (اصلی)</button>
+      <button type="button" id="focusTargetCam2Btn" class="stats-tool-btn" style="flex: 1; font-size: 11px; padding: 5px; opacity: 0.5;">🎥 دوربین ۲ (استودیو)</button>
+    </div>
+
+    <!-- Mode Buttons: Continuous vs Manual / Locked vs Single-Shot Refocus -->
+    <div style="margin-bottom: 10px;">
+      <div style="font-size: 10.5px; color: #94a3b8; margin-bottom: 4px;">حالت فوکوس سنسور سخت‌افزاری:</div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px;">
+        <button type="button" id="focusModeContinuousBtn" class="stats-tool-btn active" style="font-size: 10px; padding: 6px 4px; text-align: center;" title="فوکوس خودکار مداوم و دینامیک روی حرکات ورزشکار">
+          🔄 خودکار مداوم
+        </button>
+        <button type="button" id="focusModeManualBtn" class="stats-tool-btn" style="font-size: 10px; padding: 6px 4px; text-align: center;" title="قفل دقیق فاصله لنز برای پیشگیری از تاری حرکتی">
+          🔒 قفل فاصله
+        </button>
+        <button type="button" id="focusModeSingleShotBtn" class="stats-tool-btn" style="font-size: 10px; padding: 6px 4px; text-align: center; color: #4ade80; border-color: rgba(74, 222, 128, 0.4);" title="تنظیم مجدد فوری فوکوس قبل از ثبت آزمون">
+          ⚡ فوکوس سریع
+        </button>
+      </div>
+    </div>
+
+    <!-- Distance Slider (Meters) -->
+    <div id="focusDistanceSliderWrapper" style="margin-bottom: 10px; background: rgba(15, 23, 42, 0.7); border: 1px solid #334155; border-radius: 8px; padding: 8px 10px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+        <span style="font-size: 10.5px; color: #cbd5e1;">فاصله کانونی لنز تا ورزشکار:</span>
+        <span id="focusDistanceReadout" style="font-size: 11px; font-weight: 800; color: #38bdf8; font-family: monospace;">۲.۵۰ متر</span>
+      </div>
+      <input type="range" id="focusDistanceSlider" min="0.5" max="6.0" step="0.1" value="2.5" style="width: 100%; accent-color: #38bdf8; cursor: pointer;">
+      <div style="display: flex; justify-content: space-between; font-size: 9px; color: #64748b; margin-top: 2px;">
+        <span>۰.۵ متر (نزدیک)</span>
+        <span>۳.۰ متر (میانه)</span>
+        <span>۶.۰+ متر (دور)</span>
+      </div>
+    </div>
+
+    <!-- Biometric Presets for Station Workstation -->
+    <div style="margin-bottom: 8px;">
+      <div style="font-size: 10.5px; color: #94a3b8; margin-bottom: 4px;">پریزت‌های کالیبره ایستگاه بیومکانیک:</div>
+      <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+        <button type="button" class="focus-preset-btn" data-dist="1.5" style="flex: 1; min-width: 80px; background: rgba(30, 41, 59, 0.8); border: 1px solid #475569; border-radius: 6px; color: #cbd5e1; font-size: 10px; padding: 4px 6px; cursor: pointer;">
+          🧍 ۱.۵م (آنتروپومتری)
+        </button>
+        <button type="button" class="focus-preset-btn active" data-dist="2.5" style="flex: 1; min-width: 80px; background: rgba(56, 189, 248, 0.2); border: 1px solid #38bdf8; border-radius: 6px; color: #38bdf8; font-size: 10px; padding: 4px 6px; cursor: pointer;">
+          📏 ۲.۵م (قد و دست)
+        </button>
+        <button type="button" class="focus-preset-btn" data-dist="3.8" style="flex: 1; min-width: 80px; background: rgba(30, 41, 59, 0.8); border: 1px solid #475569; border-radius: 6px; color: #cbd5e1; font-size: 10px; padding: 4px 6px; cursor: pointer;">
+          🏃 ۳.۸م (چابکی و پرش)
+        </button>
+      </div>
+    </div>
+
+    <!-- Telemetry & Diagnostic note -->
+    <div id="focusTelemetryNote" style="font-size: 10px; color: #94a3b8; line-height: 1.5; background: rgba(30, 41, 59, 0.5); border-radius: 6px; padding: 6px 8px; border-right: 2px solid #38bdf8;">
+      💡 در آزمون‌های بیومتریک و ابعاد بدنی، فوکوس قفل‌شده یا خودکار مداوم مانع از خطای تاری لبه‌های مفاصل و نقاط آنتروپومتریک می‌شود.
+    </div>
+  </div>
+
   <!-- Active Athlete Dossier Card -->
   <div class="stats-athlete-card">
     <div class="athlete-card-top">
@@ -4718,7 +5336,13 @@
       </div>
     </div>
     <div class="athlete-specs-chips">
-      <div class="spec-chip">قد: <strong id="statsAthleteHeight">۱۷۵</strong> cm</div>
+      <div class="spec-chip">قد ثبت‌شده: <strong id="statsAthleteHeight">۱۷۵</strong> cm</div>
+      <div class="spec-chip" style="background: rgba(56, 189, 248, 0.15); border-color: rgba(56, 189, 248, 0.35);">
+        <span>قد دوربین:</span>
+        <strong id="statsLiveDetectedHeight" style="color: #38bdf8;">--</strong>
+        <span style="font-size: 9.5px; color: #94a3b8;">cm</span>
+        <button type="button" id="applyDetectedHeightBtn" style="background: #0284c7; color: #fff; border: none; border-radius: 4px; padding: 1px 5px; font-size: 9px; cursor: pointer; margin-right: 4px;" title="اعمال قد بدست‌آمده از دوربین در پروفایل">ثبت</button>
+      </div>
       <div class="spec-chip">سن: <strong id="statsAthleteAge">۱۸</strong> سال</div>
       <div class="spec-chip">وزن: <strong id="statsAthleteWeight">۶۸</strong> kg</div>
       <div class="spec-chip">جنسیت: <strong id="statsAthleteGender">آقا</strong></div>
@@ -4761,11 +5385,28 @@
   </div>
 
   <!-- Live Kinematic Telemetry Panel -->
-  <div class="stats-telemetry-panel">
+  <div class="stats-telemetry-panel" id="laptopStatsTelemetryPanel">
     <div class="telemetry-title">
       <span>⚡</span>
       <span id="statsTelemSectionTitle">شاخص‌های بیومکانیک لحظه‌ای</span>
       <span id="statsTelemModeBadge" style="font-size: 10px; font-weight: normal; color: #94a3b8; margin-right: auto;">آزمون فعال: دوی سرعت</span>
+    </div>
+
+    <!-- AI Biomechanical Form Error Overlay on Telemetry Feed -->
+    <div id="telemetryAiFormOverlay" class="telemetry-form-overlay" style="display: none;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;">
+        <div style="display: flex; align-items: center; gap: 5px;">
+          <span style="font-size: 14px;" id="telemFormIcon">⚠️</span>
+          <strong style="font-size: 11.5px; color: #fff;" id="telemFormWarningTitle">اخطار فرم حرکت (AI Biomechanical Warning)</strong>
+        </div>
+        <span id="telemFormSeverityBadge" style="font-size: 9.5px; font-weight: bold; background: rgba(0,0,0,0.35); padding: 2px 6px; border-radius: 4px; color: #fef08a;">خطای تکنیکی</span>
+      </div>
+      <div id="telemFormWarningDetail" style="font-size: 10.5px; color: #fecaca; line-height: 1.4; margin-bottom: 3px;">
+        زاویه راستای ستون فقرات ۱۴۳° (استاندارد: ۱۶۵°–۱۸۰°) • افتادگی عضلات میان‌تنه و قوس کمر
+      </div>
+      <div id="telemFormWarningAdvice" style="font-size: 10px; color: #fed7aa; background: rgba(0,0,0,0.25); border-radius: 5px; padding: 4px 6px; line-height: 1.4;">
+        💡 توصیه اصلاحی: شکم و باسن را منقبض نگه داشته و لگن را در یک راستا با شانه‌ها حفظ کنید.
+      </div>
     </div>
     <div class="telemetry-grid">
       <div class="telemetry-cell">
@@ -4783,6 +5424,38 @@
       <div class="telemetry-cell">
         <span class="telem-label" id="telemMetric4Label">📊 ریتم / تکرارها</span>
         <span class="telem-val warn" id="telemMetric4Val">--</span>
+      </div>
+    </div>
+
+    <!-- Real-time Live Joint Angles & Athlete Height Monitor Strip -->
+    <div id="liveKinematicAnglesCard" style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 8px; padding: 7px 10px; margin-top: 8px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span style="font-size: 13px;">📐</span>
+          <span style="font-size: 11px; font-weight: bold; color: #38bdf8;">پایش زنده زوایای مفاصل و قد خودکار</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 5px;">
+          <span id="liveHeightBadge" style="font-size: 10px; color: #4ade80; background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3); padding: 1px 7px; border-radius: 9999px;">قد زنده: -- cm</span>
+          <button type="button" id="applyLiveHeightBtn" style="background: #0284c7; color: #ffffff; border: none; border-radius: 4px; padding: 2px 6px; font-size: 9.5px; cursor: pointer;" title="ثبت قد تشخیص‌داده‌شده در مشخصات ورزشکار">ثبت در پروفایل</button>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; font-size: 10px; text-align: center;">
+        <div style="background: rgba(30,41,59,0.7); padding: 4px 2px; border-radius: 5px; border: 1px solid rgba(34, 197, 94, 0.25);">
+          <span style="color:#94a3b8; display:block; font-size: 9px;">زانوی راست/چپ</span>
+          <strong id="telemAngleKnee" style="color:#22c55e; font-size: 12px;">--°</strong>
+        </div>
+        <div style="background: rgba(30,41,59,0.7); padding: 4px 2px; border-radius: 5px; border: 1px solid rgba(245, 158, 11, 0.25);">
+          <span style="color:#94a3b8; display:block; font-size: 9px;">لگن / ران</span>
+          <strong id="telemAngleHip" style="color:#f59e0b; font-size: 12px;">--°</strong>
+        </div>
+        <div style="background: rgba(30,41,59,0.7); padding: 4px 2px; border-radius: 5px; border: 1px solid rgba(56, 189, 248, 0.25);">
+          <span style="color:#94a3b8; display:block; font-size: 9px;">آرنج</span>
+          <strong id="telemAngleElbow" style="color:#38bdf8; font-size: 12px;">--°</strong>
+        </div>
+        <div style="background: rgba(30,41,59,0.7); padding: 4px 2px; border-radius: 5px; border: 1px solid rgba(168, 85, 247, 0.25);">
+          <span style="color:#94a3b8; display:block; font-size: 9px;">تنه / ستون‌فقرات</span>
+          <strong id="telemAngleTorso" style="color:#c084fc; font-size: 12px;">--°</strong>
+        </div>
       </div>
     </div>
   </div>
@@ -4942,6 +5615,15 @@
           <strong>🖼️ تصویر در تصویر (PiP)</strong>
           <div style="font-size: 10px; color: #94a3b8;">دوربین ۱ بزرگ + دوربین ۲ گوشه صفحه</div>
         </button>
+      </div>
+    </div>
+
+    <!-- Hardware Focus Status for Studio Cameras -->
+    <div class="cam-config-group">
+      <label>🎯 وضعیت فوکوس و شفافیت سخت‌افزاری دوربین‌ها:</label>
+      <div id="multiCamFocusSummary" style="font-size: 11px; color: #cbd5e1; background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 10px; line-height: 1.6;">
+        <div id="cam1FocusModalStatus">📷 <strong>دوربین ۱:</strong> در حال بررسی قابلیت‌های سنسور...</div>
+        <div id="cam2FocusModalStatus" style="margin-top: 4px; color: #94a3b8;">🎥 <strong>دوربین ۲:</strong> غیرفعال</div>
       </div>
     </div>
 

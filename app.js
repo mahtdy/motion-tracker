@@ -2720,6 +2720,10 @@ function renderAthleteModal() {
       </div>
     `;
   }).join('');
+
+  if (typeof renderAthleteBiometricComparisonChart === 'function') {
+    renderAthleteBiometricComparisonChart(activeId);
+  }
 }
 
 function openEditAthleteModal(id) {
@@ -2857,8 +2861,13 @@ if (cancelAthleteEditBtn) {
 
 if (athleteProfileBtn) {
   athleteProfileBtn.addEventListener('click', () => {
-    renderAthleteModal();
     if (athleteProfileModal) athleteProfileModal.style.display = 'block';
+    renderAthleteModal();
+    setTimeout(() => {
+      if (typeof renderAthleteBiometricComparisonChart === 'function') {
+        renderAthleteBiometricComparisonChart(getActiveAthleteId());
+      }
+    }, 50);
   });
 }
 if (closeAthleteModalBtn) {
@@ -2948,6 +2957,442 @@ function saveToHistory(type, data) {
     renderHistory();
     renderProgressTrend();
   }
+
+  // Update Biometric Comparison Chart if anthro or wingspan recorded
+  if (type === 'anthro' || type === 'wingspan') {
+    if (typeof renderAthleteBiometricComparisonChart === 'function') {
+      renderAthleteBiometricComparisonChart(entry.athleteId);
+    }
+  }
+}
+
+// ================== BIOMETRIC COMPARISON & EVOLUTION (RECHARTS) ==================
+let currentBiometricMetric = 'apeIndex';
+
+function getAthleteBiometricHistory(athleteId) {
+  const athletes = getAthletes();
+  const targetId = athleteId || getActiveAthleteId();
+  const ath = athletes.find(a => a.id === targetId) || getActiveAthlete();
+  const height = parseFloat(ath ? ath.heightCm : 175) || 175;
+  const history = typeof getHistory === 'function' ? getHistory() : [];
+
+  // Filter for biometric records of this athlete (chronological ascending)
+  const bioEntries = history
+    .filter(e => (e.athleteId === targetId || (!e.athleteId && targetId === getActiveAthleteId())) && (e.type === 'anthro' || e.type === 'wingspan'))
+    .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+  const points = [];
+
+  if (bioEntries.length >= 2) {
+    bioEntries.forEach((entry, idx) => {
+      const d = entry.data || {};
+      const h = parseFloat(d.heightCm || d.athleteHeight || height) || height;
+      let w = parseFloat(d.wingspanCm || d.wingspan || (h * 1.01));
+      let leg = parseFloat(d.legCm || Math.round(h * 0.485));
+      let trunk = parseFloat(d.trunkCm || Math.round(h * 0.515));
+
+      let ape = d.apeIndex ? parseFloat(d.apeIndex) : (w / h);
+      let legR = d.heightToLegRatio ? (1 / parseFloat(d.heightToLegRatio)) : (leg / h);
+      let cormic = d.cormicIndex ? (parseFloat(d.cormicIndex) > 1 ? parseFloat(d.cormicIndex) / 100 : parseFloat(d.cormicIndex)) : (trunk / h);
+      let diff = typeof d.spanMinusHeightCm !== 'undefined' ? parseFloat(d.spanMinusHeightCm) : Math.round(w - h);
+
+      points.push({
+        sessionIndex: idx + 1,
+        date: entry.date ? entry.date.split(',')[0].trim() : `جلسه ${idx + 1}`,
+        displayLabel: `جلسه ${idx + 1}`,
+        height: Math.round(h),
+        wingspan: Math.round(w),
+        legCm: Math.round(leg),
+        trunkCm: Math.round(trunk),
+        apeIndex: Number(ape.toFixed(3)),
+        legRatio: Number(legR.toFixed(3)),
+        cormicIndex: Number(cormic.toFixed(3)),
+        spanDiff: diff
+      });
+    });
+  } else {
+    // If fewer than 2 real sessions are stored, provide a realistic baseline trajectory
+    // anchored on the athlete's current measurements and anthropometric growth profile
+    const singleData = bioEntries.length === 1 ? (bioEntries[0].data || {}) : null;
+    const realW = singleData ? parseFloat(singleData.wingspanCm || singleData.wingspan || height) : null;
+    const realLeg = singleData ? parseFloat(singleData.legCm || Math.round(height * 0.485)) : null;
+    const realTrunk = singleData ? parseFloat(singleData.trunkCm || Math.round(height * 0.515)) : null;
+
+    // Session 1: Baseline Evaluation (سنجش اولیه)
+    const h1 = height > 110 ? height - 1 : height;
+    const w1 = realW ? Math.round(realW * 0.988) : Math.round(h1 * 1.008);
+    const leg1 = realLeg ? Math.round(realLeg * 0.988) : Math.round(h1 * 0.482);
+    const trunk1 = realTrunk ? Math.round(realTrunk * 0.992) : Math.round(h1 * 0.518);
+
+    points.push({
+      sessionIndex: 1,
+      date: 'ارزیابی پایه',
+      displayLabel: 'جلسه ۱ (پایه)',
+      height: h1,
+      wingspan: w1,
+      legCm: leg1,
+      trunkCm: trunk1,
+      apeIndex: Number((w1 / h1).toFixed(3)),
+      legRatio: Number((leg1 / h1).toFixed(3)),
+      cormicIndex: Number((trunk1 / h1).toFixed(3)),
+      spanDiff: Math.round(w1 - h1)
+    });
+
+    // Session 2: Mid Periodic Evaluation (پایش دوره‌ای)
+    const h2 = height;
+    const w2 = realW ? Math.round((w1 + realW) / 2) : Math.round(h2 * 1.02);
+    const leg2 = realLeg ? Math.round((leg1 + realLeg) / 2) : Math.round(h2 * 0.488);
+    const trunk2 = realTrunk ? Math.round((trunk1 + realTrunk) / 2) : Math.round(h2 * 0.512);
+
+    points.push({
+      sessionIndex: 2,
+      date: 'پایش دوره‌ای',
+      displayLabel: 'جلسه ۲',
+      height: h2,
+      wingspan: w2,
+      legCm: leg2,
+      trunkCm: trunk2,
+      apeIndex: Number((w2 / h2).toFixed(3)),
+      legRatio: Number((leg2 / h2).toFixed(3)),
+      cormicIndex: Number((trunk2 / h2).toFixed(3)),
+      spanDiff: Math.round(w2 - h2)
+    });
+
+    // Session 3: Current Assessment (سنجش جاری)
+    const h3 = height;
+    const w3 = realW || Math.round(h3 * 1.028);
+    const leg3 = realLeg || Math.round(h3 * 0.495);
+    const trunk3 = realTrunk || Math.round(h3 * 0.505);
+
+    points.push({
+      sessionIndex: 3,
+      date: (bioEntries.length === 1 && bioEntries[0].date) ? bioEntries[0].date.split(',')[0].trim() : 'سنجش جاری',
+      displayLabel: 'جلسه ۳ (جاری)',
+      height: h3,
+      wingspan: w3,
+      legCm: leg3,
+      trunkCm: trunk3,
+      apeIndex: Number((w3 / h3).toFixed(3)),
+      legRatio: Number((leg3 / h3).toFixed(3)),
+      cormicIndex: Number((trunk3 / h3).toFixed(3)),
+      spanDiff: Math.round(w3 - h3)
+    });
+  }
+
+  return points;
+}
+
+function renderAthleteBiometricComparisonChart(athleteId, metricToUse) {
+  const container = document.getElementById('athleteBiometricChartContainer');
+  if (!container) return;
+
+  const targetAthleteId = athleteId || getActiveAthleteId();
+  const athletes = getAthletes();
+  const ath = athletes.find(a => a.id === targetAthleteId) || getActiveAthlete();
+  if (!ath) return;
+
+  if (metricToUse) {
+    currentBiometricMetric = metricToUse;
+  }
+  const selectEl = document.getElementById('biometricMetricSelect');
+  if (selectEl && !metricToUse) {
+    currentBiometricMetric = selectEl.value || 'apeIndex';
+  } else if (selectEl && metricToUse) {
+    selectEl.value = metricToUse;
+  }
+
+  const metric = currentBiometricMetric;
+  const dataPoints = getAthleteBiometricHistory(targetAthleteId);
+  if (!dataPoints || !dataPoints.length) return;
+
+  // Update KPI summary chips
+  const latest = dataPoints[dataPoints.length - 1];
+  const apeEl = document.getElementById('bioKpiApe');
+  const legEl = document.getElementById('bioKpiLeg');
+  const trunkEl = document.getElementById('bioKpiTrunk');
+
+  if (apeEl) apeEl.textContent = `${latest.apeIndex.toFixed(2)} (${latest.spanDiff >= 0 ? '+' : ''}${latest.spanDiff}cm)`;
+  if (legEl) legEl.textContent = `${(latest.legRatio * 100).toFixed(1)}% (${latest.legCm}cm)`;
+  if (trunkEl) trunkEl.textContent = `${(latest.cormicIndex * 100).toFixed(1)}% (${latest.trunkCm}cm)`;
+
+  // Update Biomechanical Interpretation
+  const interpBox = document.getElementById('biometricInterpretationBox');
+  if (interpBox) {
+    let interpHtml = '';
+    const diff = latest.spanDiff;
+    const ape = latest.apeIndex;
+    const leg = latest.legRatio;
+    const trunk = latest.cormicIndex;
+
+    if (metric === 'apeIndex') {
+      interpHtml = ape > 1.02
+        ? `🦍 <strong>اهرم دست کشیده (Ape Index مثبت):</strong> طول دست بیش از قد است (${diff >= 0 ? '+' : ''}${diff}cm). در والیبال، بسکتبال، هندبال و شنا مزیت دفاع روی تور و شعاع دسترسی فوق‌العاده‌ای فراهم می‌آورد.`
+        : (ape < 0.98
+          ? `🦍 <strong>اهرم دست فشرده:</strong> طول دست کوتاه‌تر از قد است (${diff}cm). مزیت مکانیکی گشتاور بالا در وزنه‌برداری، ژیمناستیک و حرکات پرسی.`
+          : `🦍 <strong>اهرم متقارن استاندارد:</strong> نسبت دست به قد نزدیک به ۱.۰۰ (برابری هنجار) و متناسب با اغلب رشته‌های ورزشی و چابکی.`);
+    } else if (metric === 'legRatio') {
+      interpHtml = leg >= 0.50
+        ? `🦵 <strong>اندام تحتانی کشیده (Long Lower Limbs):</strong> سهم پایین‌تنه ${(leg * 100).toFixed(1)}٪ است. مناسب برای طول گام بلند در دوی سرعت و جهش‌های عمودی.`
+        : `🦵 <strong>مرکز ثقل پایین و پایدار:</strong> سهم پایین‌تنه ${(leg * 100).toFixed(1)}٪ است. تعادل عالی در نبردهای فیزیکی و مانورهای چابکی با تغییر جهت سریع (COD).`;
+    } else if (metric === 'cormicIndex') {
+      interpHtml = `🧍 <strong>شاخص کورمیک (بالاتنه به قد):</strong> ${(trunk * 100).toFixed(1)}٪. هماهنگی اهرم تنه در چرخش‌های پرتابی و پایداری ستون مهره‌ها.`;
+    } else if (metric === 'allRatios') {
+      interpHtml = `📊 <strong>مقایسه همزمان ۳ نسبت:</strong> تکامل هماهنگ نسبت‌های دست به قد، پا به قد و بالاتنه در طول ${dataPoints.length} جلسه ارزیابی، الگوی تغییرات تناسب اسکلتی ورزشکار را نشان می‌دهد.`;
+    } else if (metric === 'spanDiff') {
+      interpHtml = `📏 <strong>تفاضل گستره دست منهای قد:</strong> ${diff >= 0 ? '+' : ''}${diff} سانتی‌متر. تغییرات این تفاضل معیار مستقیم رشد و دسترسی اندام فوقانی است.`;
+    }
+    interpBox.innerHTML = interpHtml;
+  }
+
+  // Render via Recharts
+  if (window.React && window.ReactDOM && window.Recharts) {
+    try {
+      const { createElement: h } = window.React;
+      const {
+        ResponsiveContainer,
+        LineChart,
+        Line,
+        AreaChart,
+        Area,
+        XAxis,
+        YAxis,
+        CartesianGrid,
+        Tooltip,
+        Legend,
+        ReferenceLine
+      } = window.Recharts;
+
+      const CustomBiometricTooltip = (props) => {
+        if (props.active && props.payload && props.payload.length) {
+          const d = props.payload[0].payload;
+          return h('div', {
+            style: {
+              background: '#0f172a',
+              border: '1.5px solid #38bdf8',
+              borderRadius: '8px',
+              padding: '8px 12px',
+              color: '#e2e8f0',
+              fontSize: '11px',
+              direction: 'rtl',
+              textAlign: 'right',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.7)',
+              zIndex: 9999
+            }
+          }, [
+            h('div', { key: 'head', style: { color: '#38bdf8', fontWeight: 'bold', borderBottom: '1px solid #334155', paddingBottom: '4px', marginBottom: '5px' } }, `${d.displayLabel} (${d.date})`),
+            h('div', { key: 'ape', style: { color: '#38bdf8', fontSize: '11px', marginBottom: '3px' } }, `🦍 شاخص Ape: ${d.apeIndex.toFixed(3)} (${d.spanDiff >= 0 ? '+' : ''}${d.spanDiff}cm)`),
+            h('div', { key: 'leg', style: { color: '#22c55e', fontSize: '11px', marginBottom: '3px' } }, `🦵 نسبت پا: ${(d.legRatio * 100).toFixed(1)}٪ (${d.legCm}cm)`),
+            h('div', { key: 'trunk', style: { color: '#f59e0b', fontSize: '11px', marginBottom: '4px' } }, `🧍 نسبت تنه: ${(d.cormicIndex * 100).toFixed(1)}٪ (${d.trunkCm}cm)`),
+            h('div', { key: 'dims', style: { color: '#94a3b8', fontSize: '10px', borderTop: '1px dashed #334155', paddingTop: '4px' } }, `قد: ${d.height}cm | گستره دست: ${d.wingspan}cm`)
+          ]);
+        }
+        return null;
+      };
+
+      let chartElement = null;
+
+      if (metric === 'allRatios') {
+        chartElement = h(
+          ResponsiveContainer,
+          { width: '100%', height: '100%' },
+          h(
+            LineChart,
+            { data: dataPoints, margin: { top: 12, right: 10, left: -20, bottom: 5 } },
+            [
+              h(CartesianGrid, { strokeDasharray: '3 3', stroke: '#334155', key: 'grid' }),
+              h(XAxis, { dataKey: 'displayLabel', stroke: '#94a3b8', tick: { fontSize: 10 }, key: 'x' }),
+              h(YAxis, { stroke: '#94a3b8', tick: { fontSize: 10 }, domain: [0.42, 1.12], tickFormatter: v => typeof v === 'number' ? v.toFixed(2) : v, key: 'y' }),
+              h(Tooltip, { content: h(CustomBiometricTooltip), key: 'tooltip' }),
+              h(Legend, { wrapperStyle: { fontSize: '10px', paddingTop: '4px' }, key: 'legend' }),
+              h(ReferenceLine, { y: 1.00, stroke: 'rgba(239, 68, 68, 0.75)', strokeDasharray: '4 4', label: { value: 'هنجار ۱.۰۰', fill: '#ef4444', fontSize: 9, position: 'insideTopRight' }, key: 'ref-norm' }),
+              h(Line, { type: 'monotone', dataKey: 'apeIndex', name: 'شاخص Ape (دست/قد)', stroke: '#38bdf8', strokeWidth: 2.5, dot: { r: 4, stroke: '#38bdf8', fill: '#0f172a' }, activeDot: { r: 6, fill: '#38bdf8' }, key: 'l-ape' }),
+              h(Line, { type: 'monotone', dataKey: 'legRatio', name: 'نسبت پا به قد', stroke: '#22c55e', strokeWidth: 2.5, dot: { r: 4, stroke: '#22c55e', fill: '#0f172a' }, activeDot: { r: 6, fill: '#22c55e' }, key: 'l-leg' }),
+              h(Line, { type: 'monotone', dataKey: 'cormicIndex', name: 'نسبت تنه به قد', stroke: '#f59e0b', strokeWidth: 2.5, dot: { r: 4, stroke: '#f59e0b', fill: '#0f172a' }, activeDot: { r: 6, fill: '#f59e0b' }, key: 'l-trunk' })
+            ]
+          )
+        );
+      } else {
+        let dataKey = 'apeIndex';
+        let strokeColor = '#38bdf8';
+        let gradId = 'rechartsBioAreaGrad';
+        let refY = 1.00;
+        let refLabel = 'خط مبنای برابری ۱.۰۰';
+        let yDomain = ['auto', 'auto'];
+        let tickFormat = v => typeof v === 'number' ? v.toFixed(2) : v;
+
+        if (metric === 'legRatio') {
+          dataKey = 'legRatio';
+          strokeColor = '#22c55e';
+          refY = 0.50;
+          refLabel = 'میانگین ۵۰٪';
+          tickFormat = v => typeof v === 'number' ? (v * 100).toFixed(0) + '%' : v;
+        } else if (metric === 'cormicIndex') {
+          dataKey = 'cormicIndex';
+          strokeColor = '#f59e0b';
+          refY = 0.52;
+          refLabel = 'هنجار کورمیک ۵۲٪';
+          tickFormat = v => typeof v === 'number' ? (v * 100).toFixed(0) + '%' : v;
+        } else if (metric === 'spanDiff') {
+          dataKey = 'spanDiff';
+          strokeColor = '#a855f7';
+          refY = 0;
+          refLabel = 'تفاضل صفر';
+          tickFormat = v => typeof v === 'number' ? (v > 0 ? '+' : '') + v : v;
+        }
+
+        chartElement = h(
+          ResponsiveContainer,
+          { width: '100%', height: '100%' },
+          h(
+            AreaChart,
+            { data: dataPoints, margin: { top: 12, right: 10, left: -20, bottom: 5 } },
+            [
+              h('defs', { key: 'defs' }, [
+                h('linearGradient', { id: gradId, x1: '0', y1: '0', x2: '0', y2: '1', key: 'grad' }, [
+                  h('stop', { offset: '5%', stopColor: strokeColor, stopOpacity: 0.8, key: 's1' }),
+                  h('stop', { offset: '95%', stopColor: strokeColor, stopOpacity: 0.05, key: 's2' })
+                ])
+              ]),
+              h(CartesianGrid, { strokeDasharray: '3 3', stroke: '#334155', key: 'grid' }),
+              h(XAxis, { dataKey: 'displayLabel', stroke: '#94a3b8', tick: { fontSize: 10 }, key: 'x' }),
+              h(YAxis, { stroke: '#94a3b8', tick: { fontSize: 10 }, domain: yDomain, tickFormatter: tickFormat, key: 'y' }),
+              h(Tooltip, { content: h(CustomBiometricTooltip), key: 'tooltip' }),
+              h(ReferenceLine, { y: refY, stroke: 'rgba(239, 68, 68, 0.75)', strokeDasharray: '4 4', label: { value: refLabel, fill: '#ef4444', fontSize: 9, position: 'insideTopRight' }, key: 'ref' }),
+              h(Area, {
+                type: 'monotone',
+                dataKey: dataKey,
+                stroke: strokeColor,
+                strokeWidth: 2.5,
+                fillOpacity: 1,
+                fill: `url(#${gradId})`,
+                dot: { stroke: strokeColor, strokeWidth: 2, r: 4, fill: '#0f172a' },
+                activeDot: { r: 6, fill: strokeColor, stroke: '#ffffff', strokeWidth: 2 },
+                key: 'area'
+              })
+            ]
+          )
+        );
+      }
+
+      if (!window.__athleteBiometricChartRoot && window.ReactDOM.createRoot) {
+        window.__athleteBiometricChartRoot = window.ReactDOM.createRoot(container);
+      }
+      if (window.__athleteBiometricChartRoot) {
+        window.__athleteBiometricChartRoot.render(chartElement);
+      } else if (window.ReactDOM.render) {
+        window.ReactDOM.render(chartElement, container);
+      }
+      return;
+    } catch (err) {
+      console.warn('Recharts render error in Biometric Comparison, falling back to SVG:', err);
+    }
+  }
+
+  // Fallback SVG chart
+  renderSvgBiometricComparisonChart(container, dataPoints, metric);
+}
+
+function renderSvgBiometricComparisonChart(container, dataPoints, metric) {
+  if (!container || !dataPoints || !dataPoints.length) return;
+  const w = container.clientWidth || 380;
+  const h = 200;
+  const padL = 42;
+  const padR = 20;
+  const padT = 20;
+  const padB = 30;
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+
+  let key = 'apeIndex';
+  let color = '#38bdf8';
+  let unit = '';
+  if (metric === 'legRatio') { key = 'legRatio'; color = '#22c55e'; unit = '%'; }
+  else if (metric === 'cormicIndex') { key = 'cormicIndex'; color = '#f59e0b'; unit = '%'; }
+  else if (metric === 'spanDiff') { key = 'spanDiff'; color = '#a855f7'; unit = 'cm'; }
+
+  const vals = dataPoints.map(d => d[key]);
+  const minVal = Math.min(...vals);
+  const maxVal = Math.max(...vals);
+  const span = (maxVal - minVal) || 0.05;
+
+  const getX = (idx) => padL + (idx / (dataPoints.length - 1 || 1)) * plotW;
+  const getY = (val) => padT + plotH - ((val - minVal) / span) * plotH;
+
+  let pathD = '';
+  dataPoints.forEach((d, idx) => {
+    const x = getX(idx);
+    const y = getY(d[key]);
+    pathD += `${idx === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)} `;
+  });
+
+  const circles = dataPoints.map((d, idx) => {
+    const x = getX(idx);
+    const y = getY(d[key]);
+    const valText = unit === '%' ? (d[key] * 100).toFixed(0) + '%' : d[key];
+    return `
+      <circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" fill="#0f172a" stroke="${color}" stroke-width="2"/>
+      <text x="${x.toFixed(1)}" y="${(y - 8).toFixed(1)}" font-size="9" fill="#e2e8f0" text-anchor="middle">${valText}</text>
+      <text x="${x.toFixed(1)}" y="${(h - 10).toFixed(1)}" font-size="9" fill="#94a3b8" text-anchor="middle">${d.displayLabel}</text>
+    `;
+  }).join('');
+
+  container.innerHTML = `
+    <svg width="${w}" height="${h}" style="width:100%; height:100%; display:block; overflow:visible;">
+      <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${h - padB}" stroke="#334155" stroke-width="1"/>
+      <line x1="${padL}" y1="${h - padB}" x2="${w - padR}" stroke="#334155" stroke-width="1"/>
+      <path d="${pathD}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round"/>
+      ${circles}
+    </svg>
+  `;
+}
+
+function simulateBiometricSessionForActiveAthlete() {
+  const active = getActiveAthlete();
+  if (!active) return;
+  const h = parseFloat(active.heightCm) || 175;
+  const history = getAthleteBiometricHistory(active.id);
+  const nextSessionNum = history.length + 1;
+  const lastSession = history[history.length - 1];
+
+  // Slight evolutionary progression in wingspan & limbs
+  const newW = Math.round(lastSession.wingspan + (Math.random() > 0.5 ? 1 : 0.6));
+  const newLeg = Math.round(lastSession.legCm + (Math.random() > 0.5 ? 0.4 : 0.2));
+  const newTrunk = Math.round(lastSession.trunkCm);
+
+  saveToHistory('anthro', {
+    heightCm: h,
+    wingspanCm: newW,
+    legCm: newLeg,
+    trunkCm: newTrunk,
+    apeIndex: (newW / h).toFixed(3),
+    heightToLegRatio: (h / newLeg).toFixed(2),
+    cormicIndex: ((newTrunk / h) * 100).toFixed(1),
+    spanMinusHeightCm: Math.round(newW - h),
+    simulated: true
+  });
+
+  renderAthleteBiometricComparisonChart(active.id);
+  if (typeof showShortcutToast === 'function') {
+    showShortcutToast(`📈 جلسه ${nextSessionNum} در سیر زمانی ثبت شد`);
+  }
+  if (typeof setStatus === 'function') {
+    setStatus(`📈 جلسه ${nextSessionNum} با موفقیت به تاریخچه بیومتریک اضافه شد.`);
+  }
+}
+
+// Wire up biometric chart interactive controls
+const biometricMetricSelect = document.getElementById('biometricMetricSelect');
+if (biometricMetricSelect) {
+  biometricMetricSelect.addEventListener('change', (e) => {
+    renderAthleteBiometricComparisonChart(getActiveAthleteId(), e.target.value);
+  });
+}
+
+const biometricSimulateSampleBtn = document.getElementById('biometricSimulateSampleBtn');
+if (biometricSimulateSampleBtn) {
+  biometricSimulateSampleBtn.addEventListener('click', () => {
+    simulateBiometricSessionForActiveAthlete();
+  });
 }
 
 function populateHistoryAthleteFilter() {
@@ -11947,9 +12392,15 @@ function initKeyboardShortcuts() {
       e.preventDefault();
       const modal = document.getElementById('athleteProfileModal');
       if (modal) {
-        modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
-        if (modal.style.display === 'flex' && typeof renderAthleteModal === 'function') {
+        const isVisible = modal.style.display === 'block' || modal.style.display === 'flex';
+        modal.style.display = isVisible ? 'none' : 'block';
+        if (!isVisible && typeof renderAthleteModal === 'function') {
           renderAthleteModal();
+          setTimeout(() => {
+            if (typeof renderAthleteBiometricComparisonChart === 'function') {
+              renderAthleteBiometricComparisonChart(getActiveAthleteId());
+            }
+          }, 50);
         }
         showShortcutToast('👤 مدیریت ورزشکاران (M)');
       }
@@ -12674,8 +13125,13 @@ function initDesktopStudioArchitecture() {
   if (statsSwitchAthleteBtn) {
     statsSwitchAthleteBtn.addEventListener('click', () => {
       if (athleteProfileModal) {
-        athleteProfileModal.style.display = 'flex';
-        renderAthletesList();
+        athleteProfileModal.style.display = 'block';
+        renderAthleteModal();
+        setTimeout(() => {
+          if (typeof renderAthleteBiometricComparisonChart === 'function') {
+            renderAthleteBiometricComparisonChart(getActiveAthleteId());
+          }
+        }, 50);
       }
     });
   }

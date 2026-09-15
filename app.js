@@ -948,6 +948,21 @@ const squatCalibResultText = document.getElementById('squatCalibResultText');
 const squatCalibDepthVal = document.getElementById('squatCalibDepthVal');
 const squatCalibToeRatioVal = document.getElementById('squatCalibToeRatioVal');
 
+// Squat ROM Baseline, Calibration & Fatigue State (Declared early to prevent TDZ in loadSettingsUI)
+let isSquatCalibrating = false;
+let squatCalibHoldStartTime = 0;
+let squatCalibSamples = [];
+let squatCalibFeedbackText = 'در وضعیت اسکات بنشینید و ۳ ثانیه موقعیت را حفظ کنید 🏋️‍♂️';
+let squatBaseline = {
+  depthAngle: 90,
+  kneeToeRatio: 0.12,
+  femurTibiaRatio: 1.05,
+  isCalibrated: false
+};
+let squatLungeRepCombinedTensionHistory = [];
+let squatLungeCurrentFatigueIndex = 0;
+let squatLungeFatigueRatingText = 'شاداب (آغاز آزمون)';
+
 // Wingspan (طول دست‌ها) Elements
 const wingspanHud = document.getElementById('wingspanHud');
 const wingspanCurrentVal = document.getElementById('wingspanCurrentVal');
@@ -9344,13 +9359,33 @@ function calculateJointAngle(pA, pB, pC) {
 let activeAiFormWarning = null; // { type, mode, shortText, title, detail, advice, severity: 'critical'|'moderate', timestamp }
 let lastAiFormWarningSoundTime = 0;
 let lastAiFormSpeechTime = 0;
+let dismissedWarningType = null;
+let dismissedWarningUntil = 0;
 const aiFormStats = {
   pushup: { backArchCount: 0, insufficientRomCount: 0, pikeCount: 0, validReps: 0 },
   situp: { insufficientRomCount: 0, backArchCount: 0, validReps: 0 }
 };
 
+function dismissActiveAiFormWarning() {
+  if (activeAiFormWarning) {
+    dismissedWarningType = activeAiFormWarning.type;
+    dismissedWarningUntil = performance.now() + 5000; // Suppress re-triggering for 5s upon manual acknowledgement
+    clearAiFormWarning(true);
+    if (typeof playChime === 'function') {
+      playChime(520, 'sine', 0.1);
+    }
+  } else {
+    clearAiFormWarning(true);
+  }
+}
+
 function triggerAiFormWarning(type, data) {
   const now = performance.now();
+  // If coach/user manually acknowledged and closed this error, suppress until cooldown expires
+  if (dismissedWarningType === type && now < dismissedWarningUntil) {
+    return;
+  }
+
   const warningObj = {
     type,
     mode: data.mode || (type.startsWith('PUSHUP') ? 'pushup' : 'situp'),
@@ -9399,10 +9434,22 @@ function triggerAiFormWarning(type, data) {
   }
 }
 
-function clearAiFormWarning() {
-  if (!activeAiFormWarning) return;
+function clearAiFormWarning(fromUserDismiss = false) {
+  const overlay = document.getElementById('telemetryAiFormOverlay');
+  if (overlay) {
+    overlay.style.display = 'none';
+    delete overlay.dataset.currentWarningType;
+    delete overlay.dataset.severity;
+  }
+  const panel = document.getElementById('laptopStatsTelemetryPanel');
+  if (panel) {
+    panel.classList.remove('has-form-warning', 'has-form-warning-amber');
+  }
+  if (!fromUserDismiss) {
+    dismissedWarningType = null;
+    dismissedWarningUntil = 0;
+  }
   activeAiFormWarning = null;
-  updateAiFormWarningTelemetry(null);
 }
 
 function updateAiFormWarningTelemetry(warning) {
@@ -9419,19 +9466,22 @@ function updateAiFormWarningTelemetry(warning) {
   if (!warning) {
     overlay.style.display = 'none';
     delete overlay.dataset.currentWarningType;
+    delete overlay.dataset.severity;
     panel.classList.remove('has-form-warning', 'has-form-warning-amber');
     return;
   }
 
-  const wasHidden = overlay.style.display === 'none' || overlay.dataset.currentWarningType !== warning.type;
+  const isDifferentWarning = overlay.style.display === 'none' || overlay.dataset.currentWarningType !== warning.type;
   overlay.dataset.currentWarningType = warning.type;
+  overlay.dataset.severity = warning.severity;
 
   overlay.style.display = 'block';
   overlay.className = 'telemetry-form-overlay ' + (warning.severity === 'critical' ? 'warning-critical' : 'warning-moderate');
 
-  if (wasHidden) {
+  // Trigger smooth scale-in and fade-in animation whenever a form error is triggered
+  if (isDifferentWarning) {
     overlay.style.animation = 'none';
-    void overlay.offsetWidth; // Trigger reflow to restart the scale-in animation
+    void overlay.offsetWidth; // Trigger reflow so the scale-in and fade-in animation plays smoothly
     overlay.style.animation = '';
   }
 
@@ -9454,6 +9504,17 @@ function updateAiFormWarningTelemetry(warning) {
     badgeEl.style.color = warning.severity === 'critical' ? '#fecaca' : '#fef08a';
   }
 }
+
+// Bind close button on AI form error telemetry overlay (top-right corner)
+const telemFormCloseBtn = document.getElementById('telemFormCloseBtn');
+if (telemFormCloseBtn) {
+  telemFormCloseBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    dismissActiveAiFormWarning();
+  });
+}
+window.dismissActiveAiFormWarning = dismissActiveAiFormWarning;
 
 // ================== SIT-UP (دراز و نشست) TEST SYSTEM ==================
 let situpPhase = 'intro'; // 'intro' | 'countdown' | 'running' | 'finished'
@@ -10320,21 +10381,6 @@ let squatLungeDepthStatusText = 'ایستاده (آماده)';
 let squatLungeAlignmentText = 'تراز استاندارد ✓';
 
 // ================== SQUAT ROM BASELINE & CALIBRATION ==================
-let isSquatCalibrating = false;
-let squatCalibHoldStartTime = 0;
-let squatCalibSamples = [];
-let squatCalibFeedbackText = 'در وضعیت اسکات بنشینید و ۳ ثانیه موقعیت را حفظ کنید 🏋️‍♂️';
-let squatBaseline = {
-  depthAngle: 90,
-  kneeToeRatio: 0.12,
-  femurTibiaRatio: 1.05,
-  isCalibrated: false
-};
-
-// Fatigue Monitor Variables
-let squatLungeRepCombinedTensionHistory = [];
-let squatLungeCurrentFatigueIndex = 0;
-let squatLungeFatigueRatingText = 'شاداب (آغاز آزمون)';
 
 function loadSquatRomBaseline() {
   try {

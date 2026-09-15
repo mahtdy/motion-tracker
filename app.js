@@ -2216,21 +2216,24 @@ async function triggerSingleShotRefocus(target = null) {
  * Automatically invoked when entering or triggering biometric measurement modes
  */
 async function ensureSharpBiometricFocus(context = 'biometric') {
-  const settingCheck = document.getElementById('settingCameraFocusControl');
-  if (settingCheck && !settingCheck.checked) return;
-
-  const st = cameraFocusState.primary;
-  if (!st || (!st.supported && !st.distanceRange)) return;
-
-  console.log(`🎯 [Biometric Sharpness] Asserting sharp focus constraints for: ${context}`);
   try {
-    if (st.focusModes && st.focusModes.includes('continuous')) {
+    const settingCheck = document.getElementById('settingCameraFocusControl');
+    if (settingCheck && !settingCheck.checked) return;
+
+    const st = cameraFocusState.primary;
+    if (!st || !st.supported) return;
+
+    // Verify camera stream and video track are alive
+    if (!currentCameraStream || !currentCameraStream.active) return;
+    const track = currentCameraStream.getVideoTracks()[0];
+    if (!track || track.readyState !== 'live') return;
+
+    console.log(`🎯 [Biometric Sharpness] Checking focus state for: ${context}`);
+    if (st.focusModes && st.focusModes.includes('continuous') && st.currentMode !== 'continuous') {
       await applyCameraFocusConstraints('primary', { mode: 'continuous' });
-    } else if (st.focusModes && st.focusModes.includes('single-shot')) {
-      await triggerSingleShotRefocus('primary');
     }
   } catch (e) {
-    console.warn('ensureSharpBiometricFocus error:', e);
+    console.warn('ensureSharpBiometricFocus safe catch:', e);
   }
 }
 
@@ -3011,9 +3014,7 @@ function showErrorModal(errorType, technicalDetails = null) {
     retryBtn.onclick = () => {
       errorModal.style.display = 'none';
       // Reset and retry based on context
-      if (errorType.includes('CAMERA')) {
-        retryStart();
-      } else if (errorType.includes('MODEL')) {
+      if (errorType.includes('CAMERA') || errorType.includes('MODEL') || errorType.includes('DETECTION')) {
         retryStart();
       } else {
         window.location.reload();
@@ -9335,10 +9336,16 @@ if (boscoCustomSecInput) {
 // ================== BIOMECHANICS: 3-POINT JOINT ANGLE HELPER ==================
 /**
  * Calculates the interior angle (in degrees) at vertex B formed by line segments BA and BC.
- * Uses the dot product of normalized 2D vector rays.
+ * Returns a Number object enriched with angle, p1, p2, p3, rad1, rad2 so both
+ * arithmetic math and object destructuring work seamlessly across all modules.
  */
 function calculateJointAngle(pA, pB, pC) {
   if (!pA || !pB || !pC) return null;
+  const sA = pA.score ?? 1;
+  const sB = pB.score ?? 1;
+  const sC = pC.score ?? 1;
+  if (sA < 0.15 || sB < 0.15 || sC < 0.15) return null;
+
   const vBAx = pA.x - pB.x;
   const vBAy = pA.y - pB.y;
   const vBCx = pC.x - pB.x;
@@ -9347,9 +9354,22 @@ function calculateJointAngle(pA, pB, pC) {
   const magBA = Math.hypot(vBAx, vBAy);
   const magBC = Math.hypot(vBCx, vBCy);
   if (magBA < 1e-4 || magBC < 1e-4) return null;
+
   let cosVal = dot / (magBA * magBC);
   cosVal = Math.max(-1, Math.min(1, cosVal));
-  return Math.acos(cosVal) * (180 / Math.PI);
+  const degrees = Math.round(Math.acos(cosVal) * (180 / Math.PI));
+
+  const rad1 = Math.atan2(pA.y - pB.y, pA.x - pB.x);
+  const rad2 = Math.atan2(pC.y - pB.y, pC.x - pB.x);
+
+  const res = new Number(degrees);
+  res.angle = degrees;
+  res.p1 = pA;
+  res.p2 = pB;
+  res.p3 = pC;
+  res.rad1 = rad1;
+  res.rad2 = rad2;
+  return res;
 }
 
 // ================== AI BIOMECHANICAL FORM ERROR ANALYSIS ENGINE ==================
@@ -10745,135 +10765,140 @@ function updateSquatFatigueMonitor() {
 
 // ================== DYNAMIC DEPTH GAUGE GRAPHIC OVERLAY ==================
 function drawDepthGauge(cx, cy, currentKneeAngle, targetDepthAngle) {
+  const safeAngle = (typeof currentKneeAngle === 'number' && isFinite(currentKneeAngle)) ? currentKneeAngle : (currentKneeAngle?.valueOf?.() || 180);
+  const safeTarget = (typeof targetDepthAngle === 'number' && isFinite(targetDepthAngle)) ? targetDepthAngle : 90;
+
   const r = 46;
   const startAng = 0.75 * Math.PI; // 135° (bottom-left)
   const endAng = 2.25 * Math.PI;   // 405° (bottom-right)
   const totalSweep = 1.5 * Math.PI; // 270°
 
   const standingRef = 175;
-  const rawProgress = (standingRef - currentKneeAngle) / Math.max(20, (standingRef - targetDepthAngle));
-  const progress = Math.max(0, Math.min(1.25, rawProgress));
+  const denom = Math.max(20, standingRef - safeTarget);
+  const rawProgress = isFinite(denom) && denom !== 0 ? (standingRef - safeAngle) / denom : 0;
+  const progress = Math.max(0, Math.min(1.25, isFinite(rawProgress) ? rawProgress : 0));
 
   ctx.save();
-
-  // Glass card circular backdrop
-  ctx.beginPath();
-  ctx.arc(cx, cy, r + 14, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-
-  // Outer gauge track
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, startAng, endAng);
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
-  ctx.lineWidth = 8;
-  ctx.lineCap = 'round';
-  ctx.stroke();
-
-  // Target depth tick mark (at 100% depth / 1.0 progress)
-  const targetMarkAngle = startAng + (1.0 / 1.25) * totalSweep;
-  const tX1 = cx + Math.cos(targetMarkAngle) * (r - 7);
-  const tY1 = cy + Math.sin(targetMarkAngle) * (r - 7);
-  const tX2 = cx + Math.cos(targetMarkAngle) * (r + 7);
-  const tY2 = cy + Math.sin(targetMarkAngle) * (r + 7);
-
-  ctx.beginPath();
-  ctx.moveTo(tX1, tY1);
-  ctx.lineTo(tX2, tY2);
-  ctx.strokeStyle = '#facc15';
-  ctx.lineWidth = 2.5;
-  ctx.stroke();
-
-  // Dynamic color interpolation
-  let gaugeColor = '#38bdf8';
-  let gaugeShadow = '#0284c7';
-  if (progress >= 1.08) {
-    gaugeColor = '#c084fc';
-    gaugeShadow = '#a855f7';
-  } else if (progress >= 0.95) {
-    gaugeColor = '#22c55e';
-    gaugeShadow = '#16a34a';
-  } else if (progress >= 0.75) {
-    gaugeColor = '#84cc16';
-    gaugeShadow = '#65a30d';
-  } else if (progress >= 0.45) {
-    gaugeColor = '#facc15';
-    gaugeShadow = '#ca8a04';
-  } else {
-    gaugeColor = '#38bdf8';
-    gaugeShadow = '#0284c7';
-  }
-
-  // Active Progress Arc
-  if (progress > 0.02) {
-    const sweepProgress = (progress / 1.25) * totalSweep;
-    const currentAng = startAng + sweepProgress;
-
+  try {
+    // Glass card circular backdrop
     ctx.beginPath();
-    ctx.arc(cx, cy, r, startAng, currentAng);
-    ctx.strokeStyle = gaugeColor;
+    ctx.arc(cx, cy, r + 14, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Outer gauge track
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, startAng, endAng);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
     ctx.lineWidth = 8;
     ctx.lineCap = 'round';
-    ctx.shadowColor = gaugeShadow;
-    ctx.shadowBlur = progress >= 0.95 ? 16 : 8;
     ctx.stroke();
 
-    // Needle indicator / glowing tip bead
-    const tipX = cx + Math.cos(currentAng) * r;
-    const tipY = cy + Math.sin(currentAng) * r;
+    // Target depth tick mark (at 100% depth / 1.0 progress)
+    const targetMarkAngle = startAng + (1.0 / 1.25) * totalSweep;
+    const tX1 = cx + Math.cos(targetMarkAngle) * (r - 7);
+    const tY1 = cy + Math.sin(targetMarkAngle) * (r - 7);
+    const tX2 = cx + Math.cos(targetMarkAngle) * (r + 7);
+    const tY2 = cy + Math.sin(targetMarkAngle) * (r + 7);
+
     ctx.beginPath();
-    ctx.arc(tipX, tipY, 5, 0, Math.PI * 2);
+    ctx.moveTo(tX1, tY1);
+    ctx.lineTo(tX2, tY2);
+    ctx.strokeStyle = '#facc15';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // Dynamic color interpolation
+    let gaugeColor = '#38bdf8';
+    let gaugeShadow = '#0284c7';
+    if (progress >= 1.08) {
+      gaugeColor = '#c084fc';
+      gaugeShadow = '#a855f7';
+    } else if (progress >= 0.95) {
+      gaugeColor = '#22c55e';
+      gaugeShadow = '#16a34a';
+    } else if (progress >= 0.75) {
+      gaugeColor = '#84cc16';
+      gaugeShadow = '#65a30d';
+    } else if (progress >= 0.45) {
+      gaugeColor = '#facc15';
+      gaugeShadow = '#ca8a04';
+    } else {
+      gaugeColor = '#38bdf8';
+      gaugeShadow = '#0284c7';
+    }
+
+    // Active Progress Arc
+    if (progress > 0.02) {
+      const sweepProgress = (progress / 1.25) * totalSweep;
+      const currentAng = startAng + sweepProgress;
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, startAng, currentAng);
+      ctx.strokeStyle = gaugeColor;
+      ctx.lineWidth = 8;
+      ctx.lineCap = 'round';
+      ctx.shadowColor = gaugeShadow;
+      ctx.shadowBlur = progress >= 0.95 ? 16 : 8;
+      ctx.stroke();
+
+      // Needle indicator / glowing tip bead
+      const tipX = cx + Math.cos(currentAng) * r;
+      const tipY = cy + Math.sin(currentAng) * r;
+      ctx.beginPath();
+      ctx.arc(tipX, tipY, 5, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = gaugeColor;
+      ctx.shadowBlur = 10;
+      ctx.fill();
+    }
+
+    // Pulsing glow ring when target depth reached
+    if (progress >= 0.95) {
+      const pulse = (Math.sin(performance.now() / 150) + 1) / 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r + 6 + pulse * 3, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(34, 197, 94, ${0.35 + pulse * 0.4})`;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    // Numerical & Status Readout
+    ctx.shadowBlur = 0;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    // Current angle
     ctx.fillStyle = '#ffffff';
-    ctx.shadowColor = gaugeColor;
-    ctx.shadowBlur = 10;
-    ctx.fill();
+    ctx.font = 'bold 16px Vazirmatn, system-ui, sans-serif';
+    ctx.fillText(`${Math.round(safeAngle)}°`, cx, cy - 8);
+
+    // Depth percentage
+    const pctText = `${Math.min(125, Math.round(progress * 100))}٪`;
+    ctx.fillStyle = gaugeColor;
+    ctx.font = 'bold 10px Vazirmatn, system-ui, sans-serif';
+    ctx.fillText(pctText, cx, cy + 9);
+
+    // Top label
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '8.5px Vazirmatn, system-ui, sans-serif';
+    ctx.fillText(`گیج عمق (${safeTarget}°)`, cx, cy - 24);
+
+    // Bottom Status text
+    let statusPill = 'ایستاده';
+    if (progress >= 1.08) statusPill = 'اسکات عمیق';
+    else if (progress >= 0.95) statusPill = 'عمق کامل ✓';
+    else if (progress >= 0.45) statusPill = 'فرود...';
+
+    ctx.fillStyle = gaugeColor;
+    ctx.font = 'bold 9.5px Vazirmatn, system-ui, sans-serif';
+    ctx.fillText(statusPill, cx, cy + r + 2);
+  } finally {
+    ctx.restore();
   }
-
-  // Pulsing glow ring when target depth reached
-  if (progress >= 0.95) {
-    const pulse = (Math.sin(performance.now() / 150) + 1) / 2;
-    ctx.beginPath();
-    ctx.arc(cx, cy, r + 6 + pulse * 3, 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(34, 197, 94, ${0.35 + pulse * 0.4})`;
-    ctx.lineWidth = 2;
-    ctx.stroke();
-  }
-
-  // Numerical & Status Readout
-  ctx.shadowBlur = 0;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-
-  // Current angle
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 16px Vazirmatn, system-ui, sans-serif';
-  ctx.fillText(`${Math.round(currentKneeAngle)}°`, cx, cy - 8);
-
-  // Depth percentage
-  const pctText = `${Math.min(125, Math.round(progress * 100))}٪`;
-  ctx.fillStyle = gaugeColor;
-  ctx.font = 'bold 10px Vazirmatn, system-ui, sans-serif';
-  ctx.fillText(pctText, cx, cy + 9);
-
-  // Top label
-  ctx.fillStyle = '#94a3b8';
-  ctx.font = '8.5px Vazirmatn, system-ui, sans-serif';
-  ctx.fillText(`گیج عمق (${targetDepthAngle}°)`, cx, cy - 24);
-
-  // Bottom Status text
-  let statusPill = 'ایستاده';
-  if (progress >= 1.08) statusPill = 'اسکات عمیق';
-  else if (progress >= 0.95) statusPill = 'عمق کامل ✓';
-  else if (progress >= 0.45) statusPill = 'فرود...';
-
-  ctx.fillStyle = gaugeColor;
-  ctx.font = 'bold 9.5px Vazirmatn, system-ui, sans-serif';
-  ctx.fillText(statusPill, cx, cy + r + 2);
-
-  ctx.restore();
 }
 
 let squatLungeStartTime = 0;
@@ -12097,18 +12122,6 @@ function updateFlexibilityUI() {
     rating = '🟡 نیازمند تمرین و کشش عضلات خلفی';
   }
   if (flexibilityPanelRating) flexibilityPanelRating.textContent = rating;
-}
-
-function calculateJointAngle(pA, pCenter, pB) {
-  if (!pA || !pCenter || !pB) return 180;
-  const v1 = { x: pA.x - pCenter.x, y: pA.y - pCenter.y };
-  const v2 = { x: pB.x - pCenter.x, y: pB.y - pCenter.y };
-  const dot = v1.x * v2.x + v1.y * v2.y;
-  const mag1 = Math.hypot(v1.x, v1.y);
-  const mag2 = Math.hypot(v2.x, v2.y);
-  if (mag1 === 0 || mag2 === 0) return 180;
-  const cos = Math.max(-1, Math.min(1, dot / (mag1 * mag2)));
-  return (Math.acos(cos) * 180) / Math.PI;
 }
 
 function flexibilityProcessFrame(kp) {
@@ -14866,21 +14879,6 @@ try {
   showJointAngles = true;
 }
 
-function calculateJointAngle(p1, p2, p3) {
-  if (!p1 || !p2 || !p3) return null;
-  const s1 = p1.score || 0;
-  const s2 = p2.score || 0;
-  const s3 = p3.score || 0;
-  if (s1 < 0.20 || s2 < 0.20 || s3 < 0.20) return null;
-
-  const rad1 = Math.atan2(p1.y - p2.y, p1.x - p2.x);
-  const rad2 = Math.atan2(p3.y - p2.y, p3.x - p2.x);
-  let diff = Math.abs(rad1 - rad2);
-  if (diff > Math.PI) diff = 2 * Math.PI - diff;
-  const degrees = Math.round((diff * 180) / Math.PI);
-  return { angle: degrees, p1, p2, p3, rad1, rad2 };
-}
-
 function drawJointAnglesOverlay(kp) {
   if (!kp) return;
 
@@ -15924,13 +15922,13 @@ function getAnkleX(kp) {
  * Main detection loop with error handling and Kalman stabilization
  */
 let consecutiveErrors = 0;
-const MAX_CONSECUTIVE_ERRORS = 10;
+const MAX_CONSECUTIVE_ERRORS = 60;
 
 async function detectLoop() {
   if (!running) return;
   
   try {
-    if (video.readyState >= 2 && detector) {
+    if (video && video.readyState >= 2 && detector) {
       // Calculate FPS
       calculateFPS();
       
@@ -15940,31 +15938,71 @@ async function detectLoop() {
         return;
       }
       
-      const poses = await detector.estimatePoses(video, { flipHorizontal: false });
+      let poses = null;
+      try {
+        poses = await detector.estimatePoses(video, { flipHorizontal: false });
+      } catch (estErr) {
+        consecutiveErrors++;
+        console.warn(`⚠️ [detectLoop] Pose estimation hiccup (${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, estErr);
+        if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+          running = false;
+          showErrorModal('DETECTION_FAILED', `${estErr.message}\n\nخطای متوالی براورد حالت: ${consecutiveErrors}`);
+          return;
+        }
+        requestAnimationFrame(detectLoop);
+        return;
+      }
+
       if (poses && poses.length > 0 && poses[0].keypoints) {
         // Apply 2D Kalman smoothing across keypoints (especially knees and ankles)
-        applyPoseKalmanFilter(poses[0].keypoints);
+        try {
+          applyPoseKalmanFilter(poses[0].keypoints);
+        } catch (kErr) {
+          console.warn('Kalman filter warning:', kErr);
+        }
       }
-      drawPose(poses);
+
+      // Draw active mode pose and overlays
+      try {
+        drawPose(poses);
+      } catch (drawErr) {
+        console.warn('drawPose warning:', drawErr);
+      }
 
       // Record rolling 5-second buffer for slow-motion side-by-side review
       if (typeof recordRollingBufferFrame === 'function') {
-        recordRollingBufferFrame(poses);
+        try {
+          recordRollingBufferFrame(poses);
+        } catch (recErr) {
+          console.warn('recordRollingBufferFrame warning:', recErr);
+        }
       }
 
       // Render secondary camera feed if active
       if (typeof renderSecondaryFeed === 'function') {
-        renderSecondaryFeed();
+        try {
+          renderSecondaryFeed();
+        } catch (secErr) {
+          console.warn('renderSecondaryFeed warning:', secErr);
+        }
       }
 
       // Render Picture-in-Picture live mirror in Stats Window ("و هم بشه دوربین رو توی کادر مشخصات دید")
       if (typeof renderPipMirror === 'function') {
-        renderPipMirror();
+        try {
+          renderPipMirror();
+        } catch (pipErr) {
+          console.warn('renderPipMirror warning:', pipErr);
+        }
       }
 
       // Update Laptop Telemetry and Kinematic Stats
       if (typeof updateLaptopTelemetryView === 'function') {
-        updateLaptopTelemetryView();
+        try {
+          updateLaptopTelemetryView();
+        } catch (telemErr) {
+          console.warn('updateLaptopTelemetryView warning:', telemErr);
+        }
       }
 
       consecutiveErrors = 0; // Reset on success
@@ -15975,7 +16013,7 @@ async function detectLoop() {
     
     if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
       running = false;
-      showErrorModal('DETECTION_FAILED', `${error.message}\n\nConsecutive errors: ${consecutiveErrors}`);
+      showErrorModal('DETECTION_FAILED', `${error.message}\n\nخطای متوالی تشخیص: ${consecutiveErrors}`);
       return;
     }
   }
@@ -16171,9 +16209,9 @@ if (openCameraSettingsBtn) {
 }
 
 // ================== VERSION CHECK ==================
-const APP_VERSION = '1.8.1';
+const APP_VERSION = '1.13.0';
 console.log(`%c🚀 Motion Tracker v${APP_VERSION}`, 'color: #22c55e; font-size: 16px; font-weight: bold');
-console.log('%c✨ Wide-Angle Default & Complete Human Body Skeleton Enabled', 'color: #38bdf8; font-size: 12px');
+console.log('%c✨ Camera Stream Stability & Robust Biometric Tracking Enabled', 'color: #38bdf8; font-size: 12px');
 
 // Global cache purge and hard reload utility
 window.forceAppReloadAndClearCache = async function() {
@@ -16225,16 +16263,17 @@ if ('serviceWorker' in navigator) {
     .then((registration) => {
       console.log('✅ Service Worker registered');
       
-      // If a worker is waiting, activate it immediately
+      // If a worker is waiting, activate it cleanly
       if (registration.waiting) {
         registration.waiting.postMessage({ type: 'SKIP_WAITING' });
       }
 
-      // Check for updates
-      registration.update();
+      // Check for updates periodically, but ONLY when a workout test is NOT actively running
       setInterval(() => {
-        registration.update();
-      }, 30000);
+        if (!running) {
+          registration.update().catch(() => {});
+        }
+      }, 60000);
       
       // Listen for updates
       registration.addEventListener('updatefound', () => {
@@ -16244,9 +16283,11 @@ if ('serviceWorker' in navigator) {
         
         newWorker.addEventListener('statechange', () => {
           if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            console.log('✨ New Service Worker installed, auto-activating...');
-            newWorker.postMessage({ type: 'SKIP_WAITING' });
-            showUpdateNotification(newWorker);
+            console.log('✨ New Service Worker installed in background');
+            // Do NOT popup over active camera workouts
+            if (!running) {
+              showUpdateNotification(newWorker);
+            }
           }
         });
       });
@@ -16255,11 +16296,14 @@ if ('serviceWorker' in navigator) {
       console.warn('⚠️ Service Worker registration failed:', error);
     });
 
+  // Handle controller change gracefully WITHOUT abruptly reloading during workouts
   let isRefreshing = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (!isRefreshing) {
+    console.log('🔄 Service Worker controller updated in background.');
+    // Only auto-reload if user is on intro/start overlay and not in active workout
+    if (!running && !isRefreshing && document.getElementById('startOverlay')?.style.display !== 'none') {
       isRefreshing = true;
-      console.log('🔄 Controller changed to new version, refreshing...');
+      console.log('Reloading safely from start screen for fresh assets...');
       window.location.reload();
     }
   });
@@ -16273,81 +16317,81 @@ if ('serviceWorker' in navigator) {
 }
 
 /**
- * Show update notification to user
+ * Show update notification to user as an elegant floating pill (non-intrusive)
  */
 function showUpdateNotification(newWorker) {
-  const modal = document.createElement('div');
-  modal.id = 'updateModal';
-  modal.style.cssText = `
+  if (document.getElementById('updateToastPill')) return;
+
+  const toast = document.createElement('div');
+  toast.id = 'updateToastPill';
+  toast.style.cssText = `
     position: fixed;
-    inset: 0;
-    z-index: 99999;
-    background: rgba(0, 0, 0, 0.95);
+    top: 14px;
+    right: 14px;
+    z-index: 9999;
+    background: rgba(15, 23, 42, 0.94);
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    border-radius: 12px;
+    padding: 10px 14px;
     display: flex;
     align-items: center;
-    justify-content: center;
-    padding: 20px;
+    gap: 12px;
+    color: #e2e8f0;
+    font-family: Vazirmatn, system-ui, sans-serif;
+    font-size: 13px;
+    backdrop-filter: blur(8px);
+    max-width: 360px;
+    animation: fadeInScale 0.25s ease-out;
   `;
   
-  modal.innerHTML = `
-    <div style="
-      background: #1e293b;
-      border: 2px solid #3b82f6;
-      border-radius: 20px;
-      padding: 24px;
-      max-width: 400px;
-      width: 100%;
-      text-align: center;
-      color: #e2e8f0;
-    ">
-      <div style="font-size: 48px; margin-bottom: 16px;">✨</div>
-      <h3 style="color: #3b82f6; margin-bottom: 12px; font-size: 18px;">نسخه جدید موجوده!</h3>
-      <p style="color: #94a3b8; margin-bottom: 20px; line-height: 1.6; font-size: 14px;">
-        یک نسخه جدید از حرکت‌سنج آماده است.<br>
-        برای استفاده از آخرین بهبودها، صفحه رو بارگذاری مجدد کن.
-      </p>
-      <div style="display: flex; flex-direction: column; gap: 12px;">
-        <button id="updateReloadBtn" style="
-          background: #22c55e;
-          color: #052e16;
-          border: none;
-          padding: 14px 24px;
-          font-size: 16px;
-          font-weight: bold;
-          border-radius: 999px;
-          cursor: pointer;
-          min-height: 44px;
-        ">🔄 بارگذاری مجدد</button>
-        <button id="updateLaterBtn" style="
-          background: transparent;
-          color: #94a3b8;
-          border: 2px solid #475569;
-          padding: 12px 24px;
-          font-size: 14px;
-          font-weight: bold;
-          border-radius: 999px;
-          cursor: pointer;
-          min-height: 44px;
-        ">بعداً</button>
-      </div>
+  toast.innerHTML = `
+    <span style="font-size: 18px;">✨</span>
+    <div style="flex: 1; text-align: right;">
+      <div style="font-weight: bold; color: #38bdf8; font-size: 12px;">نسخه جدید آماده است</div>
+      <div style="font-size: 11px; color: #94a3b8;">برای بارگذاری نسخه جدید دکمه را بزنید.</div>
+    </div>
+    <div style="display: flex; gap: 6px;">
+      <button id="updateToastReloadBtn" style="
+        background: #22c55e;
+        color: #052e16;
+        border: none;
+        padding: 5px 12px;
+        font-size: 11px;
+        font-weight: bold;
+        border-radius: 8px;
+        cursor: pointer;
+      ">بروزرسانی</button>
+      <button id="updateToastCloseBtn" style="
+        background: rgba(255, 255, 255, 0.1);
+        color: #94a3b8;
+        border: none;
+        padding: 5px 8px;
+        font-size: 11px;
+        border-radius: 8px;
+        cursor: pointer;
+      ">✕</button>
     </div>
   `;
   
-  document.body.appendChild(modal);
+  document.body.appendChild(toast);
   
-  document.getElementById('updateReloadBtn').onclick = () => {
-    // Tell service worker to skip waiting
-    if (newWorker) {
-      newWorker.postMessage({ type: 'SKIP_WAITING' });
-    }
-    
-    // Reload page
-    window.location.reload();
-  };
+  const reloadBtn = document.getElementById('updateToastReloadBtn');
+  if (reloadBtn) {
+    reloadBtn.onclick = () => {
+      if (newWorker) {
+        newWorker.postMessage({ type: 'SKIP_WAITING' });
+      }
+      window.location.reload();
+    };
+  }
   
-  document.getElementById('updateLaterBtn').onclick = () => {
-    modal.remove();
-  };
+  const closeBtn = document.getElementById('updateToastCloseBtn');
+  if (closeBtn) {
+    closeBtn.onclick = () => {
+      toast.remove();
+    };
+  }
 }
 
 // ================== GLOBAL ERROR HANDLERS ==================
@@ -17365,6 +17409,38 @@ function updateLaptopTelemetryView() {
       v4.textContent = pushupPhase === 'running' ? '✅ فرم استاندارد' : 'آماده';
       v4.className = 'telem-val success';
     }
+  } else if (mode === 'squat_lunge') {
+    l1.textContent = '🏋️ تکرارهای معتبر اسکات';
+    v1.textContent = `${squatLungeRepCount} تکرار`;
+    v1.className = 'telem-val success';
+
+    l2.textContent = '📐 زاویه لحظه‌ای زانو';
+    v2.textContent = `${Math.round(squatLungeCurrentKneeAngle || 180)}° (هدف: ${squatTargetDepthAngle || 90}°)`;
+
+    l3.textContent = '⚡ انقباض چهارسر / سرینی';
+    v3.textContent = `چهارسر: ${Math.round(squatLungeEstimatedQuadsPct || 0)}٪ | باسن: ${Math.round(squatLungeEstimatedGlutesPct || 0)}٪`;
+
+    l4.textContent = '🔋 پایش خستگی عضلانی';
+    v4.textContent = `${squatLungeFatigueRatingText || 'پایداری عالی'} (${Math.round(squatLungeFatigueDropPct || 0)}٪ افت)`;
+    v4.className = (squatLungeFatigueDropPct || 0) >= 20 ? 'telem-val warn' : 'telem-val success';
+  } else if (mode === 'wingspan') {
+    l1.textContent = '📏 طول بازشدگی دو دست';
+    v1.textContent = `${Math.round(wingspanCurrentCm || 0)} cm`;
+    v1.className = 'telem-val success';
+
+    l2.textContent = '🏆 حداکثر طول دست‌ها';
+    v2.textContent = `${Math.round(wingspanMaxCm || 0)} cm`;
+
+    l3.textContent = '🦍 شاخص دست به قد (Ape Index)';
+    v3.textContent = typeof wingspanApeIndex === 'number' && isFinite(wingspanApeIndex)
+      ? `${wingspanApeIndex.toFixed(2)} (${(wingspanDiffCm || 0) >= 0 ? '+' : ''}${Math.round(wingspanDiffCm || 0)}cm)`
+      : 'در حال محاسبه...';
+
+    l4.textContent = '🎯 وضعیت ردیابی مچ‌ها';
+    v4.textContent = (typeof wingspanIsLocked !== 'undefined' && wingspanIsLocked)
+      ? '✅ ثبت نهایی شد'
+      : ((typeof wingspanTracked !== 'undefined' && wingspanTracked) ? '👀 ردیابی پایدار' : '⚠️ دست‌ها در کادر باشد');
+    v4.className = (typeof wingspanTracked !== 'undefined' && wingspanTracked) ? 'telem-val success' : 'telem-val warn';
   } else if (mode === 'anthro') {
     l1.textContent = '🧍 قد خودکار / بالاتنه';
     v1.textContent = `${Math.round(anthroHeightCm || 175)}cm | تنه: ${Math.round(anthroTrunkCm || 90)}cm`;

@@ -3980,14 +3980,14 @@
     </div>
 
     <div style="padding: 14px; text-align: center; font-size: 10px; color: #64748b; margin-top: auto;">
-      سامانه حرکت‌سنج هوشمند • نسخه 1.11.0
+      سامانه حرکت‌سنج هوشمند • نسخه 1.13.0
     </div>
   </div>
 
   <div id="startOverlay">
     <h2>حرکت‌سنج</h2>
     <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin: 4px 0 12px 0;">
-      <span class="version" id="appVersionDisplay" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 2px 10px; border-radius: 9999px; font-size: 11px; border: 1px solid rgba(56, 189, 248, 0.3);">نسخه 1.11.0 (کالیبراسیون اسکات، گیج عمق و پایش خستگی)</span>
+      <span class="version" id="appVersionDisplay" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 2px 10px; border-radius: 9999px; font-size: 11px; border: 1px solid rgba(56, 189, 248, 0.3);">نسخه 1.13.0 (تثبیت پایداری دوربین در اسکات و طول دست، جلوگیری از بارگذاری مجدد ناخواسته و بهینه‌سازی پردازش مفاصل)</span>
       <button type="button" id="clearCacheReloadBtn" style="background: rgba(255, 255, 255, 0.08); color: #cbd5e1; border: 1px solid #475569; border-radius: 8px; padding: 3px 10px; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 4px;" title="پاکسازی کش مرورگر و بارگذاری نسخه جدید">
         <span>🔄</span>
         <span>بروزرسانی کش</span>
@@ -5849,8 +5849,8 @@
 
     <!-- AI Biomechanical Form Error Overlay on Telemetry Feed -->
     <div id="telemetryAiFormOverlay" class="telemetry-form-overlay" style="display: none; position: relative;">
-      <!-- Small 'x' close button in top-right corner to allow users to manually dismiss warning -->
-      <button type="button" id="telemFormCloseBtn" class="telem-form-close-btn telem-close-btn close-btn" aria-label="بستن اخطار" title="بستن و رد کردن اخطار (Dismiss)">✕</button>
+      <!-- Small, clickable 'x' button inside top-right corner to allow manually dismissing notification -->
+      <button type="button" id="telemFormCloseBtn" class="telem-form-close-btn telem-close-btn close-btn" aria-label="Close" title="بستن و رد کردن اخطار (Dismiss)" onclick="if(typeof dismissActiveAiFormWarning==='function'){dismissActiveAiFormWarning();}else{var el=document.getElementById('telemetryAiFormOverlay');if(el)el.style.display='none';}">x</button>
 
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; padding-right: 24px;">
         <div style="display: flex; align-items: center; gap: 5px;">
@@ -6155,6 +6155,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-<script src="app.js?v=1.11.0&t=20260915e"></script>
+<script src="app.js?v=1.13.0&t=20260915g"></script>
 </body>
 </html>

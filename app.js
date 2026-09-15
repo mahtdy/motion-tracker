@@ -787,6 +787,7 @@ const jumpRecalibBtn = document.getElementById('jumpRecalibBtn');
 const modeBoscoBtn = document.getElementById('modeBoscoBtn');
 const modeSitupBtn = document.getElementById('modeSitupBtn');
 const modePushupBtn = document.getElementById('modePushupBtn');
+const modeSquatLungeBtn = document.getElementById('modeSquatLungeBtn');
 const modeWingspanBtn = document.getElementById('modeWingspanBtn');
 const modeDistanceBtn = document.getElementById('modeDistanceBtn');
 const modeFlexBtn = document.getElementById('modeFlexBtn');
@@ -897,6 +898,55 @@ const pushupTalentRating = document.getElementById('pushupTalentRating');
 const pushupTalentDesc = document.getElementById('pushupTalentDesc');
 const pushupAgainBtn = document.getElementById('pushupAgainBtn');
 const pushupSaveBtn = document.getElementById('pushupSaveBtn');
+
+// Squat & Lunge (اسکات و لانج) Elements
+const squatLungeHud = document.getElementById('squatLungeHud');
+const squatLungeSubmodeVal = document.getElementById('squatLungeSubmodeVal');
+const squatLungeRepVal = document.getElementById('squatLungeRepVal');
+const squatLungeKneeAngleVal = document.getElementById('squatLungeKneeAngleVal');
+const squatLungeDepthStatusVal = document.getElementById('squatLungeDepthStatusVal');
+const squatLungeKneeAlignmentVal = document.getElementById('squatLungeKneeAlignmentVal');
+const squatLungeTimerVal = document.getElementById('squatLungeTimerVal');
+const squatQuadsTensionBar = document.getElementById('squatQuadsTensionBar');
+const squatQuadsTensionLabel = document.getElementById('squatQuadsTensionLabel');
+const squatGlutesTensionBar = document.getElementById('squatGlutesTensionBar');
+const squatGlutesTensionLabel = document.getElementById('squatGlutesTensionLabel');
+const squatLungeTensionSummaryBadge = document.getElementById('squatLungeTensionSummaryBadge');
+
+const squatLungeStartPanel = document.getElementById('squatLungeStartPanel');
+const squatLungeStartBtn = document.getElementById('squatLungeStartBtn');
+const squatLungeCancelBtn = document.getElementById('squatLungeCancelBtn');
+const squatLungeModeSquatBtn = document.getElementById('squatLungeModeSquatBtn');
+const squatLungeModeLungeBtn = document.getElementById('squatLungeModeLungeBtn');
+const squatLungeTargetPresets = document.getElementById('squatLungeTargetPresets');
+
+const squatLungeResultPanel = document.getElementById('squatLungeResultPanel');
+const squatLungeResultTitle = document.getElementById('squatLungeResultTitle');
+const squatLungeResultGradeBadge = document.getElementById('squatLungeResultGradeBadge');
+const squatLungeTotalReps = document.getElementById('squatLungeTotalReps');
+const squatLungeFormScore = document.getElementById('squatLungeFormScore');
+const squatLungeAvgDepth = document.getElementById('squatLungeAvgDepth');
+const squatLungePeakQuads = document.getElementById('squatLungePeakQuads');
+const squatLungePeakGlutes = document.getElementById('squatLungePeakGlutes');
+const squatLungeToeAlignmentSummary = document.getElementById('squatLungeToeAlignmentSummary');
+const squatLungeFeedbackText = document.getElementById('squatLungeFeedbackText');
+const squatLungeAgainBtn = document.getElementById('squatLungeAgainBtn');
+const squatLungeSaveBtn = document.getElementById('squatLungeSaveBtn');
+
+// Squat & Lunge Fatigue Monitor and Calibration Elements
+const squatFatigueMonitorBox = document.getElementById('squatFatigueMonitorBox');
+const squatFatigueBadge = document.getElementById('squatFatigueBadge');
+const squatFatigueVal = document.getElementById('squatFatigueVal');
+const squatFatigueBar = document.getElementById('squatFatigueBar');
+const squatLungeFatigueIndex = document.getElementById('squatLungeFatigueIndex');
+const squatLungeFatigueRating = document.getElementById('squatLungeFatigueRating');
+
+const squatCalibStatusBadge = document.getElementById('squatCalibStatusBadge');
+const startSquatCalibBtn = document.getElementById('startSquatCalibBtn');
+const resetSquatCalibBtn = document.getElementById('resetSquatCalibBtn');
+const squatCalibResultText = document.getElementById('squatCalibResultText');
+const squatCalibDepthVal = document.getElementById('squatCalibDepthVal');
+const squatCalibToeRatioVal = document.getElementById('squatCalibToeRatioVal');
 
 // Wingspan (طول دست‌ها) Elements
 const wingspanHud = document.getElementById('wingspanHud');
@@ -1072,6 +1122,7 @@ const drawerItemAgility = document.getElementById('drawerItemAgility');
 const drawerItemBosco = document.getElementById('drawerItemBosco');
 const drawerItemSitup = document.getElementById('drawerItemSitup');
 const drawerItemPushup = document.getElementById('drawerItemPushup');
+const drawerItemSquatLunge = document.getElementById('drawerItemSquatLunge');
 const drawerItemFlex = document.getElementById('drawerItemFlex');
 const drawerItemAnthro = document.getElementById('drawerItemAnthro');
 const drawerItemWingspan = document.getElementById('drawerItemWingspan');
@@ -2907,6 +2958,16 @@ function showErrorModal(errorType, technicalDetails = null) {
             cursor: pointer;
           ">🔄 تلاش مجدد</button>
         ` : ''}
+        <button id="errorNewTabBtn" style="
+          background: rgba(2, 132, 199, 0.25);
+          color: #38bdf8;
+          border: 1.5px solid #0284c7;
+          padding: 12px 24px;
+          font-size: 14px;
+          font-weight: bold;
+          border-radius: 999px;
+          cursor: pointer;
+        ">🌐 باز کردن در تب جدید مرورگر</button>
         <button id="errorCloseBtn" style="
           background: transparent;
           color: #94a3b8;
@@ -2923,6 +2984,13 @@ function showErrorModal(errorType, technicalDetails = null) {
 
   const retryBtn = document.getElementById('errorRetryBtn');
   const closeBtn = document.getElementById('errorCloseBtn');
+  const newTabBtn = document.getElementById('errorNewTabBtn');
+
+  if (newTabBtn) {
+    newTabBtn.onclick = () => {
+      window.open(window.location.href, '_blank');
+    };
+  }
 
   if (retryBtn) {
     retryBtn.onclick = () => {
@@ -2976,7 +3044,11 @@ function checkBrowserCompatibility() {
   // Check getUserMedia support
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     logError('Browser Check', new Error('getUserMedia not supported'));
-    showErrorModal('UNSUPPORTED_BROWSER', 'navigator.mediaDevices.getUserMedia is not available');
+    const isIframe = window.self !== window.top;
+    const detail = isIframe
+      ? 'سامانه داخل فریم پیش‌نمایش باز شده که مرورگر دسترسی دوربین را در آن محدود کرده است. لطفاً روی دکمه "باز کردن در تب جدید مرورگر" کلیک کنید تا دوربین به راحتی فعال شود.'
+      : 'مرورگر یا آدرس فعلی از قابلیت دوربین زنده پشتیبانی نمی‌کند (نیاز به پروتکل HTTPS یا مرورگرهای استاندارد Chrome/Safari).';
+    showErrorModal('UNSUPPORTED_BROWSER', detail);
     return false;
   }
 
@@ -4693,6 +4765,25 @@ function renderHistory() {
           </div>
         </div>
       `;
+    } else if (entry.type === 'squat_lunge') {
+      const subLabel = entry.data.submode === 'lunge' ? 'لانج' : 'اسکات';
+      return `
+        <div class="historyItem">
+          <div class="date">
+            <span>🏋️‍♂️ بیومکانیک ${subLabel} • ${entry.date}</span>
+            ${athleteBadge}
+          </div>
+          <div class="data">
+            تکرار: <span>${entry.data.totalReps}</span> •
+            نمره فرم: <span>${entry.data.formScore || 100}٪</span> •
+            عمق میانگین: <span>${entry.data.avgDepth ? entry.data.avgDepth + '°' : '--'}</span> •
+            پیک ۴سر: <span>${entry.data.peakQuads || '--'}٪</span> •
+            پیک باسن: <span>${entry.data.peakGlutes || '--'}٪</span> •
+            تراز زانو: <span style="color: ${entry.data.toeAlignmentWarnings > 0 ? '#f87171' : '#4ade80'};">${entry.data.toeAlignmentWarnings > 0 ? `${entry.data.toeAlignmentWarnings} خطا` : 'استاندارد ✓'}</span> •
+            شاخص خستگی: <span style="color: #fb7185;">${entry.data.fatigueIndex != null ? entry.data.fatigueIndex + '٪' : '۰٪'}</span>
+          </div>
+        </div>
+      `;
     } else if (entry.type === 'wingspan') {
       return `
         <div class="historyItem">
@@ -6267,6 +6358,12 @@ function exportHistoryToCsv() {
       pushupDepthStr = d.avgDepth ? `${d.avgDepth}°` : '';
       talentRating = d.talentRating || '';
       summary = `تکرار صحیح: ${d.totalReps} | نوع: ${typeLabel} | ریتم: ${d.avgCadence} تکرار/دقیقه | عمق آرنج: ${d.avgDepth}° | رتبه: ${d.talentRating}`;
+    } else if (entry.type === 'squat_lunge') {
+      const subLabel = d.submode === 'lunge' ? 'لانج' : 'اسکات';
+      testTypeTitle = `بیومکانیک ${subLabel} (Squat & Lunge)`;
+      repsCount = d.totalReps || '0';
+      recordTime = d.totalTime || '';
+      summary = `تکرار: ${d.totalReps} | نمره تکنیک: ${d.formScore}٪ | میانگین عمق: ${d.avgDepth}° | اوج تنش ۴سر: ${d.peakQuads}٪ | اوج تنش باسن: ${d.peakGlutes}٪ | شاخص خستگی: ${d.fatigueIndex || 0}٪ | خطای تراز زانو: ${d.toeAlignmentWarnings || 0}`;
     } else if (entry.type === 'wingspan') {
       testTypeTitle = 'طول دو دست (Wingspan)';
       wingspan = d.wingspan || '';
@@ -6472,6 +6569,11 @@ function loadSettingsUI() {
     performanceMode = 'low-power';
   } else {
     performanceMode = 'normal';
+  }
+
+  // Load Squat Range of Motion Baseline
+  if (typeof loadSquatRomBaseline === 'function') {
+    loadSquatRomBaseline();
   }
 }
 
@@ -7394,6 +7496,13 @@ function hideAllPanels() {
   if (typeof pushupTimerInterval !== 'undefined' && pushupTimerInterval) {
     clearInterval(pushupTimerInterval);
     pushupTimerInterval = null;
+  }
+  if (squatLungeStartPanel) squatLungeStartPanel.classList.remove('visible');
+  if (squatLungeResultPanel) squatLungeResultPanel.classList.remove('visible');
+  if (squatLungeHud) squatLungeHud.style.display = 'none';
+  if (typeof squatLungeTimerInterval !== 'undefined' && squatLungeTimerInterval) {
+    clearInterval(squatLungeTimerInterval);
+    squatLungeTimerInterval = null;
   }
   if (wingspanHud) wingspanHud.style.display = 'none';
   if (distanceHud) distanceHud.style.display = 'none';
@@ -9309,12 +9418,22 @@ function updateAiFormWarningTelemetry(warning) {
 
   if (!warning) {
     overlay.style.display = 'none';
+    delete overlay.dataset.currentWarningType;
     panel.classList.remove('has-form-warning', 'has-form-warning-amber');
     return;
   }
 
+  const wasHidden = overlay.style.display === 'none' || overlay.dataset.currentWarningType !== warning.type;
+  overlay.dataset.currentWarningType = warning.type;
+
   overlay.style.display = 'block';
   overlay.className = 'telemetry-form-overlay ' + (warning.severity === 'critical' ? 'warning-critical' : 'warning-moderate');
+
+  if (wasHidden) {
+    overlay.style.animation = 'none';
+    void overlay.offsetWidth; // Trigger reflow to restart the scale-in animation
+    overlay.style.animation = '';
+  }
 
   if (panel) {
     if (warning.severity === 'critical') {
@@ -10171,6 +10290,1248 @@ if (pushupCustomSecInput) {
       }
       if (pushupTimerVal) pushupTimerVal.textContent = `${val.toFixed(1)}s`;
     }
+  });
+}
+
+// ================== SQUAT & LUNGE BIOMECHANICS ENGINE (اسکات و لانج) ==================
+let squatLungeSubmode = 'squat'; // 'squat' | 'lunge'
+let squatLungePhase = 'intro'; // 'intro' | 'countdown' | 'running' | 'finished'
+let squatLungeState = 'up'; // 'up' | 'descending' | 'bottom' | 'ascending'
+let squatLungeTargetType = 'reps'; // 'reps' | 'time' | 'free'
+let squatLungeTargetVal = 10;
+let squatLungeRepCount = 0;
+let squatLungeRepTimestamps = [];
+let squatLungeDepthHistory = [];
+let squatLungeQuadsHistory = [];
+let squatLungeGlutesHistory = [];
+let squatLungeMinKneeAngleThisRep = 180;
+let squatLungeMaxQuadsThisRep = 0;
+let squatLungeMaxGlutesThisRep = 0;
+let squatLungePeakQuadsAll = 0;
+let squatLungePeakGlutesAll = 0;
+
+let squatLungeCurrentKneeAngle = 180;
+let squatLungeCurrentHipAngle = 180;
+let squatLungeCurrentQuadsTension = 5;
+let squatLungeCurrentGlutesTension = 5;
+let squatLungeToeAlignmentStatus = 'standard'; // 'standard' | 'excessive_forward' | 'valgus'
+let squatLungeToeWarningCount = 0;
+let squatLungeDepthStatusText = 'ایستاده (آماده)';
+let squatLungeAlignmentText = 'تراز استاندارد ✓';
+
+// ================== SQUAT ROM BASELINE & CALIBRATION ==================
+let isSquatCalibrating = false;
+let squatCalibHoldStartTime = 0;
+let squatCalibSamples = [];
+let squatCalibFeedbackText = 'در وضعیت اسکات بنشینید و ۳ ثانیه موقعیت را حفظ کنید 🏋️‍♂️';
+let squatBaseline = {
+  depthAngle: 90,
+  kneeToeRatio: 0.12,
+  femurTibiaRatio: 1.05,
+  isCalibrated: false
+};
+
+// Fatigue Monitor Variables
+let squatLungeRepCombinedTensionHistory = [];
+let squatLungeCurrentFatigueIndex = 0;
+let squatLungeFatigueRatingText = 'شاداب (آغاز آزمون)';
+
+function loadSquatRomBaseline() {
+  try {
+    const raw = localStorage.getItem('motion_tracker_squat_baseline');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed.depthAngle === 'number') {
+        squatBaseline = {
+          depthAngle: Math.max(60, Math.min(125, parsed.depthAngle)),
+          kneeToeRatio: typeof parsed.kneeToeRatio === 'number' ? parsed.kneeToeRatio : 0.12,
+          femurTibiaRatio: typeof parsed.femurTibiaRatio === 'number' ? parsed.femurTibiaRatio : 1.05,
+          isCalibrated: true
+        };
+        updateSquatCalibUI();
+        return;
+      }
+    }
+  } catch (e) {
+    console.warn('Could not load squat baseline:', e);
+  }
+  squatBaseline = {
+    depthAngle: 90,
+    kneeToeRatio: 0.12,
+    femurTibiaRatio: 1.05,
+    isCalibrated: false
+  };
+  updateSquatCalibUI();
+}
+
+function saveSquatRomBaseline(depth, kneeToe, femurTibia) {
+  squatBaseline = {
+    depthAngle: Math.round(depth),
+    kneeToeRatio: parseFloat(kneeToe.toFixed(2)),
+    femurTibiaRatio: parseFloat(femurTibia.toFixed(2)),
+    isCalibrated: true
+  };
+  try {
+    localStorage.setItem('motion_tracker_squat_baseline', JSON.stringify(squatBaseline));
+  } catch (e) {
+    console.warn('Could not save squat baseline:', e);
+  }
+  updateSquatCalibUI();
+}
+
+function updateSquatCalibUI() {
+  if (squatCalibStatusBadge) {
+    if (squatBaseline.isCalibrated) {
+      squatCalibStatusBadge.textContent = `کالیبره‌شده (${squatBaseline.depthAngle}°) ✓`;
+      squatCalibStatusBadge.style.background = 'rgba(56, 189, 248, 0.2)';
+      squatCalibStatusBadge.style.color = '#38bdf8';
+      squatCalibStatusBadge.style.borderColor = 'rgba(56, 189, 248, 0.4)';
+    } else {
+      squatCalibStatusBadge.textContent = 'پیش‌فرض (۹۰°)';
+      squatCalibStatusBadge.style.background = 'rgba(74, 222, 128, 0.2)';
+      squatCalibStatusBadge.style.color = '#4ade80';
+      squatCalibStatusBadge.style.borderColor = 'rgba(74, 222, 128, 0.4)';
+    }
+  }
+  if (squatCalibResultText) {
+    if (squatBaseline.isCalibrated) {
+      squatCalibResultText.style.display = 'block';
+      if (squatCalibDepthVal) squatCalibDepthVal.textContent = `${squatBaseline.depthAngle}°`;
+      if (squatCalibToeRatioVal) squatCalibToeRatioVal.textContent = `${squatBaseline.kneeToeRatio}`;
+    } else {
+      squatCalibResultText.style.display = 'none';
+    }
+  }
+}
+
+function startSquatCalibration() {
+  if (settingsModal) settingsModal.classList.remove('visible');
+  hideAllPanels();
+  isSquatCalibrating = true;
+  squatCalibHoldStartTime = 0;
+  squatCalibSamples = [];
+  squatCalibFeedbackText = 'در وضعیت اسکات بنشینید و ۳ ثانیه موقعیت را حفظ کنید 🏋️‍♂️';
+  setStatus('کالیبراسیون اسکات: در عمق دلخواه بنشینید و ۳ ثانیه ثابت بمانید ⏳');
+  playChime(523, 'sine', 0.2);
+  speakText('در وضعیت اسکات بنشینید و سه ثانیه ثابت بمانید', 'Hold squat position for three seconds');
+}
+
+function cancelSquatCalibration() {
+  if (!isSquatCalibrating) return;
+  isSquatCalibrating = false;
+  squatCalibHoldStartTime = 0;
+  squatCalibSamples = [];
+  setStatus('کالیبراسیون اسکات متوقف گردید');
+  if (settingsModal) settingsModal.classList.add('visible');
+}
+
+function squatCalibProcessFrame(kp) {
+  if (!isSquatCalibrating) return;
+
+  const lh = kp['left_hip'], rh = kp['right_hip'];
+  const lk = kp['left_knee'], rk = kp['right_knee'];
+  const la = kp['left_ankle'], ra = kp['right_ankle'];
+  const lt = kp['left_foot_index'] || kp['left_heel'] || la;
+  const rt = kp['right_foot_index'] || kp['right_heel'] || ra;
+  const ls = kp['left_shoulder'], rs = kp['right_shoulder'];
+
+  const leftScore = (lh?.score || 0) + (lk?.score || 0) + (la?.score || 0);
+  const rightScore = (rh?.score || 0) + (rk?.score || 0) + (ra?.score || 0);
+
+  let hip = null, knee = null, ankle = null, toe = null, shoulder = null;
+  if (rightScore >= leftScore && rightScore > 0.8) {
+    hip = rh; knee = rk; ankle = ra; toe = rt; shoulder = rs;
+  } else if (leftScore > 0.8) {
+    hip = lh; knee = lk; ankle = la; toe = lt; shoulder = ls;
+  } else {
+    squatCalibFeedbackText = 'لطفاً به صورت نیم‌رخ روبروی دوربین قرار گیرید';
+    return;
+  }
+
+  const kneeAngle = calculateJointAngle(hip, knee, ankle);
+  if (kneeAngle == null) return;
+
+  const now = performance.now();
+  const isSquatPose = (kneeAngle >= 60 && kneeAngle <= 125);
+
+  if (!isSquatPose) {
+    if (squatCalibHoldStartTime > 0) {
+      squatCalibHoldStartTime = 0;
+      squatCalibSamples = [];
+      playChime(330, 'sine', 0.12);
+    }
+    if (kneeAngle > 140) {
+      squatCalibFeedbackText = 'برای آغاز کالیبراسیون در زاویه اسکات فرود آیید';
+    } else {
+      squatCalibFeedbackText = 'عمق زانو را بین ۶۰ تا ۱۲۰ درجه حفظ کنید';
+    }
+    return;
+  }
+
+  let footFacingX = (toe && ankle) ? (toe.x - ankle.x) : 0;
+  if (Math.abs(footFacingX) < 1e-4) {
+    footFacingX = (knee.x > hip.x ? 1 : -1) * 0.05;
+  }
+  const facingSign = Math.sign(footFacingX);
+  const kneeProjectionBeyondToe = toe ? (knee.x - toe.x) * facingSign : 0;
+  const femurLen = Math.hypot(knee.x - hip.x, knee.y - hip.y);
+  const tibiaLen = Math.hypot(ankle.x - knee.x, ankle.y - knee.y);
+  const femurTibiaRatio = tibiaLen > 10 ? (femurLen / tibiaLen) : 1.05;
+  const legLen = femurLen + tibiaLen;
+  const normalizedKneeExcess = legLen > 20 ? (kneeProjectionBeyondToe / legLen) : 0.12;
+
+  if (squatCalibHoldStartTime === 0) {
+    squatCalibHoldStartTime = now;
+    squatCalibSamples = [];
+    playChime(587, 'sine', 0.14);
+  }
+
+  squatCalibSamples.push({
+    kneeAngle,
+    kneeProjectionBeyondToe,
+    normalizedKneeExcess,
+    femurTibiaRatio,
+    time: now
+  });
+
+  const elapsedHoldMs = now - squatCalibHoldStartTime;
+  const remainingSec = Math.max(0, (3000 - elapsedHoldMs) / 1000);
+  squatCalibFeedbackText = `ثابت نگه دارید... ${remainingSec.toFixed(1)} ثانیه ⏱️`;
+  setStatus(`کالیبراسیون: وضعیت اسکات را حفظ کنید (${remainingSec.toFixed(1)}s) ⏱️`);
+
+  if (elapsedHoldMs >= 3000) {
+    const avgDepth = squatCalibSamples.reduce((s, x) => s + x.kneeAngle, 0) / squatCalibSamples.length;
+    const avgKneeToe = squatCalibSamples.reduce((s, x) => s + x.normalizedKneeExcess, 0) / squatCalibSamples.length;
+    const avgRatio = squatCalibSamples.reduce((s, x) => s + x.femurTibiaRatio, 0) / squatCalibSamples.length;
+
+    const safeDepth = Math.max(65, Math.min(115, Math.round(avgDepth)));
+    const safeKneeToe = Math.max(0.08, Math.min(0.25, avgKneeToe));
+    const safeRatio = Math.max(0.85, Math.min(1.35, avgRatio));
+
+    saveSquatRomBaseline(safeDepth, safeKneeToe, safeRatio);
+    isSquatCalibrating = false;
+    squatCalibHoldStartTime = 0;
+    squatCalibSamples = [];
+
+    playChime(659, 'triangle', 0.2);
+    setTimeout(() => playChime(880, 'triangle', 0.35), 180);
+    speakText('کالیبراسیون اسکات با موفقیت ثبت شد', 'Squat baseline calibrated successfully');
+    setStatus(`✅ کالیبراسیون موفق! عمق پایه اختصاصی شما روی ${safeDepth}° ثبت گردید`);
+
+    setTimeout(() => {
+      if (settingsModal) settingsModal.classList.add('visible');
+    }, 1200);
+  }
+}
+
+function squatCalibDrawOverlay() {
+  if (!isSquatCalibrating) return;
+
+  const now = performance.now();
+  const elapsedHoldMs = squatCalibHoldStartTime > 0 ? (now - squatCalibHoldStartTime) : 0;
+  const progress = Math.min(1.0, elapsedHoldMs / 3000);
+
+  ctx.save();
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.68)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+  const radius = Math.min(92, canvas.width * 0.22);
+
+  // Background ring
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+  ctx.lineWidth = 12;
+  ctx.stroke();
+
+  // Progress arc
+  if (progress > 0) {
+    const startAngle = -Math.PI / 2;
+    const endAngle = startAngle + progress * Math.PI * 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, startAngle, endAngle);
+    ctx.strokeStyle = progress >= 1.0 ? '#22c55e' : '#38bdf8';
+    ctx.lineWidth = 12;
+    ctx.lineCap = 'round';
+    ctx.shadowColor = progress >= 1.0 ? '#22c55e' : '#38bdf8';
+    ctx.shadowBlur = 18;
+    ctx.stroke();
+  }
+
+  ctx.shadowBlur = 0;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  if (squatCalibHoldStartTime > 0) {
+    const remainingSec = Math.max(0, (3000 - elapsedHoldMs) / 1000);
+    ctx.fillStyle = '#38bdf8';
+    ctx.font = 'bold 36px Vazirmatn, system-ui, sans-serif';
+    ctx.fillText(`${remainingSec.toFixed(1)}s`, cx, cy - 8);
+
+    ctx.fillStyle = '#cbd5e1';
+    ctx.font = '12px Vazirmatn, system-ui, sans-serif';
+    ctx.fillText('ثابت بمانید', cx, cy + 22);
+  } else {
+    ctx.fillStyle = '#facc15';
+    ctx.font = 'bold 26px Vazirmatn, system-ui, sans-serif';
+    ctx.fillText('اسکات', cx, cy - 8);
+
+    ctx.fillStyle = '#cbd5e1';
+    ctx.font = '11px Vazirmatn, system-ui, sans-serif';
+    ctx.fillText('فرود به عمق دلخواه', cx, cy + 20);
+  }
+
+  // Header banner
+  ctx.fillStyle = 'rgba(2, 132, 199, 0.25)';
+  ctx.strokeStyle = 'rgba(56, 189, 248, 0.5)';
+  ctx.lineWidth = 1.5;
+  const cardW = Math.min(360, canvas.width - 40);
+  const cardH = 52;
+  const cardX = cx - cardW / 2;
+  const cardY = Math.max(20, cy - radius - 75);
+
+  ctx.beginPath();
+  if (ctx.roundRect) {
+    ctx.roundRect(cardX, cardY, cardW, cardH, 12);
+  } else {
+    ctx.rect(cardX, cardY, cardW, cardH);
+  }
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = '#38bdf8';
+  ctx.font = 'bold 13px Vazirmatn, system-ui, sans-serif';
+  ctx.fillText('🏋️‍♂️ کالیبراسیون هوشمند دامنه اسکات (۳ ثانیه)', cx, cardY + 20);
+
+  ctx.fillStyle = '#cbd5e1';
+  ctx.font = '11px Vazirmatn, system-ui, sans-serif';
+  ctx.fillText(squatCalibFeedbackText, cx, cardY + 38);
+
+  // Esc cancel hint
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+  ctx.font = '11px Vazirmatn, system-ui, sans-serif';
+  ctx.fillText('برای انصراف کلید Esc را بزنید', cx, cy + radius + 40);
+
+  ctx.restore();
+}
+
+function updateSquatFatigueMonitor() {
+  const reps = squatLungeRepCombinedTensionHistory.length;
+  if (reps < 2) {
+    squatLungeCurrentFatigueIndex = 0;
+    squatLungeFatigueRatingText = 'شاداب (آغاز آزمون)';
+    if (squatFatigueVal) squatFatigueVal.textContent = '۰٪ (حداکثر توان)';
+    if (squatFatigueBar) squatFatigueBar.style.width = '0%';
+    if (squatFatigueBadge) {
+      squatFatigueBadge.textContent = 'شاداب (تکرارهای آغازین)';
+      squatFatigueBadge.style.color = '#4ade80';
+      squatFatigueBadge.style.background = 'rgba(74, 222, 128, 0.15)';
+      squatFatigueBadge.style.borderColor = 'rgba(74, 222, 128, 0.3)';
+    }
+    return;
+  }
+
+  // Compare first few reps (initial fresh state) vs last few reps
+  const windowSize = Math.max(1, Math.min(3, Math.floor(reps / 2)));
+  const firstFew = squatLungeRepCombinedTensionHistory.slice(0, windowSize);
+  const lastFew = squatLungeRepCombinedTensionHistory.slice(-windowSize);
+
+  const firstAvg = firstFew.reduce((a, b) => a + b, 0) / firstFew.length;
+  const lastAvg = lastFew.reduce((a, b) => a + b, 0) / lastFew.length;
+
+  let tensionDropPct = firstAvg > 0 ? ((firstAvg - lastAvg) / firstAvg) * 100 : 0;
+
+  // Factor in rep cycle duration slowdown if available
+  if (squatLungeRepTimestamps.length >= 3) {
+    const firstCycleDur = (squatLungeRepTimestamps[1] - squatLungeRepTimestamps[0]);
+    const lastCycleDur = (squatLungeRepTimestamps[squatLungeRepTimestamps.length - 1] - squatLungeRepTimestamps[squatLungeRepTimestamps.length - 2]);
+    if (firstCycleDur > 500 && lastCycleDur > firstCycleDur) {
+      const speedSlowdownPct = ((lastCycleDur - firstCycleDur) / firstCycleDur) * 15;
+      tensionDropPct += Math.min(15, speedSlowdownPct);
+    }
+  }
+
+  const fatiguePct = Math.max(0, Math.min(85, Math.round(tensionDropPct)));
+  squatLungeCurrentFatigueIndex = fatiguePct;
+
+  if (squatFatigueVal) {
+    squatFatigueVal.textContent = `${fatiguePct}٪ (${fatiguePct < 8 ? 'حداکثر توان' : 'افت توان'})`;
+  }
+  if (squatFatigueBar) {
+    squatFatigueBar.style.width = `${fatiguePct}%`;
+  }
+
+  let badgeText = 'شاداب (توان حداکثر)';
+  let badgeColor = '#4ade80';
+  let badgeBg = 'rgba(74, 222, 128, 0.15)';
+
+  if (fatiguePct >= 30) {
+    badgeText = 'خستگی شدید عضلانی 🔴';
+    badgeColor = '#f43f5e';
+    badgeBg = 'rgba(244, 63, 94, 0.2)';
+    squatLungeFatigueRatingText = 'خستگی شدید و تجمع اسید لاکتیک';
+  } else if (fatiguePct >= 18) {
+    badgeText = 'خستگی متوسط 🟠';
+    badgeColor = '#fb923c';
+    badgeBg = 'rgba(251, 146, 60, 0.2)';
+    squatLungeFatigueRatingText = 'خستگی متوسط عضلانی';
+  } else if (fatiguePct >= 8) {
+    badgeText = 'خستگی خفیف 🟡';
+    badgeColor = '#facc15';
+    badgeBg = 'rgba(250, 204, 21, 0.2)';
+    squatLungeFatigueRatingText = 'پایداری مطلوب توان';
+  } else {
+    badgeText = 'شاداب (حداکثر توان) 🟢';
+    badgeColor = '#4ade80';
+    badgeBg = 'rgba(74, 222, 128, 0.15)';
+    squatLungeFatigueRatingText = 'استقامت و پایداری عالی';
+  }
+
+  if (squatFatigueBadge) {
+    squatFatigueBadge.textContent = badgeText;
+    squatFatigueBadge.style.color = badgeColor;
+    squatFatigueBadge.style.background = badgeBg;
+    squatFatigueBadge.style.borderColor = badgeColor;
+  }
+}
+
+// ================== DYNAMIC DEPTH GAUGE GRAPHIC OVERLAY ==================
+function drawDepthGauge(cx, cy, currentKneeAngle, targetDepthAngle) {
+  const r = 46;
+  const startAng = 0.75 * Math.PI; // 135° (bottom-left)
+  const endAng = 2.25 * Math.PI;   // 405° (bottom-right)
+  const totalSweep = 1.5 * Math.PI; // 270°
+
+  const standingRef = 175;
+  const rawProgress = (standingRef - currentKneeAngle) / Math.max(20, (standingRef - targetDepthAngle));
+  const progress = Math.max(0, Math.min(1.25, rawProgress));
+
+  ctx.save();
+
+  // Glass card circular backdrop
+  ctx.beginPath();
+  ctx.arc(cx, cy, r + 14, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Outer gauge track
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, startAng, endAng);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+  ctx.lineWidth = 8;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  // Target depth tick mark (at 100% depth / 1.0 progress)
+  const targetMarkAngle = startAng + (1.0 / 1.25) * totalSweep;
+  const tX1 = cx + Math.cos(targetMarkAngle) * (r - 7);
+  const tY1 = cy + Math.sin(targetMarkAngle) * (r - 7);
+  const tX2 = cx + Math.cos(targetMarkAngle) * (r + 7);
+  const tY2 = cy + Math.sin(targetMarkAngle) * (r + 7);
+
+  ctx.beginPath();
+  ctx.moveTo(tX1, tY1);
+  ctx.lineTo(tX2, tY2);
+  ctx.strokeStyle = '#facc15';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  // Dynamic color interpolation
+  let gaugeColor = '#38bdf8';
+  let gaugeShadow = '#0284c7';
+  if (progress >= 1.08) {
+    gaugeColor = '#c084fc';
+    gaugeShadow = '#a855f7';
+  } else if (progress >= 0.95) {
+    gaugeColor = '#22c55e';
+    gaugeShadow = '#16a34a';
+  } else if (progress >= 0.75) {
+    gaugeColor = '#84cc16';
+    gaugeShadow = '#65a30d';
+  } else if (progress >= 0.45) {
+    gaugeColor = '#facc15';
+    gaugeShadow = '#ca8a04';
+  } else {
+    gaugeColor = '#38bdf8';
+    gaugeShadow = '#0284c7';
+  }
+
+  // Active Progress Arc
+  if (progress > 0.02) {
+    const sweepProgress = (progress / 1.25) * totalSweep;
+    const currentAng = startAng + sweepProgress;
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, startAng, currentAng);
+    ctx.strokeStyle = gaugeColor;
+    ctx.lineWidth = 8;
+    ctx.lineCap = 'round';
+    ctx.shadowColor = gaugeShadow;
+    ctx.shadowBlur = progress >= 0.95 ? 16 : 8;
+    ctx.stroke();
+
+    // Needle indicator / glowing tip bead
+    const tipX = cx + Math.cos(currentAng) * r;
+    const tipY = cy + Math.sin(currentAng) * r;
+    ctx.beginPath();
+    ctx.arc(tipX, tipY, 5, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = gaugeColor;
+    ctx.shadowBlur = 10;
+    ctx.fill();
+  }
+
+  // Pulsing glow ring when target depth reached
+  if (progress >= 0.95) {
+    const pulse = (Math.sin(performance.now() / 150) + 1) / 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r + 6 + pulse * 3, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(34, 197, 94, ${0.35 + pulse * 0.4})`;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  // Numerical & Status Readout
+  ctx.shadowBlur = 0;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  // Current angle
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 16px Vazirmatn, system-ui, sans-serif';
+  ctx.fillText(`${Math.round(currentKneeAngle)}°`, cx, cy - 8);
+
+  // Depth percentage
+  const pctText = `${Math.min(125, Math.round(progress * 100))}٪`;
+  ctx.fillStyle = gaugeColor;
+  ctx.font = 'bold 10px Vazirmatn, system-ui, sans-serif';
+  ctx.fillText(pctText, cx, cy + 9);
+
+  // Top label
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '8.5px Vazirmatn, system-ui, sans-serif';
+  ctx.fillText(`گیج عمق (${targetDepthAngle}°)`, cx, cy - 24);
+
+  // Bottom Status text
+  let statusPill = 'ایستاده';
+  if (progress >= 1.08) statusPill = 'اسکات عمیق';
+  else if (progress >= 0.95) statusPill = 'عمق کامل ✓';
+  else if (progress >= 0.45) statusPill = 'فرود...';
+
+  ctx.fillStyle = gaugeColor;
+  ctx.font = 'bold 9.5px Vazirmatn, system-ui, sans-serif';
+  ctx.fillText(statusPill, cx, cy + r + 2);
+
+  ctx.restore();
+}
+
+let squatLungeStartTime = 0;
+let squatLungeTimerInterval = null;
+let squatLungeCountdownVal = 3;
+let squatLungeRepFlashTime = 0;
+let squatLungeActiveSide = 'right';
+let squatLungeLastVoiceWarningTime = 0;
+let squatLungeTrackedJoints = null;
+
+function squatLungeEnterIntro() {
+  squatLungePhase = 'intro';
+  squatLungeState = 'up';
+  squatLungeRepCount = 0;
+  squatLungeRepTimestamps = [];
+  squatLungeDepthHistory = [];
+  squatLungeQuadsHistory = [];
+  squatLungeGlutesHistory = [];
+  squatLungeMinKneeAngleThisRep = 180;
+  squatLungeMaxQuadsThisRep = 0;
+  squatLungeMaxGlutesThisRep = 0;
+  squatLungePeakQuadsAll = 0;
+  squatLungePeakGlutesAll = 0;
+  squatLungeCurrentQuadsTension = 5;
+  squatLungeCurrentGlutesTension = 5;
+  squatLungeToeWarningCount = 0;
+  squatLungeTrackedJoints = null;
+  squatLungeRepCombinedTensionHistory = [];
+  squatLungeCurrentFatigueIndex = 0;
+  updateSquatFatigueMonitor();
+
+  if (squatLungeTimerInterval) {
+    clearInterval(squatLungeTimerInterval);
+    squatLungeTimerInterval = null;
+  }
+
+  hideAllPanels();
+  if (squatLungeHud) squatLungeHud.style.display = 'none';
+  if (squatLungeStartPanel) squatLungeStartPanel.classList.add('visible');
+
+  const submodeName = squatLungeSubmode === 'squat' ? 'اسکات (Squat)' : 'لانج (Lunge)';
+  setStatus(`آزمون بیومکانیک ${submodeName}: دکمه شروع را لمس کنید 🏋️‍♂️`);
+}
+
+function squatLungeStartCountdown() {
+  squatLungePhase = 'countdown';
+  hideAllPanels();
+  let count = 3;
+  squatLungeCountdownVal = 3;
+  setStatus('آماده‌باش برای آزمون... ۳ ⏳');
+
+  playChime(523, 'sine', 0.16);
+  speakText('سه', 'Three');
+
+  const cdInterval = setInterval(() => {
+    count--;
+    squatLungeCountdownVal = count > 0 ? count : 'GO';
+    if (count > 0) {
+      const faDigits = { 2: '۲', 1: '۱' };
+      setStatus(`آماده‌باش... ${faDigits[count] || count} ⏳`);
+      if (count === 2) {
+        playChime(523, 'sine', 0.16);
+        speakText('دو', 'Two');
+      } else if (count === 1) {
+        playChime(659, 'sine', 0.18);
+        speakText('یک', 'One');
+      }
+    } else {
+      clearInterval(cdInterval);
+      const subTitle = squatLungeSubmode === 'squat' ? 'شروع اسکات!' : 'شروع لانج!';
+      setStatus(`${subTitle} فرم صحیح را حفظ کنید 🏋️‍♂️`);
+      playChime(880, 'triangle', 0.35);
+      speakText('شروع!', 'Go!');
+      setTimeout(() => {
+        squatLungeStartRunning();
+      }, 350);
+    }
+  }, 1000);
+}
+
+function squatLungeStartRunning() {
+  squatLungePhase = 'running';
+  squatLungeState = 'up';
+  squatLungeRepCount = 0;
+  squatLungeRepTimestamps = [];
+  squatLungeDepthHistory = [];
+  squatLungeQuadsHistory = [];
+  squatLungeGlutesHistory = [];
+  squatLungeMinKneeAngleThisRep = 180;
+  squatLungeMaxQuadsThisRep = 0;
+  squatLungeMaxGlutesThisRep = 0;
+  squatLungePeakQuadsAll = 0;
+  squatLungePeakGlutesAll = 0;
+  squatLungeToeWarningCount = 0;
+  squatLungeCurrentQuadsTension = 5;
+  squatLungeCurrentGlutesTension = 5;
+  squatLungeRepCombinedTensionHistory = [];
+  squatLungeCurrentFatigueIndex = 0;
+  squatLungeStartTime = performance.now();
+
+  hideAllPanels();
+  if (squatLungeHud) squatLungeHud.style.display = 'block';
+
+  const submodeFa = squatLungeSubmode === 'squat' ? 'اسکات' : 'لانج';
+  if (squatLungeSubmodeVal) squatLungeSubmodeVal.textContent = submodeFa;
+  if (squatLungeRepVal) squatLungeRepVal.textContent = '0';
+  if (squatLungeKneeAngleVal) squatLungeKneeAngleVal.textContent = '--°';
+  if (squatLungeDepthStatusVal) squatLungeDepthStatusVal.textContent = 'ایستاده (آماده)';
+  if (squatLungeKneeAlignmentVal) {
+    squatLungeKneeAlignmentVal.textContent = 'تراز استاندارد ✓';
+    squatLungeKneeAlignmentVal.style.color = '#4ade80';
+  }
+  if (squatQuadsTensionBar) squatQuadsTensionBar.style.width = '5%';
+  if (squatQuadsTensionLabel) squatQuadsTensionLabel.textContent = '۵٪ (پایه)';
+  if (squatGlutesTensionBar) squatGlutesTensionBar.style.width = '5%';
+  if (squatGlutesTensionLabel) squatGlutesTensionLabel.textContent = '۵٪ (پایه)';
+  updateSquatFatigueMonitor();
+
+  if (squatLungeTimerInterval) clearInterval(squatLungeTimerInterval);
+  squatLungeTimerInterval = setInterval(() => {
+    if (squatLungePhase !== 'running') {
+      clearInterval(squatLungeTimerInterval);
+      return;
+    }
+    const elapsedSec = (performance.now() - squatLungeStartTime) / 1000;
+
+    if (squatLungeTargetType === 'time') {
+      const remainingSec = Math.max(0, squatLungeTargetVal - elapsedSec);
+      if (squatLungeTimerVal) squatLungeTimerVal.textContent = `${remainingSec.toFixed(1)}s`;
+      if (remainingSec <= 0) {
+        clearInterval(squatLungeTimerInterval);
+        squatLungeFinish();
+      }
+    } else {
+      if (squatLungeTimerVal) squatLungeTimerVal.textContent = `${elapsedSec.toFixed(1)}s`;
+    }
+  }, 100);
+}
+
+function squatLungeProcessFrame(kp) {
+  if (squatLungePhase !== 'running') return;
+
+  const ls = kp['left_shoulder'], rs = kp['right_shoulder'];
+  const lh = kp['left_hip'], rh = kp['right_hip'];
+  const lk = kp['left_knee'], rk = kp['right_knee'];
+  const la = kp['left_ankle'], ra = kp['right_ankle'];
+  const lt = kp['left_foot_index'] || kp['left_heel'] || la;
+  const rt = kp['right_foot_index'] || kp['right_heel'] || ra;
+
+  const leftScore = (lh?.score || 0) + (lk?.score || 0) + (la?.score || 0);
+  const rightScore = (rh?.score || 0) + (rk?.score || 0) + (ra?.score || 0);
+
+  let hip = null, knee = null, ankle = null, toe = null, shoulder = null;
+
+  if (squatLungeSubmode === 'lunge') {
+    // For Lunge: determine lead leg (the one stepping forward with greater knee bend or forward distance)
+    if (lk && rk && lh && rh) {
+      if (lk.y > rk.y || (la && ra && Math.abs(lk.x - lh.x) > Math.abs(rk.x - rh.x))) {
+        hip = lh; knee = lk; ankle = la; toe = lt; shoulder = ls;
+        squatLungeActiveSide = 'left';
+      } else {
+        hip = rh; knee = rk; ankle = ra; toe = rt; shoulder = rs;
+        squatLungeActiveSide = 'right';
+      }
+    }
+  }
+
+  // Default side selection based on visibility score
+  if (!hip) {
+    if (rightScore >= leftScore && rightScore > 0.8) {
+      hip = rh; knee = rk; ankle = ra; toe = rt; shoulder = rs;
+      squatLungeActiveSide = 'right';
+    } else if (leftScore > 0.8) {
+      hip = lh; knee = lk; ankle = la; toe = lt; shoulder = ls;
+      squatLungeActiveSide = 'left';
+    } else {
+      return;
+    }
+  }
+
+  if (!hip || !knee || !ankle) return;
+
+  // Calculate Knee Angle: Hip -> Knee -> Ankle
+  const kneeAngle = calculateJointAngle(hip, knee, ankle);
+  if (kneeAngle == null) return;
+
+  // Calculate Hip Angle: Shoulder -> Hip -> Knee
+  let hipAngle = 180;
+  if (shoulder) {
+    const computedHipAngle = calculateJointAngle(shoulder, hip, knee);
+    if (computedHipAngle != null) hipAngle = computedHipAngle;
+  } else {
+    // Estimate hip angle from torso verticality
+    hipAngle = Math.max(70, Math.min(180, kneeAngle + 10));
+  }
+
+  squatLungeCurrentKneeAngle = Math.round(kneeAngle);
+  squatLungeCurrentHipAngle = Math.round(hipAngle);
+
+  // Store for canvas overlay
+  squatLungeTrackedJoints = {
+    hip, knee, ankle, toe, shoulder,
+    side: squatLungeActiveSide
+  };
+
+  // ================== KNEE-OVER-TOE ALIGNMENT MONITORING ==================
+  let toeAlignState = 'standard';
+  let alignText = 'تراز استاندارد ✓';
+
+  if (toe && ankle && knee) {
+    // Foot vector (ankle to toe) determines body facing direction
+    let footFacingX = (toe.x - ankle.x);
+    if (Math.abs(footFacingX) < 1e-4) {
+      footFacingX = (knee.x > hip.x ? 1 : -1) * 0.05;
+    }
+    const facingSign = Math.sign(footFacingX);
+
+    // Forward projection of knee relative to toe line
+    const kneeProjectionBeyondToe = (knee.x - toe.x) * facingSign;
+    const legLengthPx = Math.hypot(knee.x - hip.x, knee.y - hip.y) + Math.hypot(ankle.x - knee.x, ankle.y - knee.y);
+    const normalizedKneeExcess = legLengthPx > 20 ? (kneeProjectionBeyondToe / legLengthPx) : (kneeProjectionBeyondToe / 150);
+
+    // Dynamic Valgus check (knees caving inward) if bilateral
+    let isValgus = false;
+    if (squatLungeSubmode === 'squat' && lk && rk && la && ra && (lk.score > 0.3) && (rk.score > 0.3)) {
+      const kneeDist = Math.abs(lk.x - rk.x);
+      const ankleDist = Math.abs(la.x - ra.x);
+      if (ankleDist > 30 && kneeDist < ankleDist * 0.72 && kneeAngle < 135) {
+        isValgus = true;
+      }
+    }
+
+    // Calibrated baseline threshold for knee-over-toe alignment
+    const maxAllowedKneeExcess = (squatBaseline && squatBaseline.isCalibrated)
+      ? Math.max(0.10, squatBaseline.kneeToeRatio * 1.18)
+      : 0.14;
+
+    if (isValgus) {
+      toeAlignState = 'valgus';
+      alignText = '⚠️ چرخش زانو به داخل (Valgus)';
+      squatLungeToeWarningCount++;
+    } else if (normalizedKneeExcess > maxAllowedKneeExcess) {
+      toeAlignState = 'excessive_forward';
+      alignText = '⚠️ جلو رفتن بیش از حد زانو از پنجه';
+      squatLungeToeWarningCount++;
+
+      const now = performance.now();
+      if (now - squatLungeLastVoiceWarningTime > 4500) {
+        squatLungeLastVoiceWarningTime = now;
+        playChime(440, 'sawtooth', 0.12);
+        speakText('زانو از پنجه جلوتر نرود', 'Keep knees behind toes');
+      }
+    } else {
+      toeAlignState = 'standard';
+      alignText = 'تراز استاندارد زانو و پنجه ✓';
+    }
+  }
+
+  squatLungeToeAlignmentStatus = toeAlignState;
+  squatLungeAlignmentText = alignText;
+
+  // ================== MUSCLE TENSION MODEL (QUADS & GLUTES) ==================
+  // Quadriceps load: Calibrated to athlete's personal ROM depth angle
+  // Gluteus load: Increases with hip flexion and bottom depth recruitment
+  const kneeFlexionDeg = Math.max(0, Math.min(125, 180 - kneeAngle));
+  const hipFlexionDeg = Math.max(0, Math.min(120, 180 - hipAngle));
+
+  const targetKneeFlexion = (squatBaseline && squatBaseline.isCalibrated)
+    ? Math.max(60, 180 - squatBaseline.depthAngle)
+    : 90;
+  const normalizedKneeFlex = Math.min(1.2, kneeFlexionDeg / targetKneeFlexion);
+  const quadMoment = Math.sin(Math.min(Math.PI / 2, (normalizedKneeFlex * Math.PI) / 2));
+  const gluteMoment = Math.sin((hipFlexionDeg / 180) * Math.PI);
+
+  // Concentric / Bottom recruitment bonus
+  const effortBonus = (squatLungeState === 'bottom' || squatLungeState === 'ascending') ? 12 : 0;
+  const targetDepthAngle = (squatBaseline && squatBaseline.isCalibrated) ? squatBaseline.depthAngle : 92;
+  const depthBonus = (kneeAngle <= targetDepthAngle + 3) ? 16 : (kneeAngle <= targetDepthAngle + 25 ? 8 : 0);
+
+  const rawQuadsTension = Math.max(5, Math.min(100, Math.round((quadMoment * 88) + effortBonus)));
+  const rawGlutesTension = Math.max(5, Math.min(100, Math.round((gluteMoment * 78) + depthBonus + (effortBonus * 0.7))));
+
+  // Exponential Moving Average for fluid 60fps rendering without noise
+  squatLungeCurrentQuadsTension = Math.round(squatLungeCurrentQuadsTension * 0.72 + rawQuadsTension * 0.28);
+  squatLungeCurrentGlutesTension = Math.round(squatLungeCurrentGlutesTension * 0.72 + rawGlutesTension * 0.28);
+
+  if (squatLungeCurrentQuadsTension > squatLungeMaxQuadsThisRep) squatLungeMaxQuadsThisRep = squatLungeCurrentQuadsTension;
+  if (squatLungeCurrentGlutesTension > squatLungeMaxGlutesThisRep) squatLungeMaxGlutesThisRep = squatLungeCurrentGlutesTension;
+  if (squatLungeCurrentQuadsTension > squatLungePeakQuadsAll) squatLungePeakQuadsAll = squatLungeCurrentQuadsTension;
+  if (squatLungeCurrentGlutesTension > squatLungePeakGlutesAll) squatLungePeakGlutesAll = squatLungeCurrentGlutesTension;
+
+  // ================== SQUAT & LUNGE STATE MACHINE ==================
+  // 'up': Standing upright (knee angle > 155°)
+  // 'descending': Lowering hips/knee
+  // 'bottom': Target depth reached (calibrated or default 92°)
+  // 'ascending': Pushing back up to standing
+  const now = performance.now();
+
+  if (squatLungeState === 'up') {
+    squatLungeDepthStatusText = 'ایستاده (آماده حرکت)';
+    if (kneeAngle < 145) {
+      squatLungeState = 'descending';
+      squatLungeMinKneeAngleThisRep = kneeAngle;
+      squatLungeDepthStatusText = 'در حال فرود...';
+    }
+  } else if (squatLungeState === 'descending') {
+    if (kneeAngle < squatLungeMinKneeAngleThisRep) {
+      squatLungeMinKneeAngleThisRep = kneeAngle;
+    }
+
+    if (kneeAngle <= targetDepthAngle + 3) {
+      squatLungeDepthStatusText = `عمق هدف (${targetDepthAngle}°) ✨`;
+    } else if (kneeAngle <= 120) {
+      squatLungeDepthStatusText = 'نیمه‌اسکات (نیاز به عمق بیشتر)';
+    } else {
+      squatLungeDepthStatusText = 'در حال فرود...';
+    }
+
+    if (kneeAngle <= targetDepthAngle) {
+      squatLungeState = 'bottom';
+      squatLungeDepthStatusText = `عمق هدف ${targetDepthAngle}° کامل شد ✓`;
+      playChime(784, 'sine', 0.08); // G5 acoustic feedback
+    } else if (kneeAngle > 158) {
+      squatLungeState = 'up';
+    }
+  } else if (squatLungeState === 'bottom') {
+    if (kneeAngle < squatLungeMinKneeAngleThisRep) {
+      squatLungeMinKneeAngleThisRep = kneeAngle;
+    }
+    squatLungeDepthStatusText = 'عمق کامل - بازگشت به بالا';
+    if (kneeAngle > Math.min(130, targetDepthAngle + 22)) {
+      squatLungeState = 'ascending';
+      squatLungeDepthStatusText = 'در حال صعود و اکستنشن...';
+    }
+  } else if (squatLungeState === 'ascending') {
+    squatLungeDepthStatusText = 'در حال صعود...';
+    if (kneeAngle >= 155) {
+      // Rep completed!
+      squatLungeState = 'up';
+      squatLungeRepCount++;
+      squatLungeRepTimestamps.push(now);
+      squatLungeDepthHistory.push(Math.round(squatLungeMinKneeAngleThisRep));
+      squatLungeQuadsHistory.push(squatLungeMaxQuadsThisRep);
+      squatLungeGlutesHistory.push(squatLungeMaxGlutesThisRep);
+      squatLungeRepFlashTime = now;
+
+      // Track combined tension for fatigue monitor
+      const repCombinedLoad = Math.round(squatLungeMaxQuadsThisRep * 0.55 + squatLungeMaxGlutesThisRep * 0.45);
+      squatLungeRepCombinedTensionHistory.push(repCombinedLoad);
+      updateSquatFatigueMonitor();
+
+      // Reset rep peaks for next cycle
+      squatLungeMinKneeAngleThisRep = 180;
+      squatLungeMaxQuadsThisRep = 0;
+      squatLungeMaxGlutesThisRep = 0;
+
+      playChime(659, 'triangle', 0.24); // E5
+      const faDigits = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+      const repStrFa = String(squatLungeRepCount).split('').map(d => faDigits[d] || d).join('');
+      speakText(`${repStrFa}`, `${squatLungeRepCount}`);
+
+      squatLungeDepthStatusText = `تکرار ${repStrFa} ثبت شد! ✅`;
+      setStatus(`تکرار ${repStrFa} ${squatLungeSubmode === 'squat' ? 'اسکات' : 'لانج'} ثبت شد`);
+
+      // Check rep target completion
+      if (squatLungeTargetType === 'reps' && squatLungeRepCount >= squatLungeTargetVal) {
+        setTimeout(() => {
+          squatLungeFinish();
+        }, 500);
+      }
+    }
+  }
+
+  // ================== UPDATE HUD IN REAL TIME ==================
+  if (squatLungeRepVal) squatLungeRepVal.textContent = squatLungeRepCount;
+  if (squatLungeKneeAngleVal) squatLungeKneeAngleVal.textContent = `${squatLungeCurrentKneeAngle}°`;
+  if (squatLungeDepthStatusVal) squatLungeDepthStatusVal.textContent = squatLungeDepthStatusText;
+
+  if (squatLungeKneeAlignmentVal) {
+    squatLungeKneeAlignmentVal.textContent = squatLungeAlignmentText;
+    squatLungeKneeAlignmentVal.style.color = (squatLungeToeAlignmentStatus === 'standard') ? '#4ade80' : '#f87171';
+  }
+
+  // Muscle tension bars update
+  if (squatQuadsTensionBar) {
+    squatQuadsTensionBar.style.width = `${squatLungeCurrentQuadsTension}%`;
+  }
+  if (squatQuadsTensionLabel) {
+    let quadDesc = 'پایه';
+    if (squatLungeCurrentQuadsTension > 78) quadDesc = 'بیشینه 🔥';
+    else if (squatLungeCurrentQuadsTension > 50) quadDesc = 'بارگذاری بالا';
+    else if (squatLungeCurrentQuadsTension > 25) quadDesc = 'متوسط';
+    squatQuadsTensionLabel.textContent = `${squatLungeCurrentQuadsTension}٪ (${quadDesc})`;
+  }
+
+  if (squatGlutesTensionBar) {
+    squatGlutesTensionBar.style.width = `${squatLungeCurrentGlutesTension}%`;
+  }
+  if (squatGlutesTensionLabel) {
+    let gluteDesc = 'پایه';
+    if (squatLungeCurrentGlutesTension > 75) gluteDesc = 'اوج انقباض ⚡';
+    else if (squatLungeCurrentGlutesTension > 48) gluteDesc = 'فعالیت قوی';
+    else if (squatLungeCurrentGlutesTension > 25) gluteDesc = 'متوسط';
+    squatGlutesTensionLabel.textContent = `${squatLungeCurrentGlutesTension}٪ (${gluteDesc})`;
+  }
+}
+
+function squatLungeDrawOverlay() {
+  if (squatLungePhase === 'countdown') {
+    ctx.save();
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#38bdf8';
+    ctx.font = 'bold 84px Vazirmatn, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = '#0284c7';
+    ctx.shadowBlur = 24;
+    ctx.fillText(squatLungeCountdownVal, canvas.width / 2, canvas.height / 2);
+    ctx.restore();
+    return;
+  }
+
+  if (squatLungePhase === 'running' && squatLungeTrackedJoints) {
+    const { hip, knee, ankle, toe } = squatLungeTrackedJoints;
+
+    // Convert joint coordinates from normalized (0..1) or pixel
+    const toCanvasX = (p) => (p.x <= 1.0 ? p.x * canvas.width : p.x);
+    const toCanvasY = (p) => (p.y <= 1.0 ? p.y * canvas.height : p.y);
+
+    const hX = toCanvasX(hip), hY = toCanvasY(hip);
+    const kX = toCanvasX(knee), kY = toCanvasY(knee);
+    const aX = toCanvasX(ankle), aY = toCanvasY(ankle);
+    const tX = toe ? toCanvasX(toe) : aX + 30;
+    const tY = toe ? toCanvasY(toe) : aY;
+
+    ctx.save();
+
+    // 1. Quads Muscle Tension Thigh Visualization (Thick glowing segment between Hip and Knee)
+    const quadHue = 200 - Math.round((squatLungeCurrentQuadsTension / 100) * 190); // 200 (Cyan) down to 10 (Red-Orange)
+    ctx.beginPath();
+    ctx.moveTo(hX, hY);
+    ctx.lineTo(kX, kY);
+    ctx.lineWidth = 14;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = `hsla(${quadHue}, 95%, 55%, 0.65)`;
+    ctx.shadowColor = `hsl(${quadHue}, 100%, 50%)`;
+    ctx.shadowBlur = 16;
+    ctx.stroke();
+
+    // 2. Glutes Muscle Activation Fan at Pelvis/Hip
+    const gluteAlpha = 0.3 + (squatLungeCurrentGlutesTension / 100) * 0.55;
+    ctx.beginPath();
+    ctx.arc(hX, hY, 22, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(192, 132, 252, ${gluteAlpha})`;
+    ctx.shadowColor = '#a855f7';
+    ctx.shadowBlur = 18;
+    ctx.fill();
+
+    // 3. Knee Angle Arc & Numerical Badge
+    ctx.beginPath();
+    ctx.arc(kX, kY, 24, 0, Math.PI * 2);
+    ctx.fillStyle = (squatLungeCurrentKneeAngle <= 95) ? 'rgba(34, 197, 94, 0.45)' : 'rgba(250, 204, 21, 0.35)';
+    ctx.fill();
+    ctx.strokeStyle = (squatLungeCurrentKneeAngle <= 95) ? '#22c55e' : '#facc15';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // Angle text tag
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 13px Vazirmatn, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`${squatLungeCurrentKneeAngle}°`, kX, kY);
+
+    // 4. Knee-Over-Toe Vertical Laser Guide from Toe Point
+    ctx.beginPath();
+    ctx.setLineDash([5, 4]);
+    ctx.moveTo(tX, tY + 10);
+    ctx.lineTo(tX, Math.min(kY - 30, hY));
+    const isAlignmentOk = squatLungeToeAlignmentStatus === 'standard';
+    ctx.strokeStyle = isAlignmentOk ? 'rgba(74, 222, 128, 0.85)' : 'rgba(248, 113, 113, 0.95)';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Laser Guide Toe Label
+    ctx.font = '10px Vazirmatn, system-ui, sans-serif';
+    ctx.fillStyle = isAlignmentOk ? '#4ade80' : '#f87171';
+    ctx.fillText(isAlignmentOk ? 'خط پنجه ✓' : '⚠️ حد مجاز زانو', tX, Math.min(kY - 35, hY - 5));
+
+    // 5. Rep Success Shockwave Flash
+    const now = performance.now();
+    if (now - squatLungeRepFlashTime < 500) {
+      const progress = (now - squatLungeRepFlashTime) / 500;
+      const radius = 45 + progress * 80;
+      const alpha = Math.max(0, 1 - progress);
+      ctx.beginPath();
+      ctx.arc(kX, kY, radius, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(34, 197, 94, ${alpha})`;
+      ctx.lineWidth = 5 * (1 - progress);
+      ctx.stroke();
+    }
+
+    // 6. Dynamic Depth Gauge Arc Overlay (Real-time visual feedback)
+    const targetDepth = (squatBaseline && squatBaseline.isCalibrated) ? squatBaseline.depthAngle : 92;
+    const gaugeX = Math.max(68, canvas.width - 76);
+    const gaugeY = 76;
+    drawDepthGauge(gaugeX, gaugeY, squatLungeCurrentKneeAngle, targetDepth);
+
+    ctx.restore();
+  }
+}
+
+function squatLungeFinish() {
+  if (squatLungeTimerInterval) {
+    clearInterval(squatLungeTimerInterval);
+    squatLungeTimerInterval = null;
+  }
+  squatLungePhase = 'finished';
+  clearAiFormWarning();
+
+  const subName = squatLungeSubmode === 'squat' ? 'اسکات' : 'لانج';
+  setStatus(`آزمون بیومکانیک ${subName} پایان یافت! 🏁`);
+  playChime(880, 'triangle', 0.35);
+  speakText(`پایان آزمون ${subName}`, 'Squat test finished');
+
+  if (squatLungeHud) squatLungeHud.style.display = 'none';
+
+  const elapsedSec = squatLungeStartTime ? (performance.now() - squatLungeStartTime) / 1000 : 0;
+  const effectiveSec = Math.max(1, Math.round(elapsedSec));
+
+  const avgDepth = squatLungeDepthHistory.length > 0
+    ? Math.round(squatLungeDepthHistory.reduce((a, b) => a + b, 0) / squatLungeDepthHistory.length)
+    : squatLungeCurrentKneeAngle;
+
+  const peakQuads = squatLungePeakQuadsAll > 0 ? squatLungePeakQuadsAll : 85;
+  const peakGlutes = squatLungePeakGlutesAll > 0 ? squatLungePeakGlutesAll : 78;
+
+  // Form & Biomechanics Score (0 - 100%)
+  let score = 100;
+  if (avgDepth > 105) score -= 18; // Shallow squats
+  else if (avgDepth > 96) score -= 8;
+
+  if (squatLungeToeWarningCount > 3) score -= 20;
+  else if (squatLungeToeWarningCount > 0) score -= 10;
+
+  score = Math.max(50, Math.min(100, score));
+
+  // Compute final fatigue index
+  const finalFatigueIndex = squatLungeCurrentFatigueIndex;
+  const finalFatigueRating = squatLungeFatigueRatingText;
+
+  // Rating Badge & Feedback
+  let gradeText = 'تکنیک عالی (Elite Form) 🌟';
+  let gradeColor = '#4ade80';
+  let feedback = '';
+
+  if (score >= 90) {
+    gradeText = 'تکنیک عالی (Elite Form) 🌟';
+    gradeColor = '#4ade80';
+    feedback = `اجرای بی‌نقص با عمق فرود استاندارد (میانگین ${avgDepth}°) و هم‌راستایی کامل زانو و پنجه. زنجیره عضلانی چهارسر ران (${peakQuads}٪) و سرینی/باسن (${peakGlutes}٪) توزیع گشتاور مطلوبی را در چرخه حرکتی ثبت کردند. شاخص خستگی عضلانی: ${finalFatigueIndex}٪ (${finalFatigueRating}).`;
+  } else if (score >= 75) {
+    gradeText = 'تکنیک خوب و استاندارد 👍';
+    gradeColor = '#38bdf8';
+    feedback = `دامنه حرکتی مناسب با میانگین عمق ${avgDepth}°. تنش عضلات چهارسر و باسن در دامنه مؤثر فعال شدند. برای ارتقای فرم، کنترل بیشتری روی ثبات زانوها در انتهای فاز فرود حفظ نمایید. شاخص خستگی: ${finalFatigueIndex}٪ (${finalFatigueRating}).`;
+  } else {
+    gradeText = 'نیازمند اصلاح الگوی حرکتی 💡';
+    gradeColor = '#facc15';
+    feedback = `میانگین عمق زانو ${avgDepth}° ثبت شد. ${squatLungeToeWarningCount > 0 ? 'موارد خروج زانو از راستای پنجه یا چرخش به داخل شناسایی گردید.' : 'دستیابی به عمق ۹۰ درجه پیشنهاد می‌شود.'} شاخص خستگی عضلانی: ${finalFatigueIndex}٪. تقویت عضلات چهارسر، باسن و تحرک مچ پا برای ثبات زنجیره حرکتی توصیه می‌گردد.`;
+  }
+
+  // Update Result Panel DOM
+  if (squatLungeResultTitle) {
+    squatLungeResultTitle.textContent = `نتایج بیومکانیک ${subName} (${squatLungeRepCount} تکرار)`;
+  }
+  if (squatLungeResultGradeBadge) {
+    squatLungeResultGradeBadge.textContent = gradeText;
+    squatLungeResultGradeBadge.style.color = gradeColor;
+    squatLungeResultGradeBadge.style.borderColor = gradeColor;
+  }
+  if (squatLungeTotalReps) squatLungeTotalReps.textContent = squatLungeRepCount;
+  if (squatLungeFormScore) squatLungeFormScore.textContent = `${score}٪`;
+  if (squatLungeAvgDepth) squatLungeAvgDepth.textContent = `${avgDepth}°`;
+  if (squatLungePeakQuads) squatLungePeakQuads.textContent = `${peakQuads}٪`;
+  if (squatLungePeakGlutes) squatLungePeakGlutes.textContent = `${peakGlutes}٪`;
+  if (squatLungeToeAlignmentSummary) {
+    squatLungeToeAlignmentSummary.textContent = squatLungeToeWarningCount === 0 ? 'استاندارد و هم‌راستا ✓' : `${squatLungeToeWarningCount} خطا در تراز`;
+    squatLungeToeAlignmentSummary.style.color = squatLungeToeWarningCount === 0 ? '#4ade80' : '#f87171';
+  }
+  if (squatLungeFatigueIndex) {
+    squatLungeFatigueIndex.textContent = `${finalFatigueIndex}٪`;
+  }
+  if (squatLungeFatigueRating) {
+    squatLungeFatigueRating.textContent = finalFatigueRating;
+    if (finalFatigueIndex < 8) squatLungeFatigueRating.style.color = '#4ade80';
+    else if (finalFatigueIndex < 18) squatLungeFatigueRating.style.color = '#facc15';
+    else if (finalFatigueIndex < 30) squatLungeFatigueRating.style.color = '#fb923c';
+    else squatLungeFatigueRating.style.color = '#f87171';
+  }
+  if (squatLungeFeedbackText) squatLungeFeedbackText.textContent = feedback;
+
+  if (squatLungeResultPanel) squatLungeResultPanel.classList.add('visible');
+
+  // Auto-save test to database/history
+  saveToHistory('squat_lunge', {
+    submode: squatLungeSubmode,
+    totalReps: squatLungeRepCount,
+    totalTime: `${effectiveSec}s`,
+    avgDepth,
+    peakQuads,
+    peakGlutes,
+    formScore: score,
+    toeAlignmentWarnings: squatLungeToeWarningCount,
+    fatigueIndex: finalFatigueIndex,
+    fatigueRating: finalFatigueRating,
+    grade: gradeText,
+    feedback
+  });
+}
+
+// Squat & Lunge Event Listeners
+if (squatLungeStartBtn) squatLungeStartBtn.addEventListener('click', squatLungeStartCountdown);
+if (squatLungeCancelBtn) squatLungeCancelBtn.addEventListener('click', () => switchMode('jump'));
+if (squatLungeAgainBtn) squatLungeAgainBtn.addEventListener('click', squatLungeEnterIntro);
+if (squatLungeSaveBtn) {
+  squatLungeSaveBtn.addEventListener('click', () => {
+    setStatus('نتایج بیومکانیک اسکات و لانج ذخیره شد ✅');
+    squatLungeSaveBtn.textContent = 'ذخیره شد ✓';
+    setTimeout(() => { squatLungeSaveBtn.textContent = 'ذخیره در تاریخچه'; }, 2000);
+  });
+}
+
+// Squat Range of Motion Calibration Listeners
+if (startSquatCalibBtn) {
+  startSquatCalibBtn.addEventListener('click', startSquatCalibration);
+}
+if (resetSquatCalibBtn) {
+  resetSquatCalibBtn.addEventListener('click', () => {
+    try {
+      localStorage.removeItem('motion_tracker_squat_baseline');
+    } catch (e) {}
+    loadSquatRomBaseline();
+    playChime(440, 'sine', 0.15);
+    setStatus('کالیبراسیون اسکات به تنظیمات پیش‌فرض بازنشانی گردید 🔄');
+    if (typeof showShortcutToast === 'function') {
+      showShortcutToast('کالیبراسیون اسکات بازنشانی شد');
+    }
+  });
+}
+
+// Submode Toggle (Squat vs Lunge)
+if (squatLungeModeSquatBtn && squatLungeModeLungeBtn) {
+  squatLungeModeSquatBtn.addEventListener('click', () => {
+    squatLungeSubmode = 'squat';
+    squatLungeModeSquatBtn.classList.add('active');
+    squatLungeModeSquatBtn.style.background = '#0284c7';
+    squatLungeModeSquatBtn.style.color = '#ffffff';
+    squatLungeModeSquatBtn.style.borderColor = '#38bdf8';
+
+    squatLungeModeLungeBtn.classList.remove('active');
+    squatLungeModeLungeBtn.style.background = '#1e293b';
+    squatLungeModeLungeBtn.style.color = '#cbd5e1';
+    squatLungeModeLungeBtn.style.borderColor = '#475569';
+    setStatus('آزمون انتخابی: اسکات دو پا (Squat)');
+  });
+
+  squatLungeModeLungeBtn.addEventListener('click', () => {
+    squatLungeSubmode = 'lunge';
+    squatLungeModeLungeBtn.classList.add('active');
+    squatLungeModeLungeBtn.style.background = '#0284c7';
+    squatLungeModeLungeBtn.style.color = '#ffffff';
+    squatLungeModeLungeBtn.style.borderColor = '#38bdf8';
+
+    squatLungeModeSquatBtn.classList.remove('active');
+    squatLungeModeSquatBtn.style.background = '#1e293b';
+    squatLungeModeSquatBtn.style.color = '#cbd5e1';
+    squatLungeModeSquatBtn.style.borderColor = '#475569';
+    setStatus('آزمون انتخابی: لانج و اسپیلیت (Lunge)');
+  });
+}
+
+// Target Presets Click Handler
+if (squatLungeTargetPresets) {
+  squatLungeTargetPresets.addEventListener('click', (e) => {
+    const btn = e.target.closest('.squatLungeTargetBtn');
+    if (!btn) return;
+    const target = btn.getAttribute('data-target');
+    const val = parseInt(btn.getAttribute('data-val'), 10) || 0;
+
+    squatLungeTargetType = target;
+    squatLungeTargetVal = val;
+
+    squatLungeTargetPresets.querySelectorAll('.squatLungeTargetBtn').forEach(b => {
+      b.classList.remove('active');
+      b.style.background = '#1e293b';
+      b.style.color = '#cbd5e1';
+      b.style.borderColor = '#475569';
+    });
+    btn.classList.add('active');
+    btn.style.background = '#0284c7';
+    btn.style.color = '#ffffff';
+    btn.style.borderColor = '#38bdf8';
   });
 }
 
@@ -12148,6 +13509,7 @@ if (drawerItemAgility) drawerItemAgility.addEventListener('click', () => { switc
 if (drawerItemBosco) drawerItemBosco.addEventListener('click', () => { switchMode('bosco'); closeDrawer(); });
 if (drawerItemSitup) drawerItemSitup.addEventListener('click', () => { switchMode('situp'); closeDrawer(); });
 if (drawerItemPushup) drawerItemPushup.addEventListener('click', () => { switchMode('pushup'); closeDrawer(); });
+if (drawerItemSquatLunge) drawerItemSquatLunge.addEventListener('click', () => { switchMode('squat_lunge'); closeDrawer(); });
 if (drawerItemFlex) drawerItemFlex.addEventListener('click', () => { switchMode('flexibility'); closeDrawer(); });
 if (drawerItemAnthro) drawerItemAnthro.addEventListener('click', () => { switchMode('anthro'); closeDrawer(); });
 if (drawerItemWingspan) drawerItemWingspan.addEventListener('click', () => { switchMode('wingspan'); closeDrawer(); });
@@ -12207,6 +13569,7 @@ function switchMode(newMode) {
   if (modeBoscoBtn) modeBoscoBtn.classList.toggle('active', mode === 'bosco');
   if (modeSitupBtn) modeSitupBtn.classList.toggle('active', mode === 'situp');
   if (modePushupBtn) modePushupBtn.classList.toggle('active', mode === 'pushup');
+  if (modeSquatLungeBtn) modeSquatLungeBtn.classList.toggle('active', mode === 'squat_lunge');
   if (modeWingspanBtn) modeWingspanBtn.classList.toggle('active', mode === 'wingspan');
   if (modeDistanceBtn) modeDistanceBtn.classList.toggle('active', mode === 'distance');
   if (modeFlexBtn) modeFlexBtn.classList.toggle('active', mode === 'flexibility');
@@ -12220,6 +13583,7 @@ function switchMode(newMode) {
     bosco: drawerItemBosco,
     situp: drawerItemSitup,
     pushup: drawerItemPushup,
+    squat_lunge: drawerItemSquatLunge,
     flexibility: drawerItemFlex,
     anthro: drawerItemAnthro,
     wingspan: drawerItemWingspan,
@@ -12237,6 +13601,7 @@ function switchMode(newMode) {
     bosco: { icon: '⏱️', label: 'پرش متوالی Bosco' },
     situp: { icon: '🧘', label: 'دراز و نشست' },
     pushup: { icon: '💪', label: 'شنا سوئدی' },
+    squat_lunge: { icon: '🏋️‍♂️', label: 'اسکات و لانج' },
     flexibility: { icon: '🧘‍♀️', label: 'انعطاف‌پذیری' },
     anthro: { icon: '📐', label: 'آنتروپومتری' },
     wingspan: { icon: '📏', label: 'طول دو دست' },
@@ -12258,6 +13623,8 @@ function switchMode(newMode) {
     situpEnterIntro();
   } else if (mode === 'pushup') {
     pushupEnterIntro();
+  } else if (mode === 'squat_lunge') {
+    squatLungeEnterIntro();
   } else if (mode === 'wingspan') {
     wingspanEnterMode();
   } else if (mode === 'distance') {
@@ -12279,6 +13646,7 @@ if (modeAgilityBtn) modeAgilityBtn.addEventListener('click', () => switchMode('a
 if (modeBoscoBtn) modeBoscoBtn.addEventListener('click', () => switchMode('bosco'));
 if (modeSitupBtn) modeSitupBtn.addEventListener('click', () => switchMode('situp'));
 if (modePushupBtn) modePushupBtn.addEventListener('click', () => switchMode('pushup'));
+if (modeSquatLungeBtn) modeSquatLungeBtn.addEventListener('click', () => switchMode('squat_lunge'));
 if (modeWingspanBtn) modeWingspanBtn.addEventListener('click', () => switchMode('wingspan'));
 if (modeDistanceBtn) modeDistanceBtn.addEventListener('click', () => switchMode('distance'));
 if (modeFlexBtn) modeFlexBtn.addEventListener('click', () => switchMode('flexibility'));
@@ -12421,9 +13789,9 @@ async function setupCamera(forceReconfigure = false, preferredDeviceId = null) {
       return;
     }
 
-    // Try to select camera
-    let selectedCameraId = preferredDeviceId;
-    if (!selectedCameraId) {
+    // Select camera: on initial load, do NOT await enumerateDevices (which hangs before user grants permission)
+    let selectedCameraId = preferredDeviceId || localStorage.getItem('selectedCameraId') || null;
+    if (!selectedCameraId && availableCameras && availableCameras.length > 0) {
       try {
         selectedCameraId = await selectBestCamera(null);
       } catch (error) {
@@ -12433,7 +13801,7 @@ async function setupCamera(forceReconfigure = false, preferredDeviceId = null) {
 
     // Check if chosen camera is front
     let isFrontCamera = false;
-    if (selectedCameraId && availableCameras.length > 0) {
+    if (selectedCameraId && availableCameras && availableCameras.length > 0) {
       const found = availableCameras.find(c => c.deviceId === selectedCameraId);
       if (found && found.position === 'front') {
         isFrontCamera = true;
@@ -12446,13 +13814,44 @@ async function setupCamera(forceReconfigure = false, preferredDeviceId = null) {
     let stream = null;
     let lastError = null;
 
+    // Helper function for timeout-safe getUserMedia (prevents infinite hanging)
+    const requestMediaWithTimeout = (candidateConstraint, timeoutMs = 8000) => {
+      return new Promise((resolve, reject) => {
+        let settled = false;
+        const timer = setTimeout(() => {
+          if (!settled) {
+            settled = true;
+            const err = new Error('CAMERA_TIMEOUT');
+            err.name = 'TimeoutError';
+            reject(err);
+          }
+        }, timeoutMs);
+
+        navigator.mediaDevices.getUserMedia({ video: candidateConstraint, audio: false })
+          .then(res => {
+            if (!settled) {
+              settled = true;
+              clearTimeout(timer);
+              resolve(res);
+            }
+          })
+          .catch(err => {
+            if (!settled) {
+              settled = true;
+              clearTimeout(timer);
+              reject(err);
+            }
+          });
+      });
+    };
+
     // Build progressive candidate constraints in prioritized order
     const candidates = [];
 
-    // 1. If a specific camera ID is selected
-    if (selectedCameraId) {
+    // 1. If a valid, non-empty specific camera ID is selected
+    if (selectedCameraId && typeof selectedCameraId === 'string' && selectedCameraId.trim() !== '') {
       candidates.push({
-        deviceId: { ideal: selectedCameraId },
+        deviceId: { exact: selectedCameraId },
         width: { ideal: optimalRes.width },
         height: { ideal: optimalRes.height }
       });
@@ -12475,7 +13874,7 @@ async function setupCamera(forceReconfigure = false, preferredDeviceId = null) {
         facingMode: { ideal: 'environment' }
       });
     } else {
-      // 3. Back camera prioritized (typical for mobile sports measurement)
+      // 3. Back camera prioritized (standard for athletic tests)
       candidates.push({
         facingMode: { ideal: 'environment' },
         width: { ideal: optimalRes.width },
@@ -12484,7 +13883,7 @@ async function setupCamera(forceReconfigure = false, preferredDeviceId = null) {
       candidates.push({
         facingMode: { ideal: 'environment' }
       });
-      // 4. Laptop / desktop / single webcam fallback: front/user camera
+      // 4. Laptop / desktop / front webcam fallback
       candidates.push({
         facingMode: { ideal: 'user' },
         width: { ideal: optimalRes.width },
@@ -12508,7 +13907,7 @@ async function setupCamera(forceReconfigure = false, preferredDeviceId = null) {
       const candidate = candidates[i];
       try {
         console.log(`📷 getUserMedia attempt ${i + 1}/${candidates.length}:`, candidate);
-        stream = await navigator.mediaDevices.getUserMedia({ video: candidate, audio: false });
+        stream = await requestMediaWithTimeout(candidate, 8000);
         console.log(`✅ Camera acquired on attempt ${i + 1}`);
         break;
       } catch (error) {
@@ -12989,15 +14388,26 @@ async function loadModel() {
         );
       } catch (fullModelErr) {
         console.warn('BlazePose full model load failed, falling back to lite model:', fullModelErr);
-        detector = await poseDetection.createDetector(
-          poseDetection.SupportedModels.BlazePose,
-          {
-            runtime: 'mediapipe',
-            modelType: 'lite',
-            enableSmoothing: true,
-            solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404',
-          }
-        );
+        try {
+          detector = await poseDetection.createDetector(
+            poseDetection.SupportedModels.BlazePose,
+            {
+              runtime: 'mediapipe',
+              modelType: 'lite',
+              enableSmoothing: true,
+              solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404',
+            }
+          );
+        } catch (liteModelErr) {
+          console.warn('BlazePose lite model load failed, falling back to MoveNet Lightning:', liteModelErr);
+          detector = await poseDetection.createDetector(
+            poseDetection.SupportedModels.MoveNet,
+            {
+              modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING,
+              enableSmoothing: true
+            }
+          );
+        }
       }
 
       console.log('✅ Model loaded successfully with keypoint stabilization');
@@ -13046,12 +14456,14 @@ function drawPose(poses) {
     if (mode === 'bosco') boscoDrawOverlay();
     if (mode === 'situp') situpDrawOverlay();
     if (mode === 'pushup') pushupDrawOverlay();
+    if (mode === 'squat_lunge') squatLungeDrawOverlay();
     if (mode === 'wingspan') wingspanDrawOverlay();
     if (mode === 'distance') distanceDrawOverlay();
     if (mode === 'flexibility') flexibilityDrawOverlay();
     if (mode === 'anthro') anthroDrawOverlay();
     if (isCalibratingHeight) heightCalibDrawOverlay();
     if (isObjectCalibrating) objectCalibDrawOverlay();
+    if (typeof isSquatCalibrating !== 'undefined' && isSquatCalibrating) squatCalibDrawOverlay();
 
     // Render transparent camera alignment grid overlay (when active)
     if (typeof showAlignmentGrid !== 'undefined' && showAlignmentGrid) {
@@ -13382,6 +14794,8 @@ function drawPose(poses) {
     if (mode === 'bosco') boscoProcessFrame(kp);
     if (mode === 'situp') situpProcessFrame(kp);
     if (mode === 'pushup') pushupProcessFrame(kp);
+    if (typeof isSquatCalibrating !== 'undefined' && isSquatCalibrating) squatCalibProcessFrame(kp);
+    if (mode === 'squat_lunge') squatLungeProcessFrame(kp);
     if (mode === 'wingspan') wingspanProcessFrame(kp);
     if (mode === 'flexibility') flexibilityProcessFrame(kp);
     if (mode === 'anthro') anthroProcessFrame(kp);
@@ -14208,6 +15622,13 @@ function initKeyboardShortcuts() {
       return;
     }
 
+    if (key === 'q' || key === 'Q' || key === 'ض') {
+      e.preventDefault();
+      switchMode('squat_lunge');
+      showShortcutToast('🏋️‍♂️ تغییر آزمون: بیومکانیک اسکات و لانج (Q)');
+      return;
+    }
+
     if (key === 'g' || key === 'G' || key === 'ل') {
       e.preventDefault();
       toggleAlignmentGrid();
@@ -14286,6 +15707,10 @@ function initKeyboardShortcuts() {
     }
 
     if (key === 'Escape') {
+      if (typeof isSquatCalibrating !== 'undefined' && isSquatCalibrating) {
+        cancelSquatCalibration();
+        return;
+      }
       closeKeyboardShortcutsModal();
       const modals = ['athleteProfileModal', 'handballModal', 'pdfReportModal', 'multiCamModal', 'studioLayoutModal', 'editAthleteModal'];
       modals.forEach(id => {
@@ -14516,21 +15941,60 @@ async function detectLoop() {
  * Start application with comprehensive error handling
  */
 async function start() {
+  const startBtnEl = document.getElementById('startBtn');
+  const hintEl = document.getElementById('hint');
+  const loadingBox = document.getElementById('startLoadingBox');
+  const loadingText = document.getElementById('startLoadingText');
+  const errorBox = document.getElementById('startOverlayErrorBox');
+
+  if (errorBox) errorBox.style.display = 'none';
+  if (startBtnEl) {
+    startBtnEl.disabled = true;
+    startBtnEl.style.opacity = '0.85';
+    startBtnEl.style.cursor = 'wait';
+    startBtnEl.innerHTML = '<span>⏳</span> در حال راه‌اندازی دوربین...';
+  }
+  if (loadingBox) loadingBox.style.display = 'flex';
+  if (loadingText) loadingText.textContent = 'در حال بررسی دسترسی دوربین...';
+  if (hintEl) {
+    hintEl.textContent = 'لطفاً در پیام مرورگر اجازه دسترسی به دوربین را تأیید (Allow) کنید.';
+    hintEl.style.color = '#38bdf8';
+  }
+
+  const resetStartBtnState = (btnText = '🔄 تلاش مجدد برای شروع') => {
+    if (startBtnEl) {
+      startBtnEl.disabled = false;
+      startBtnEl.style.opacity = '1';
+      startBtnEl.style.cursor = 'pointer';
+      startBtnEl.innerHTML = btnText;
+    }
+    if (loadingBox) loadingBox.style.display = 'none';
+    if (startOverlay) startOverlay.style.display = 'flex';
+  };
+
   try {
     // Check browser compatibility first
     if (!checkBrowserCompatibility()) {
+      resetStartBtnState('🔄 تلاش مجدد');
       return;
     }
 
-    startOverlay.style.display = 'none';
+    if (loadingText) loadingText.textContent = 'در حال فعال‌سازی دوربین...';
     setStatus('در حال فعال‌سازی دوربین...');
 
     // Setup camera
     try {
       await setupCamera();
     } catch (error) {
+      resetStartBtnState('🔄 تلاش مجدد برای دوربین');
       const errorType = error.type || 'CAMERA_UNKNOWN';
-      showErrorModal(errorType, error.original?.message || 'Unknown camera error');
+      const errMsg = error.original?.message || 'خطا در دسترسی به دوربین';
+      if (errorBox) {
+        errorBox.style.display = 'block';
+        const errTxt = document.getElementById('startOverlayErrorText');
+        if (errTxt) errTxt.textContent = `دوربین فعال نشد: ${errMsg}. لطفاً اجازه دسترسی را در تنظیمات مرورگر بررسی کنید یا از دکمه زیر استفاده نمایید.`;
+      }
+      showErrorModal(errorType, errMsg);
       return;
     }
 
@@ -14567,14 +16031,23 @@ async function start() {
       });
     }
 
+    if (loadingText) loadingText.textContent = 'در حال بارگذاری مدل هوش مصنوعی...';
+    if (startBtnEl) startBtnEl.innerHTML = '<span>🧠</span> در حال بارگذاری مدل بیومکانیک...';
     setStatus('در حال بارگذاری مدل تشخیص بدن...');
 
     // Load model
     try {
       await loadModel();
     } catch (error) {
+      resetStartBtnState('🔄 تلاش مجدد برای بارگذاری مدل');
       const errorType = error.type || 'MODEL_LOAD_FAILED';
-      showErrorModal(errorType, error.original?.message || 'Model loading failed');
+      const errMsg = error.original?.message || 'بارگذاری مدل هوش مصنوعی انجام نشد';
+      if (errorBox) {
+        errorBox.style.display = 'block';
+        const errTxt = document.getElementById('startOverlayErrorText');
+        if (errTxt) errTxt.textContent = `بارگذاری هوش مصنوعی با خطا مواجه شد. لطفاً اتصال اینترنت را بررسی کنید یا دکمه بروزرسانی کش را بزنید.`;
+      }
+      showErrorModal(errorType, errMsg);
       
       // Clean up camera stream
       if (video.srcObject) {
@@ -14584,6 +16057,7 @@ async function start() {
       return;
     }
 
+    startOverlay.style.display = 'none';
     running = true;
     consecutiveErrors = 0;
     modeBar.style.display = 'flex';
@@ -14618,9 +16092,18 @@ async function start() {
     }, 1200);
 
   } catch (error) {
+    resetStartBtnState('🔄 تلاش مجدد');
     logError('start', error);
     showErrorModal('UNKNOWN_ERROR', error.message || 'Unknown error during startup');
   }
+}
+
+// Expose startApp globally so inline early handlers can trigger it immediately
+window.__startApp = start;
+if (window.__startRequested) {
+  window.__startRequested = false;
+  console.log('🚀 Executing queued start request triggered before app.js loaded');
+  start();
 }
 
 startBtn.addEventListener('click', () => {
@@ -14642,7 +16125,7 @@ if (openCameraSettingsBtn) {
 }
 
 // ================== VERSION CHECK ==================
-const APP_VERSION = '1.5.3';
+const APP_VERSION = '1.8.1';
 console.log(`%c🚀 Motion Tracker v${APP_VERSION}`, 'color: #22c55e; font-size: 16px; font-weight: bold');
 console.log('%c✨ Wide-Angle Default & Complete Human Body Skeleton Enabled', 'color: #38bdf8; font-size: 12px');
 

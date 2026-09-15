@@ -7,9 +7,9 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>حرکت‌سنج</title>
-<meta name="description" content="سامانه استعدادیابی ورزشی و ارزیابی بیومکانیک: آزمون‌های چابکی و شاتل، پرش عمودی، سرعت دو، بافر بازبینی ۵ ثانیه‌ای صحنه آهسته (Slow-Motion Review Panel) در کادر کنار تصویر جهت راستی‌آزمایی عملکرد و زوایای بیومکانیکی توسط مربی، کنترل و ارسال محدودیت‌های فوکوس سخت‌افزاری دوربین (MediaStream Focus Constraints) جهت وضوح حداکثری لبه‌های بیومتریک، سنجش خودکار آنتروپومتری و ابعاد بدنی (قد، لگن، بالاتنه، پایین‌تنه، نسبت دست به قد، دور مچ، شکم و سینه)، نمودار Recharts مقایسه شاخص‌های بیومتریک و تکامل نسبت‌های اسکلتی در طول زمان، نمایش زنده زوایای مفاصل، مدیریت و ویرایش ورزشکاران، کارنامه رسمی PDF با نمودار رادار">
+<meta name="description" content="سامانه استعدادیابی ورزشی و ارزیابی بیومکانیک: آزمون تخصصی اسکات و لانج (Squat & Lunge) با پایش هوشمند عمق، تراز زانو و پنجه و نشانگرهای لحظه‌ای تنش عضلات چهارسر و باسن، آزمون‌های چابکی و شاتل، پرش عمودی و متوالی، سرعت دو، شنا و درازنشست، بافر بازبینی ۵ ثانیه‌ای صحنه آهسته، سنجش خودکار آنتروپومتری، نمودار Recharts تکامل بیومتریک و کارنامه رسمی PDF">
 <meta property="og:title" content="حرکت‌سنج">
-<meta property="og:description" content="سامانه استعدادیابی ورزشی و ارزیابی بیومکانیک: آزمون‌های چابکی و شاتل، پرش عمودی، سرعت دو، بافر بازبینی ۵ ثانیه‌ای صحنه آهسته (Slow-Motion Review Panel) در کادر کنار تصویر جهت راستی‌آزمایی عملکرد و زوایای بیومکانیکی توسط مربی، کنترل و ارسال محدودیت‌های فوکوس سخت‌افزاری دوربین (MediaStream Focus Constraints) جهت وضوح حداکثری لبه‌های بیومتریک، سنجش خودکار آنتروپومتری و ابعاد بدنی (قد، لگن، بالاتنه، پایین‌تنه، نسبت دست به قد، دور مچ، شکم و سینه)، نمودار Recharts مقایسه شاخص‌های بیومتریک و تکامل نسبت‌های اسکلتی در طول زمان، نمایش زنده زوایای مفاصل، مدیریت و ویرایش ورزشکاران، کارنامه رسمی PDF با نمودار رادار">
+<meta property="og:description" content="سامانه استعدادیابی ورزشی و ارزیابی بیومکانیک: آزمون تخصصی اسکات و لانج (Squat & Lunge) با پایش هوشمند عمق، تراز زانو و پنجه و نشانگرهای لحظه‌ای تنش عضلات چهارسر و باسن، آزمون‌های چابکی و شاتل، پرش عمودی و متوالی، سرعت دو، شنا و درازنشست، بافر بازبینی ۵ ثانیه‌ای صحنه آهسته، سنجش خودکار آنتروپومتری، نمودار Recharts تکامل بیومتریک و کارنامه رسمی PDF">
 
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0f172a">
@@ -2418,6 +2418,7 @@
   }
 
   /* AI Form Error Telemetry Overlay */
+  #telemetryAiFormOverlay,
   .telemetry-form-overlay {
     border-radius: 10px;
     padding: 9px 12px;
@@ -2426,23 +2427,42 @@
     text-align: right;
     transition: all 0.25s ease;
     margin-bottom: 2px;
+    transform-origin: center top;
+    will-change: transform, opacity;
   }
+  #telemetryAiFormOverlay.warning-critical,
   .telemetry-form-overlay.warning-critical {
     background: linear-gradient(135deg, rgba(185, 28, 28, 0.95), rgba(127, 29, 29, 0.92));
     border: 1.5px solid #ef4444;
     box-shadow: 0 4px 16px rgba(239, 68, 68, 0.35);
-    animation: telemPulseCritical 1.6s infinite ease-in-out;
+    animation: telemOverlayScaleIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) both, telemPulseCritical 1.6s infinite ease-in-out 0.32s;
   }
+  #telemetryAiFormOverlay.warning-moderate,
   .telemetry-form-overlay.warning-moderate {
     background: linear-gradient(135deg, rgba(180, 83, 9, 0.95), rgba(120, 53, 15, 0.92));
     border: 1.5px solid #f59e0b;
     box-shadow: 0 4px 16px rgba(245, 158, 11, 0.35);
-    animation: telemPulseModerate 1.8s infinite ease-in-out;
+    animation: telemOverlayScaleIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) both, telemPulseModerate 1.8s infinite ease-in-out 0.32s;
   }
+  #telemetryAiFormOverlay.status-optimal,
   .telemetry-form-overlay.status-optimal {
     background: linear-gradient(135deg, rgba(20, 83, 45, 0.9), rgba(15, 23, 42, 0.92));
     border: 1.5px solid rgba(34, 197, 94, 0.5);
-    animation: none;
+    animation: telemOverlayScaleIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  @keyframes telemOverlayScaleIn {
+    0% {
+      opacity: 0;
+      transform: scale(0.88) translateY(-6px);
+    }
+    70% {
+      opacity: 1;
+      transform: scale(1.02) translateY(0);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
   }
   @keyframes telemPulseCritical {
     0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
@@ -3222,6 +3242,97 @@
     </div>
   </div>
 
+  <!-- Squat and Lunge (اسکات و لانج) Live HUD with Real-time Muscle Tension Indicators -->
+  <div id="squatLungeHud" class="liveHud" style="display: none;">
+    <div class="hudRow">
+      <div class="hudMetric">
+        <span class="hudLabel">🏋️‍♂️ نوع حرکت</span>
+        <span class="hudVal" id="squatLungeSubmodeVal" style="color: #38bdf8;">اسکات</span>
+      </div>
+      <div class="hudMetric">
+        <span class="hudLabel">🔢 تکرار صحیح</span>
+        <span class="hudVal accent" id="squatLungeRepVal">0</span>
+      </div>
+      <div class="hudMetric">
+        <span class="hudLabel">📐 زاویه زانو / عمق</span>
+        <span class="hudVal" id="squatLungeKneeAngleVal">--°</span>
+      </div>
+      <div class="hudMetric">
+        <span class="hudLabel">🚦 وضعیت عمق</span>
+        <span class="hudVal" id="squatLungeDepthStatusVal">ایستاده (آماده)</span>
+      </div>
+    </div>
+
+    <!-- Knee-Over-Toe Alignment Indicator & Timer -->
+    <div class="hudRow">
+      <div class="hudMetric" style="flex: 1.4;">
+        <span class="hudLabel">🦶 هم‌راستایی زانو و پنجه (Knee-Over-Toe)</span>
+        <span class="hudVal" id="squatLungeKneeAlignmentVal" style="color: #4ade80;">تراز استاندارد ✓</span>
+      </div>
+      <div class="hudMetric">
+        <span class="hudLabel">⏱️ زمان آزمون</span>
+        <span class="hudVal" id="squatLungeTimerVal">0.0s</span>
+      </div>
+    </div>
+
+    <!-- Real-time Muscle Tension Indicators for Quads & Glutes -->
+    <div style="background: rgba(15, 23, 42, 0.94); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 10px; padding: 7px 10px; margin-top: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.4);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+        <span style="font-size: 11px; font-weight: bold; color: #38bdf8; display: flex; align-items: center; gap: 4px;">
+          <span>⚡</span>
+          <span>نشانگر لحظه‌ای تنش عضلانی (Muscle Tension)</span>
+        </span>
+        <span id="squatLungeTensionSummaryBadge" style="font-size: 9.5px; background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 2px 6px; border-radius: 9999px; border: 1px solid rgba(56, 189, 248, 0.3);">تحلیل بلادرنگ</span>
+      </div>
+
+      <!-- Quads Tension Bar -->
+      <div style="margin-bottom: 5px;">
+        <div style="display: flex; justify-content: space-between; font-size: 10.5px; margin-bottom: 2px;">
+          <span style="color: #cbd5e1; display: flex; align-items: center; gap: 4px;">
+            <span>🦵</span>
+            <strong>چهارسر ران (Quadriceps):</strong>
+          </span>
+          <span id="squatQuadsTensionLabel" style="color: #facc15; font-weight: bold;">۵٪ (استراحت)</span>
+        </div>
+        <div style="width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 9999px; overflow: hidden; position: relative;">
+          <div id="squatQuadsTensionBar" style="width: 5%; height: 100%; background: linear-gradient(90deg, #38bdf8, #facc15, #ef4444); border-radius: 9999px; transition: width 0.08s ease-out;"></div>
+        </div>
+      </div>
+
+      <!-- Glutes Tension Bar -->
+      <div>
+        <div style="display: flex; justify-content: space-between; font-size: 10.5px; margin-bottom: 2px;">
+          <span style="color: #cbd5e1; display: flex; align-items: center; gap: 4px;">
+            <span>🍑</span>
+            <strong>سرینی و باسن (Gluteus):</strong>
+          </span>
+          <span id="squatGlutesTensionLabel" style="color: #c084fc; font-weight: bold;">۵٪ (استراحت)</span>
+        </div>
+        <div style="width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 9999px; overflow: hidden; position: relative;">
+          <div id="squatGlutesTensionBar" style="width: 5%; height: 100%; background: linear-gradient(90deg, #818cf8, #c084fc, #f43f5e); border-radius: 9999px; transition: width 0.08s ease-out;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Real-time Muscular Fatigue Monitor (پایشگر خستگی عضلانی) -->
+    <div id="squatFatigueMonitorBox" style="background: rgba(15, 23, 42, 0.94); border: 1px solid rgba(244, 63, 94, 0.4); border-radius: 10px; padding: 7px 10px; margin-top: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.4);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+        <span style="font-size: 11px; font-weight: bold; color: #fb7185; display: flex; align-items: center; gap: 4px;">
+          <span>📉</span>
+          <span>پایشگر خستگی عضلانی (Fatigue Monitor)</span>
+        </span>
+        <span id="squatFatigueBadge" style="font-size: 9.5px; background: rgba(74, 222, 128, 0.15); color: #4ade80; padding: 2px 6px; border-radius: 9999px; border: 1px solid rgba(74, 222, 128, 0.3);">شاداب (آغاز آزمون)</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; font-size: 10.5px; margin-bottom: 2px;">
+        <span style="color: #cbd5e1;">افت توان نسبت به تکرارهای اول:</span>
+        <span id="squatFatigueVal" style="color: #fb7185; font-weight: bold;">۰٪ (حداکثر توان)</span>
+      </div>
+      <div style="width: 100%; height: 7px; background: rgba(255,255,255,0.1); border-radius: 9999px; overflow: hidden; position: relative;">
+        <div id="squatFatigueBar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #4ade80, #facc15, #f43f5e); border-radius: 9999px; transition: width 0.15s ease-out;"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Sprint Run Live HUD -->
   <div id="runHud" class="liveHud" style="display: none;">
     <div class="hudRow">
@@ -3466,6 +3577,7 @@
       <button id="modeRunBtn" class="modeBtn active">🏃 دو</button>
       <button id="modeJumpBtn" class="modeBtn">⤴️ پرش تک</button>
       <button id="modeBoscoBtn" class="modeBtn">⏱️ پرش متوالی</button>
+      <button id="modeSquatLungeBtn" class="modeBtn">🏋️‍♂️ اسکات و لانج</button>
       <button id="modeSitupBtn" class="modeBtn">🧘 دراز و نشست</button>
       <button id="modePushupBtn" class="modeBtn">💪 شنا سوئدی</button>
       <button id="modeFlexBtn" class="modeBtn">🧘‍♀️ انعطاف‌پذیری</button>
@@ -3559,6 +3671,17 @@
             <div style="font-size: 10px; color: #94a3b8;">استقامت عضلات کور و ثبات مرکزی</div>
           </div>
         </div>
+      </button>
+
+      <button id="drawerItemSquatLunge" class="drawerMenuItem">
+        <div class="itemLeft">
+          <span class="itemIcon">🏋️‍♂️</span>
+          <div>
+            <div style="color: #38bdf8; font-weight: bold;">آزمون اسکات و لانج (Squat & Lunge)</div>
+            <div style="font-size: 10px; color: #94a3b8;">پایش عمق، تراز زانو و پنجه + نشانگر تنش عضلانی ۴سر و باسن</div>
+          </div>
+        </div>
+        <span class="drawerBadge new">جدید</span>
       </button>
 
       <button id="drawerItemPushup" class="drawerMenuItem">
@@ -3768,22 +3891,132 @@
     </div>
 
     <div style="padding: 14px; text-align: center; font-size: 10px; color: #64748b; margin-top: auto;">
-      سامانه حرکت‌سنج هوشمند • نسخه 1.8.0
+      سامانه حرکت‌سنج هوشمند • نسخه 1.11.0
     </div>
   </div>
 
   <div id="startOverlay">
     <h2>حرکت‌سنج</h2>
     <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin: 4px 0 12px 0;">
-      <span class="version" id="appVersionDisplay" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 2px 10px; border-radius: 9999px; font-size: 11px; border: 1px solid rgba(56, 189, 248, 0.3);">نسخه 1.8.0 (موتور توان انفجاری 1RM و تحلیل زاویه مفاصل)</span>
+      <span class="version" id="appVersionDisplay" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 2px 10px; border-radius: 9999px; font-size: 11px; border: 1px solid rgba(56, 189, 248, 0.3);">نسخه 1.11.0 (کالیبراسیون اسکات، گیج عمق و پایش خستگی)</span>
       <button type="button" id="clearCacheReloadBtn" style="background: rgba(255, 255, 255, 0.08); color: #cbd5e1; border: 1px solid #475569; border-radius: 8px; padding: 3px 10px; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 4px;" title="پاکسازی کش مرورگر و بارگذاری نسخه جدید">
         <span>🔄</span>
         <span>بروزرسانی کش</span>
       </button>
     </div>
     <p id="hint">برای شروع، اجازهٔ دسترسی به دوربین رو بده. مدل تشخیص بدن کاملاً روی گوشی اجرا می‌شه.</p>
+
+    <!-- Real-time Loading Indicator Box -->
+    <div id="startLoadingBox" style="display: none; flex-direction: column; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(30, 41, 59, 0.85); border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 12px; margin: 4px 0; max-width: 320px; width: 90%;">
+      <div style="display: flex; align-items: center; gap: 8px; color: #38bdf8; font-size: 13px; font-weight: bold;">
+        <span style="display: inline-block; animation: spin 1s linear infinite; font-size: 16px;">⏳</span>
+        <span id="startLoadingText">در حال فعال‌سازی دوربین...</span>
+      </div>
+      <div style="width: 100%; height: 4px; background: rgba(255, 255, 255, 0.1); border-radius: 9999px; overflow: hidden;">
+        <div id="startLoadingBar" style="width: 60%; height: 100%; background: linear-gradient(90deg, #38bdf8, #22c55e); border-radius: 9999px;"></div>
+      </div>
+    </div>
+
+    <!-- Iframe Helper Button -->
+    <div id="iframeHelperBox" style="display: none; margin-bottom: 6px;">
+      <button type="button" id="openInNewTabBtn" style="background: rgba(2, 132, 199, 0.25); color: #38bdf8; border: 1px solid #0284c7; padding: 8px 16px; border-radius: 10px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+        <span>🌐</span>
+        <span>باز کردن در تب جدید جهت دسترسی کامل به دوربین</span>
+      </button>
+    </div>
+
     <button id="startBtn">شروع</button>
+
+    <!-- In-overlay Error Box -->
+    <div id="startOverlayErrorBox" style="display: none; max-width: 340px; padding: 10px 14px; background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; border-radius: 10px; font-size: 12px; color: #fca5a5; line-height: 1.5; text-align: center; margin-top: 8px;">
+      <div id="startOverlayErrorText">مشکلی در فعال‌سازی دوربین رخ داد.</div>
+      <div style="display: flex; gap: 8px; justify-content: center; margin-top: 8px;">
+        <button type="button" id="startOverlayRetryBtn" style="background: #22c55e; color: #052e16; border: none; padding: 6px 14px; border-radius: 6px; font-weight: bold; font-size: 11px; cursor: pointer;">تلاش مجدد</button>
+        <button type="button" id="startOverlayNewTabBtn" style="background: rgba(255,255,255,0.1); color: #fff; border: 1px solid #64748b; padding: 6px 14px; border-radius: 6px; font-size: 11px; cursor: pointer;">باز کردن در تب جدید</button>
+      </div>
+    </div>
   </div>
+
+  <!-- Immediate Early Start Button Handler -->
+  <script>
+    (function() {
+      var startBtn = document.getElementById('startBtn');
+      var loadingBox = document.getElementById('startLoadingBox');
+      var loadingText = document.getElementById('startLoadingText');
+      var hint = document.getElementById('hint');
+      var iframeBox = document.getElementById('iframeHelperBox');
+      var newTabBtn = document.getElementById('openInNewTabBtn');
+      var overlayRetryBtn = document.getElementById('startOverlayRetryBtn');
+      var overlayNewTabBtn = document.getElementById('startOverlayNewTabBtn');
+
+      if (window.self !== window.top && iframeBox) {
+        iframeBox.style.display = 'block';
+      }
+      if (newTabBtn) {
+        newTabBtn.addEventListener('click', function() {
+          window.open(window.location.href, '_blank');
+        });
+      }
+      if (overlayNewTabBtn) {
+        overlayNewTabBtn.addEventListener('click', function() {
+          window.open(window.location.href, '_blank');
+        });
+      }
+      if (overlayRetryBtn) {
+        overlayRetryBtn.addEventListener('click', function() {
+          var errBox = document.getElementById('startOverlayErrorBox');
+          if (errBox) errBox.style.display = 'none';
+          if (startBtn) startBtn.click();
+        });
+      }
+
+      if (startBtn) {
+        startBtn.addEventListener('click', function() {
+          console.log('⚡ Immediate click handler on startBtn');
+          startBtn.disabled = true;
+          startBtn.style.opacity = '0.85';
+          startBtn.style.cursor = 'wait';
+          startBtn.innerHTML = '<span>⏳</span> در حال راه‌اندازی...';
+
+          if (loadingBox) loadingBox.style.display = 'flex';
+          if (loadingText) loadingText.textContent = 'در حال فعال‌سازی دوربین...';
+          if (hint) {
+            hint.textContent = 'لطفاً در پیام مرورگر اجازه دسترسی به دوربین را تأیید (Allow) کنید.';
+            hint.style.color = '#38bdf8';
+          }
+
+          if (typeof window.__startApp === 'function') {
+            window.__startApp();
+          } else {
+            window.__startRequested = true;
+            // Poll for app.js readiness
+            var readyTimer = setInterval(function() {
+              if (typeof window.__startApp === 'function') {
+                clearInterval(readyTimer);
+                window.__startApp();
+              }
+            }, 150);
+            setTimeout(function() {
+              clearInterval(readyTimer);
+              if (typeof window.__startApp !== 'function') {
+                if (loadingText) loadingText.textContent = 'در حال بارگذاری اسکریپت‌ها...';
+                startBtn.disabled = false;
+                startBtn.style.opacity = '1';
+                startBtn.style.cursor = 'pointer';
+                startBtn.innerHTML = '🔄 تلاش مجدد برای شروع';
+                var errBox = document.getElementById('startOverlayErrorBox');
+                if (errBox) {
+                  errBox.style.display = 'block';
+                  var errTxt = document.getElementById('startOverlayErrorText');
+                  if (errTxt) errTxt.textContent = 'اسکریپت‌های سامانه هنوز در حال بارگذاری هستند. در صورت کندی اینترنت، چند لحظه دیگر دوباره کلیک کنید یا بروزرسانی کش را بزنید.';
+                }
+              }
+            }, 10000);
+          }
+        });
+      }
+    })();
+  </script>
 
   <!-- Guide banner (small, non-blocking — video stays visible underneath) -->
   <div id="guideOverlay">
@@ -4334,9 +4567,34 @@
       </button>
     </div>
 
+    <!-- Automated Squat Range-of-Motion (ROM) & Baseline Calibration -->
+    <div style="margin: 4px 0 8px 0; padding: 10px; background: rgba(2, 132, 199, 0.12); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 10px; display: flex; flex-direction: column; gap: 6px;">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <span style="font-size: 11.5px; font-weight: bold; color: #38bdf8; display: flex; align-items: center; gap: 5px;">
+          <span>🏋️‍♂️</span>
+          <span>کالیبراسیون هوشمند دامنه اسکات (Squat Baseline)</span>
+        </span>
+        <span id="squatCalibStatusBadge" style="font-size: 10px; background: rgba(74, 222, 128, 0.2); color: #4ade80; padding: 2px 6px; border-radius: 6px; border: 1px solid rgba(74, 222, 128, 0.4);">پیش‌فرض (۹۰°)</span>
+      </div>
+      <p style="font-size: 10.5px; color: #cbd5e1; margin: 0; line-height: 1.5;">
+        ورزشکار در وضعیت اسکات نشسته و پوزیشن را ۳ ثانیه ثابت نگه می‌دارد تا عمق فرود اختصاصی، نسبت طول ران به ساق و تراز پنجه برای بالاترین دقت بیومکانیکی کالیبره شود.
+      </p>
+      <div style="display: flex; gap: 6px; align-items: center;">
+        <button type="button" id="startSquatCalibBtn" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: #ffffff; font-size: 11px; padding: 7px 12px; border: 1px solid #38bdf8; border-radius: 8px; cursor: pointer; flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 600;">
+          <span>⏱️ شروع کالیبراسیون ۳ ثانیه‌ای اسکات</span>
+        </button>
+        <button type="button" id="resetSquatCalibBtn" style="background: rgba(100, 116, 139, 0.2); color: #cbd5e1; font-size: 10.5px; padding: 7px 8px; border: 1px solid #475569; border-radius: 8px; cursor: pointer;" title="بازنشانی به پیش‌فرض">
+          <span>↺</span>
+        </button>
+      </div>
+      <div id="squatCalibResultText" style="font-size: 10px; color: #94a3b8; display: none;">
+        عمق پایه کالیبره‌شده: <span id="squatCalibDepthVal" style="color: #38bdf8; font-weight: bold;">--</span> • ضریب تراز پنجه: <span id="squatCalibToeRatioVal" style="color: #4ade80; font-weight: bold;">--</span>
+      </div>
+    </div>
+
     <div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid #334155; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px;">
       <button type="button" id="openCameraSettingsBtn" style="background: rgba(56, 189, 248, 0.12); color: #38bdf8; font-size: 12px; padding: 7px 14px; border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; cursor: pointer; width: 100%;">📷 انتخاب دوربین و تعویض لنز (فوق‌عریض / زوم)</button>
-      <span style="font-size: 11px; color: #94a3b8;">نسخه فعلی: <strong style="color: #38bdf8;">1.8.0 (موتور توان انفجاری 1RM و تحلیل زاویه مفاصل)</strong></span>
+      <span style="font-size: 11px; color: #94a3b8;">نسخه فعلی: <strong style="color: #38bdf8;">1.10.0 (کالیبراسیون اسکات، گیج عمق و پایش خستگی)</strong></span>
       <button type="button" id="clearCacheFromSettingsBtn" style="background: rgba(239, 68, 68, 0.15); color: #fca5a5; font-size: 11px; padding: 6px 14px; border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; cursor: pointer;">🔄 پاکسازی کش و تازه‌سازی کامل</button>
     </div>
 
@@ -5027,6 +5285,97 @@
     </div>
   </div>
 
+  <!-- Squat and Lunge (اسکات و لانج) panels -->
+  <div id="squatLungeStartPanel" class="panel" style="max-width: 480px;">
+    <div style="font-weight: bold; font-size: 15px; color: #38bdf8; display: flex; align-items: center; gap: 6px;">
+      <span>🏋️‍♂️</span>
+      <span>آزمون بیومکانیک اسکات و لانج (Squat & Lunge)</span>
+    </div>
+    <p style="font-size: 11px; color: #94a3b8; margin: 6px 0; line-height: 1.6;">
+      پایش هوشمند فرم حرکت، عمق فرود (زاویه زانو)، هم‌راستایی زانو با نوک پنجه (Knee-Over-Toe) و نمایش لحظه‌ای تنش عضلات چهارسر ران و سرینی/باسن با هوش مصنوعی.
+    </p>
+
+    <!-- Submode Selector (Squat vs Lunge) -->
+    <div style="display: flex; gap: 6px; margin: 8px 0;">
+      <button type="button" id="squatLungeModeSquatBtn" class="squatLungeSubmodeBtn active" data-submode="squat" style="flex: 1; padding: 7px; font-size: 11.5px; font-weight: bold; border-radius: 8px; border: 1px solid #38bdf8; background: #0284c7; color: #ffffff; cursor: pointer;">🏋️‍♂️ اسکات (Squat)</button>
+      <button type="button" id="squatLungeModeLungeBtn" class="squatLungeSubmodeBtn" data-submode="lunge" style="flex: 1; padding: 7px; font-size: 11.5px; font-weight: bold; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: #cbd5e1; cursor: pointer;">🚶‍♂️ لانج (Lunge / Split)</button>
+    </div>
+
+    <!-- Test Goal / Duration options -->
+    <div style="background: rgba(15, 23, 42, 0.75); border: 1px solid #334155; border-radius: 12px; padding: 8px 10px; margin: 8px 0;">
+      <div style="font-size: 11px; color: #cbd5e1; margin-bottom: 6px; text-align: center;">هدف و پروتکل ارزیابی:</div>
+      <div id="squatLungeTargetPresets" style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
+        <button type="button" class="squatLungeTargetBtn active" data-target="reps" data-val="10" style="flex: 1; min-width: 80px; padding: 6px 4px; font-size: 11px; border-radius: 8px; border: 1px solid #38bdf8; background: #0284c7; color: #ffffff; cursor: pointer;">۱۰ تکرار استاندارد</button>
+        <button type="button" class="squatLungeTargetBtn" data-target="time" data-val="30" style="flex: 1; min-width: 80px; padding: 6px 4px; font-size: 11px; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: #cbd5e1; cursor: pointer;">۳۰ ثانیه سرعتی</button>
+        <button type="button" class="squatLungeTargetBtn" data-target="free" data-val="0" style="flex: 1; min-width: 80px; padding: 6px 4px; font-size: 11px; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: #cbd5e1; cursor: pointer;">آزاد / تمرین تکنیک</button>
+      </div>
+    </div>
+
+    <div style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; padding: 7px 10px; margin: 6px 0; font-size: 11px; color: #7dd3fc; text-align: right; line-height: 1.6;">
+      💡 <strong>نحوه استقرار دوربین:</strong> در فاصله ۲.۵ تا ۳.۵ متری با نمای نیم‌رخ یا مایل (۴۵ تا ۹۰ درجه) قرار گیرید تا زانو، مچ پا و لگن کاملاً در کادر دید هوش مصنوعی قرار گیرند.
+    </div>
+
+    <button id="squatLungeStartBtn" style="background: #22c55e; color: #052e16; font-weight: bold; padding: 10px; border-radius: 8px; border: none; font-size: 13px; cursor: pointer; width: 100%; margin-top: 4px;">شروع آزمون بیومکانیک 🏋️‍♂️</button>
+    <button id="squatLungeCancelBtn" class="secondary" style="margin-top: 4px;">انصراف</button>
+  </div>
+
+  <div id="squatLungeResultPanel" class="panel" style="max-width: 480px; max-height: 80vh; overflow-y: auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 8px; margin-bottom: 10px;">
+      <div style="font-weight: bold; font-size: 16px; color: #4ade80; display: flex; align-items: center; gap: 6px;">
+        <span>🏆</span>
+        <span id="squatLungeResultTitle">نتایج بیومکانیک اسکات و لانج</span>
+      </div>
+      <span id="squatLungeResultGradeBadge" style="font-size: 11px; background: rgba(34, 197, 94, 0.2); color: #4ade80; padding: 3px 8px; border-radius: 9999px; border: 1px solid #22c55e;">تکنیک عالی</span>
+    </div>
+
+    <!-- Core Metrics Grid -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; font-size: 11px;">
+      <div style="background: rgba(30,41,59,0.7); padding: 8px; border-radius: 8px; border: 1px solid #334155; text-align: center;">
+        <span style="color: #94a3b8; display: block;">تعداد تکرار صحیح:</span>
+        <strong id="squatLungeTotalReps" style="color: #4ade80; font-size: 22px;">0</strong>
+      </div>
+      <div style="background: rgba(30,41,59,0.7); padding: 8px; border-radius: 8px; border: 1px solid #334155; text-align: center;">
+        <span style="color: #94a3b8; display: block;">امتیاز تکنیک و فرم:</span>
+        <strong id="squatLungeFormScore" style="color: #38bdf8; font-size: 22px;">۱۰۰٪</strong>
+      </div>
+      <div style="background: rgba(30,41,59,0.7); padding: 8px; border-radius: 8px; border: 1px solid #334155; text-align: center;">
+        <span style="color: #94a3b8; display: block;">میانگین زاویه عمق زانو:</span>
+        <strong id="squatLungeAvgDepth" style="color: #facc15; font-size: 16px;">--°</strong>
+      </div>
+      <div style="background: rgba(30,41,59,0.7); padding: 8px; border-radius: 8px; border: 1px solid #334155; text-align: center;">
+        <span style="color: #94a3b8; display: block;">پیک تنش ۴سر ران:</span>
+        <strong id="squatLungePeakQuads" style="color: #fb923c; font-size: 16px;">--٪</strong>
+      </div>
+      <div style="background: rgba(30,41,59,0.7); padding: 8px; border-radius: 8px; border: 1px solid #334155; text-align: center;">
+        <span style="color: #94a3b8; display: block;">پیک تنش سرینی/باسن:</span>
+        <strong id="squatLungePeakGlutes" style="color: #c084fc; font-size: 16px;">--٪</strong>
+      </div>
+      <div style="background: rgba(30,41,59,0.7); padding: 8px; border-radius: 8px; border: 1px solid #334155; text-align: center;">
+        <span style="color: #94a3b8; display: block;">هم‌راستایی زانو و پنجه:</span>
+        <strong id="squatLungeToeAlignmentSummary" style="color: #4ade80; font-size: 13px;">استاندارد ✓</strong>
+      </div>
+      <div style="background: rgba(30,41,59,0.7); padding: 8px; border-radius: 8px; border: 1px solid rgba(244,63,94,0.3); text-align: center;">
+        <span style="color: #94a3b8; display: block;">شاخص خستگی عضلانی (Fatigue):</span>
+        <strong id="squatLungeFatigueIndex" style="color: #fb7185; font-size: 16px;">۰٪</strong>
+      </div>
+      <div style="background: rgba(30,41,59,0.7); padding: 8px; border-radius: 8px; border: 1px solid #334155; text-align: center;">
+        <span style="color: #94a3b8; display: block;">استقامت و افت توان:</span>
+        <strong id="squatLungeFatigueRating" style="color: #4ade80; font-size: 13px;">پایداری توان عالی</strong>
+      </div>
+    </div>
+
+    <!-- Biomechanical Analysis Card -->
+    <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid #0284c7; border-radius: 10px; padding: 10px; margin-bottom: 10px;">
+      <div style="font-size: 11px; color: #38bdf8; font-weight: bold; margin-bottom: 4px;">تحلیل فرم و بیومکانیک زنجیره حرکتی:</div>
+      <div id="squatLungeFeedbackText" style="font-size: 11.5px; color: #cbd5e1; line-height: 1.6;">عمق فرود در زاویه استاندارد ۹۰ درجه با تراز مطلوب زانو و پنجه ثبت گردید. زنجیره عضلانی چهارسر و باسن تعادل گشتاور مطلوبی را نشان دادند.</div>
+    </div>
+
+    <div class="btnRow">
+      <button id="squatLungeAgainBtn">آزمون مجدد</button>
+      <button id="squatLungeSaveBtn" class="secondary">ذخیره در تاریخچه</button>
+    </div>
+  </div>
+
   <!-- Flexibility measurement panel -->
   <div id="flexibilityPanel" class="panel">
     <div style="font-weight: bold; font-size: 15px; color: #38bdf8;">🧘‍♀️ آزمون انعطاف‌پذیری بالاتنه (Sit & Reach)</div>
@@ -5697,6 +6046,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-<script src="app.js?v=1.7.0&t=20260913a"></script>
+<script src="app.js?v=1.11.0&t=20260915d"></script>
 </body>
 </html>

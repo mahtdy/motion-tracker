@@ -6490,6 +6490,7 @@ clearHistoryBtn.addEventListener('click', () => {
 
 // ================== SETTINGS SYSTEM ==================
 const SETTINGS_KEY = 'motion_tracker_settings';
+let poseZeroLagMode = true;
 
 function getSettings() {
   try {
@@ -6499,13 +6500,17 @@ function getSettings() {
       landThresholdRatio: 0.06,
       calibFrames: 20,
       lowPowerMode: false,
-      athleteHeight: 175
+      athleteHeight: 175,
+      poseZeroLag: true,
+      poseModelSpeed: 'lite'
     }, JSON.parse(data)) : {
       jumpThresholdRatio: 0.12,
       landThresholdRatio: 0.06,
       calibFrames: 20,
       lowPowerMode: false,
-      athleteHeight: 175
+      athleteHeight: 175,
+      poseZeroLag: true,
+      poseModelSpeed: 'lite'
     };
   } catch (e) {
     return { 
@@ -6533,10 +6538,14 @@ function saveCurrentSettingsFromUI() {
   const jumpSensEl = document.getElementById('jumpSensitivity');
   const landSensEl = document.getElementById('landSensitivity');
   const calibFrEl = document.getElementById('calibFrames');
+  const poseZeroLagEl = document.getElementById('settingPoseZeroLag');
+  const poseModelSpeedEl = document.getElementById('settingPoseModelSpeed');
 
   const jumpSensVal = jumpSensEl ? parseFloat(jumpSensEl.value) : 0.12;
   const landSensVal = landSensEl ? parseFloat(landSensEl.value) : 0.06;
   const calibFramesVal = calibFrEl ? parseInt(calibFrEl.value) : 20;
+  const poseZeroLagVal = poseZeroLagEl ? poseZeroLagEl.checked : true;
+  const poseModelSpeedVal = poseModelSpeedEl ? poseModelSpeedEl.value : 'lite';
 
   const safeHeight = Math.max(90, Math.min(240, athleteHeightVal));
   const settings = {
@@ -6544,7 +6553,9 @@ function saveCurrentSettingsFromUI() {
     landThresholdRatio: isNaN(landSensVal) ? 0.06 : landSensVal,
     calibFrames: isNaN(calibFramesVal) ? 20 : calibFramesVal,
     lowPowerMode: !!lowPowerChecked,
-    athleteHeight: safeHeight
+    athleteHeight: safeHeight,
+    poseZeroLag: !!poseZeroLagVal,
+    poseModelSpeed: poseModelSpeedVal
   };
   saveSettings(settings);
   applySettings();
@@ -6557,6 +6568,15 @@ function loadSettingsUI() {
   const landSens = document.getElementById('landSensitivity');
   const calibFr = document.getElementById('calibFrames');
   const lowPowerCb = document.getElementById('lowPowerMode');
+  const poseZeroLagEl = document.getElementById('settingPoseZeroLag');
+  const poseModelSpeedEl = document.getElementById('settingPoseModelSpeed');
+
+  if (poseZeroLagEl) {
+    poseZeroLagEl.checked = settings.poseZeroLag !== false;
+  }
+  if (poseModelSpeedEl) {
+    poseModelSpeedEl.value = settings.poseModelSpeed || 'lite';
+  }
 
   if (jumpSens) {
     jumpSens.value = settings.jumpThresholdRatio;
@@ -6652,6 +6672,20 @@ if (lowPowerCbEl) {
   });
 }
 
+const poseZeroLagEl = document.getElementById('settingPoseZeroLag');
+if (poseZeroLagEl) {
+  poseZeroLagEl.addEventListener('change', () => {
+    saveCurrentSettingsFromUI();
+  });
+}
+
+const poseModelSpeedEl = document.getElementById('settingPoseModelSpeed');
+if (poseModelSpeedEl) {
+  poseModelSpeedEl.addEventListener('change', () => {
+    saveCurrentSettingsFromUI();
+  });
+}
+
 // Automatically load and apply settings from localStorage upon script startup
 loadSettingsUI();
 applySettings();
@@ -6686,6 +6720,7 @@ closeSettingsBtn.addEventListener('click', () => {
 
 function applySettings() {
   const settings = getSettings();
+  poseZeroLagMode = settings.poseZeroLag !== false;
   // Only rescale live thresholds if we already know the person's leg length;
   // otherwise the ratios get applied once calibration finishes (see jumpProcessFrame).
   if (legLengthPx != null) {
@@ -9406,6 +9441,9 @@ function triggerAiFormWarning(type, data) {
     return;
   }
 
+  const isNewWarning = !activeAiFormWarning || activeAiFormWarning.type !== type;
+  const initialTimestamp = (!isNewWarning && activeAiFormWarning && activeAiFormWarning.timestamp) ? activeAiFormWarning.timestamp : now;
+
   const warningObj = {
     type,
     mode: data.mode || (type.startsWith('PUSHUP') ? 'pushup' : 'situp'),
@@ -9414,10 +9452,9 @@ function triggerAiFormWarning(type, data) {
     detail: data.detail || 'عدم رعایت استاندارد بیومکانیک',
     advice: data.advice || 'تکنیک حرکت را اصلاح فرمایید.',
     severity: data.severity || 'critical',
-    timestamp: now
+    timestamp: initialTimestamp
   };
 
-  const isNewWarning = !activeAiFormWarning || activeAiFormWarning.type !== type;
   activeAiFormWarning = warningObj;
 
   // Track error stats for post-test analysis
@@ -9495,8 +9532,14 @@ function updateAiFormWarningTelemetry(warning) {
   overlay.dataset.currentWarningType = warning.type;
   overlay.dataset.severity = warning.severity;
 
+  const isCritical = warning.severity === 'critical';
+  const isPersisting = isCritical && (performance.now() - (warning.timestamp || performance.now()) >= 850);
+
   overlay.style.display = 'block';
-  overlay.className = 'telemetry-form-overlay ' + (warning.severity === 'critical' ? 'warning-critical' : 'warning-moderate');
+  overlay.className = 'telemetry-form-overlay ' + 
+    (isCritical ? 'warning-critical' : 'warning-moderate') + 
+    (isPersisting ? ' warning-critical-persisting' : '');
+  overlay.dataset.persisting = isPersisting ? 'true' : 'false';
 
   // Trigger smooth scale-in and fade-in animation whenever a form error is triggered
   if (isDifferentWarning) {
@@ -14296,21 +14339,19 @@ class KalmanFilter1D {
 }
 
 /**
- * 2D Kalman Filter with position and velocity states for smooth joint tracking
- * Incorporates dynamic confidence-based noise scaling to prevent knee/ankle jitter
+ * Biomechanical Adaptive Zero-Lag Filter for high-speed sports motion tracking.
+ * - Resolves the "lagging behind / floating in air" defect by tracking 1:1 with athlete velocity.
+ * - When moving (squats, jumps, sprints, punches, lunges), latency is 0 ms (instantaneous frame sync).
+ * - When resting / stationary, applies subtle micro-jitter damping without phase delay.
+ * - No non-physical distance clamps (removes the 120px cap that caused multi-frame delays).
  */
 class PointKalmanFilter2D {
   constructor(name = '') {
     this.name = name;
-    this.isLowerLimb = name.includes('knee') || name.includes('ankle') || name.includes('heel') || name.includes('foot');
-    this.q = this.isLowerLimb ? 0.003 : 0.006; // Lower process noise for knees and ankles
-    this.baseR = this.isLowerLimb ? 0.08 : 0.05;
     this.x = null;
     this.y = null;
     this.vx = 0;
     this.vy = 0;
-    this.px = 1.0;
-    this.py = 1.0;
     this.lastTime = 0;
   }
 
@@ -14319,20 +14360,19 @@ class PointKalmanFilter2D {
     this.y = null;
     this.vx = 0;
     this.vy = 0;
-    this.px = 1.0;
-    this.py = 1.0;
     this.lastTime = 0;
   }
 
   update(rawX, rawY, score = 0.8) {
     if (rawX == null || rawY == null || isNaN(rawX) || isNaN(rawY)) {
-      return { x: this.x, y: this.y };
+      return { x: this.x || rawX, y: this.y || rawY };
     }
 
     const now = performance.now();
-    const dt = this.lastTime ? Math.min(0.1, Math.max(0.01, (now - this.lastTime) / 1000)) : 0.033;
+    const dt = this.lastTime ? Math.min(0.1, Math.max(0.005, (now - this.lastTime) / 1000)) : 0.016;
     this.lastTime = now;
 
+    // First frame initialization: snap immediately
     if (this.x == null || this.y == null) {
       this.x = rawX;
       this.y = rawY;
@@ -14341,44 +14381,36 @@ class PointKalmanFilter2D {
       return { x: this.x, y: this.y };
     }
 
-    // Dynamic measurement noise: lower score => higher measurement noise (trust motion model more)
-    const safeScore = Math.max(0.05, Math.min(1.0, score));
-    const r = this.baseR / (safeScore * safeScore);
+    const dx = rawX - this.x;
+    const dy = rawY - this.y;
+    const dist = Math.hypot(dx, dy);
 
-    // Non-physical jump rejection: if point jumped > 140px in a single frame, heavily damp it
-    const distSq = (rawX - this.x) * (rawX - this.x) + (rawY - this.y) * (rawY - this.y);
-    const maxJumpPx = this.isLowerLimb ? 120 : 160;
-    let effectiveX = rawX;
-    let effectiveY = rawY;
-    if (distSq > maxJumpPx * maxJumpPx) {
-      const dist = Math.sqrt(distSq);
-      effectiveX = this.x + ((rawX - this.x) / dist) * maxJumpPx;
-      effectiveY = this.y + ((rawY - this.y) / dist) * maxJumpPx;
+    // In zero-lag sports tracking mode (default):
+    // MediaPipe BlazePose already includes internal 1-Euro smoothing.
+    // When moving (> 1.8px), track 100% instantly with ZERO lag.
+    // When virtually motionless (< 1.8px), suppress sub-pixel camera sensor jitter.
+    const isZeroLag = (typeof poseZeroLagMode === 'undefined') || poseZeroLagMode;
+    if (isZeroLag) {
+      if (dist < 1.8 && (score || 0) >= 0.25) {
+        // Subtle micro-tremor suppression when standing completely still
+        this.x = this.x + 0.75 * dx;
+        this.y = this.y + 0.75 * dy;
+      } else {
+        // Real-time athletic movement: instant 1:1 snap (ZERO lag!)
+        this.x = rawX;
+        this.y = rawY;
+      }
+      this.vx = dx / dt;
+      this.vy = dy / dt;
+      return { x: this.x, y: this.y };
     }
 
-    // Predict state with velocity
-    const predX = this.x + this.vx * dt;
-    const predY = this.y + this.vy * dt;
-    const predPx = this.px + this.q;
-    const predPy = this.py + this.q;
-
-    // Kalman Gain
-    const kx = predPx / (predPx + r);
-    const ky = predPy / (predPy + r);
-
-    // Update state
-    const newX = predX + kx * (effectiveX - predX);
-    const newY = predY + ky * (effectiveY - predY);
-
-    // Update velocity
-    this.vx = (newX - this.x) / dt;
-    this.vy = (newY - this.y) / dt;
-
-    this.x = newX;
-    this.y = newY;
-    this.px = (1 - kx) * predPx;
-    this.py = (1 - ky) * predPy;
-
+    // Adaptive smoothing fallback (if user explicitly disables zero-lag)
+    const alpha = dist > 4.0 ? 1.0 : Math.max(0.7, dist / 4.0);
+    this.x = this.x + alpha * dx;
+    this.y = this.y + alpha * dy;
+    this.vx = dx / dt;
+    this.vy = dy / dt;
     return { x: this.x, y: this.y };
   }
 }
@@ -14391,8 +14423,8 @@ let lastPoseDetectionTime = 0;
 function applyPoseKalmanFilter(keypoints) {
   if (!keypoints || !keypoints.length) return;
   const now = performance.now();
-  // If no poses detected for > 600ms, reset filters to prevent trailing lag
-  if (now - lastPoseDetectionTime > 600) {
+  // If no poses detected for > 250ms, reset filters immediately to prevent trailing lag
+  if (now - lastPoseDetectionTime > 250) {
     resetPoseKalmanFilters();
   }
   lastPoseDetectionTime = now;
@@ -14431,8 +14463,9 @@ async function loadModel() {
         throw new Error('TensorFlow.js libraries not loaded. Check your internet connection.');
       }
 
-      // Try 'full' model for higher joint precision on non-low-power devices, fallback to 'lite'
-      const preferredType = (performanceMode !== 'low-power' && attempt === 1) ? 'full' : 'lite';
+      // High-speed sports motion tracking: default to 'lite' for 60 FPS ultra-low latency, or use user-configured setting
+      const currentSettings = (typeof getSettings === 'function') ? getSettings() : { poseModelSpeed: 'lite' };
+      const preferredType = (performanceMode === 'low-power' || attempt > 1) ? 'lite' : (currentSettings.poseModelSpeed || 'lite');
       console.log(`Attempting BlazePose (${preferredType})...`);
 
       try {
@@ -15929,6 +15962,15 @@ async function detectLoop() {
   
   try {
     if (video && video.readyState >= 2 && detector) {
+      // Synchronize overlay canvas dimensions directly to active video frame
+      // Guarantees 1:1 pixel correspondence and prevents floating or misplaced skeleton overlays
+      if (video.videoWidth > 0 && video.videoHeight > 0) {
+        if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+        }
+      }
+
       // Calculate FPS
       calculateFPS();
       
@@ -16209,9 +16251,9 @@ if (openCameraSettingsBtn) {
 }
 
 // ================== VERSION CHECK ==================
-const APP_VERSION = '1.13.0';
+const APP_VERSION = '1.15.0';
 console.log(`%c🚀 Motion Tracker v${APP_VERSION}`, 'color: #22c55e; font-size: 16px; font-weight: bold');
-console.log('%c✨ Camera Stream Stability & Robust Biometric Tracking Enabled', 'color: #38bdf8; font-size: 12px');
+console.log('%c✨ Urgent Persisting AI Form Warning Pulse & Zero-Lag Biometric Tracking Enabled', 'color: #38bdf8; font-size: 12px');
 
 // Global cache purge and hard reload utility
 window.forceAppReloadAndClearCache = async function() {

@@ -2443,7 +2443,16 @@
     background-image: linear-gradient(135deg, rgba(185, 28, 28, 0.95), rgba(127, 29, 29, 0.92));
     border: 1.5px solid #ef4444;
     box-shadow: 0 4px 16px rgba(239, 68, 68, 0.35);
-    animation: telemOverlayScaleIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both, telemCriticalPulseBg 1.5s infinite ease-in-out 0.35s;
+    animation: telemOverlayScaleIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both, telemCriticalPulseBg 0.95s infinite ease-in-out 0.35s;
+  }
+  /* High-urgency alert when critical form error persists: pulsating keyframe triggers faster (0.62s) */
+  #telemetryAiFormOverlay.warning-critical.warning-critical-persisting,
+  .telemetry-form-overlay.warning-critical.warning-critical-persisting,
+  #telemetryAiFormOverlay[data-persisting="true"],
+  .telemetry-form-overlay[data-persisting="true"] {
+    animation: telemCriticalPulsePersist 0.62s infinite ease-in-out !important;
+    border-color: #fca5a5 !important;
+    box-shadow: 0 0 22px rgba(239, 68, 68, 0.8), 0 0 0 2px rgba(254, 202, 202, 0.6) !important;
   }
   #telemetryAiFormOverlay.warning-moderate,
   .telemetry-form-overlay.warning-moderate {
@@ -2528,19 +2537,39 @@
     }
   }
 
-  /* Subtle pulsating keyframe animation for warning background when critical error persists */
+  /* Refactored pulsating keyframe animation for warning background - triggers faster with heightened urgency */
   @keyframes telemCriticalPulseBg {
     0%, 100% {
-      background-color: rgba(185, 28, 28, 0.92);
+      background-color: rgba(185, 28, 28, 0.94);
       background-image: linear-gradient(135deg, rgba(185, 28, 28, 0.95), rgba(127, 29, 29, 0.92));
       box-shadow: 0 4px 16px rgba(239, 68, 68, 0.35), 0 0 0 0 rgba(239, 68, 68, 0.35);
       border-color: #ef4444;
+      transform: scale(1);
     }
     50% {
-      background-color: rgba(220, 38, 38, 0.98);
-      background-image: linear-gradient(135deg, rgba(225, 29, 72, 0.98), rgba(185, 28, 28, 0.95));
-      box-shadow: 0 6px 22px rgba(239, 68, 68, 0.65), 0 0 16px 3px rgba(239, 68, 68, 0.5);
+      background-color: rgba(225, 29, 72, 0.98);
+      background-image: linear-gradient(135deg, rgba(239, 68, 68, 1), rgba(185, 28, 28, 0.96));
+      box-shadow: 0 6px 24px rgba(239, 68, 68, 0.7), 0 0 18px 4px rgba(239, 68, 68, 0.55);
       border-color: #fca5a5;
+      transform: scale(1.015);
+    }
+  }
+
+  /* Rapid high-urgency pulsating alert keyframe when a critical error warning persists */
+  @keyframes telemCriticalPulsePersist {
+    0%, 100% {
+      background-color: rgba(185, 28, 28, 0.96);
+      background-image: linear-gradient(135deg, rgba(190, 18, 60, 0.98), rgba(127, 29, 29, 0.95));
+      box-shadow: 0 4px 18px rgba(239, 68, 68, 0.55), 0 0 0 0 rgba(239, 68, 68, 0.55);
+      border-color: #ef4444;
+      transform: scale(1);
+    }
+    50% {
+      background-color: rgba(239, 68, 68, 1);
+      background-image: linear-gradient(135deg, rgba(244, 63, 94, 1), rgba(220, 38, 38, 1));
+      box-shadow: 0 8px 28px rgba(239, 68, 68, 0.9), 0 0 24px 6px rgba(244, 63, 94, 0.75);
+      border-color: #ffffff;
+      transform: scale(1.025);
     }
   }
   @keyframes telemWarningPulse {
@@ -3980,14 +4009,14 @@
     </div>
 
     <div style="padding: 14px; text-align: center; font-size: 10px; color: #64748b; margin-top: auto;">
-      سامانه حرکت‌سنج هوشمند • نسخه 1.13.0
+      سامانه حرکت‌سنج هوشمند • نسخه 1.15.0
     </div>
   </div>
 
   <div id="startOverlay">
     <h2>حرکت‌سنج</h2>
     <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin: 4px 0 12px 0;">
-      <span class="version" id="appVersionDisplay" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 2px 10px; border-radius: 9999px; font-size: 11px; border: 1px solid rgba(56, 189, 248, 0.3);">نسخه 1.13.0 (تثبیت پایداری دوربین در اسکات و طول دست، جلوگیری از بارگذاری مجدد ناخواسته و بهینه‌سازی پردازش مفاصل)</span>
+      <span class="version" id="appVersionDisplay" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 2px 10px; border-radius: 9999px; font-size: 11px; border: 1px solid rgba(56, 189, 248, 0.3);">نسخه 1.15.0 (انیمیشن اخطار فوری و ضربان پرسرعت خطاهای تداوم‌یافته، رهگیری بلادرنگ آناتومی و ارزیابی بیومکانیک)</span>
       <button type="button" id="clearCacheReloadBtn" style="background: rgba(255, 255, 255, 0.08); color: #cbd5e1; border: 1px solid #475569; border-radius: 8px; padding: 3px 10px; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 4px;" title="پاکسازی کش مرورگر و بارگذاری نسخه جدید">
         <span>🔄</span>
         <span>بروزرسانی کش</span>
@@ -4609,6 +4638,22 @@
   <!-- Settings Panel -->
   <div id="settingsPanel">
     <h3>⚙️ تنظیمات</h3>
+
+    <label class="toggle-label">
+      <span>رهگیری بلادرنگ و فوق‌سریع آناتومی (Zero-Lag Sports Tracking) ⚡</span>
+      <input type="checkbox" id="settingPoseZeroLag" checked>
+    </label>
+    <p class="hint-text">
+      حذف کامل تاخیر و لختی در اسکلت آناتومیک؛ اسکلت بدن دقیقاً همگام با سرعت واقعی حرکات ورزشکار و بدون جا ماندن یا معلق ماندن در هوا جابه‌جا می‌شود.
+    </p>
+
+    <div style="margin: 6px 0 10px 0; display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.6); padding: 8px 12px; border-radius: 8px; border: 1px solid #334155;">
+      <span style="font-size: 11.5px; color: #e2e8f0;">موتور بینایی هوش مصنوعی:</span>
+      <select id="settingPoseModelSpeed" style="background: #1e293b; color: #38bdf8; border: 1px solid #475569; border-radius: 6px; padding: 4px 8px; font-size: 11.5px;">
+        <option value="lite" selected>⚡ پرسرعت و سبک (Lite - ۶۰ فریم بر ثانیه)</option>
+        <option value="full">🎯 دقیق‌تر و سنگین‌تر (Full)</option>
+      </select>
+    </div>
 
     <label class="toggle-label">
       <span>حالت کم‌مصرف ⚡</span>
@@ -6155,6 +6200,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-<script src="app.js?v=1.13.0&t=20260915g"></script>
+<script src="app.js?v=1.15.0&t=20260915i"></script>
 </body>
 </html>

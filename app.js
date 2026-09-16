@@ -1829,13 +1829,16 @@ async function showCameraSwitcherModal() {
       overflow-y: auto;
       box-shadow: 0 20px 25px -5px rgba(0,0,0,0.6);
     ">
-      <div style="text-align: center; margin-bottom: 12px;">
-        <h3 style="color: #38bdf8; margin-bottom: 4px; font-size: 17px;">
-          📷 انتخاب سنسور دوربین (${availableCameras.length} سنسور یافت شد)
-        </h3>
-        <p style="color: #94a3b8; font-size: 11px; line-height: 1.5; margin: 0;">
-          برای حل مشکل زوم زیاد در فضاهای بسته و فیلم‌برداری ورزشی، دوربین <strong>فوق‌عریض (0.5x)</strong> به صورت پیش‌فرض فعال می‌شود.
-        </p>
+      <div style="display: flex; align-items: flex-start; justify-content: space-between; border-bottom: 1px solid #334155; padding-bottom: 10px; margin-bottom: 12px;">
+        <div style="text-align: right; flex: 1;">
+          <h3 style="color: #38bdf8; margin: 0 0 4px 0; font-size: 16px;">
+            📷 انتخاب سنسور دوربین (${availableCameras.length} سنسور یافت شد)
+          </h3>
+          <p style="color: #94a3b8; font-size: 11px; line-height: 1.5; margin: 0;">
+            دوربین <strong>فوق‌عریض (0.5x)</strong> برای فیلم‌برداری ورزشی پیشنهاد می‌شود.
+          </p>
+        </div>
+        <button type="button" id="closeCameraSwitcherXBtn" class="panel-close-x-btn" title="بستن (✕)">✕</button>
       </div>
 
       <div id="cameraList" style="max-height: 50vh; overflow-y: auto; padding: 2px;">
@@ -1919,6 +1922,12 @@ async function showCameraSwitcherModal() {
   document.getElementById('closeCameraSwitcher').onclick = () => {
     modal.remove();
   };
+  const closeCameraSwitcherXBtn = document.getElementById('closeCameraSwitcherXBtn');
+  if (closeCameraSwitcherXBtn) {
+    closeCameraSwitcherXBtn.onclick = () => {
+      modal.remove();
+    };
+  }
 }
 
 /**
@@ -4825,6 +4834,158 @@ function renderHistory() {
           </div>
         </div>
       `;
+    } else if (entry.type === 'y_balance') {
+      const legLabel = entry.data.leg === 'left' ? 'پای چپ' : 'پای راست';
+      return `
+        <div class="historyItem">
+          <div class="date">
+            <span>🤸‍♂️ تعادل پویا Y (${legLabel}) • ${entry.date}</span>
+            ${athleteBadge}
+          </div>
+          <div class="data">
+            امتیاز ترکیبی: <span style="color: #4ade80;">${entry.data.composite || '--'}%</span> •
+            قدامی: <span>${entry.data.ant || '--'}cm</span> •
+            خلفی-داخلی: <span>${entry.data.pm || '--'}cm</span> •
+            خلفی-خارجی: <span>${entry.data.pl || '--'}cm</span> •
+            ریسک ACL: <span style="color: ${entry.data.aclRisk && entry.data.aclRisk.includes('بالا') ? '#f87171' : '#4ade80'};">${entry.data.aclRisk || 'ایمن'}</span>
+          </div>
+        </div>
+      `;
+    } else if (entry.type === 'pro_agility') {
+      return `
+        <div class="historyItem">
+          <div class="date">
+            <span>⚡ شاتل ۵-۱۰-۵ (Pro Agility) • ${entry.date}</span>
+            ${athleteBadge}
+          </div>
+          <div class="data">
+            زمان کل: <span style="color: #4ade80;">${entry.data.totalTime}s</span> •
+            بخش ۱: <span>${entry.data.split1 || '--'}s</span> •
+            بخش ۲: <span>${entry.data.split2 || '--'}s</span> •
+            بخش ۳: <span>${entry.data.split3 || '--'}s</span> •
+            شیب چرخش: <span>${entry.data.lateralTilt || '--'}°</span>
+          </div>
+        </div>
+      `;
+    } else if (entry.type === 'arm_cocking') {
+      return `
+        <div class="historyItem">
+          <div class="date">
+            <span>🤾‍♂️ زاویه پرتاب دست و شانه • ${entry.date}</span>
+            ${athleteBadge}
+          </div>
+          <div class="data">
+            چرخش خارجی MER: <span style="color: #38bdf8;">${entry.data.mer}°</span> •
+            ابداکشن: <span>${entry.data.abduction}°</span> •
+            وضعیت روتاتور کاف: <span style="color: #4ade80;">${entry.data.stress || 'ایمن'}</span>
+          </div>
+        </div>
+      `;
+    } else if (entry.type === 'posture') {
+      return `
+        <div class="historyItem">
+          <div class="date">
+            <span>🧍‍♂️ راستای قامتی و اسکلتی • ${entry.date}</span>
+            ${athleteBadge}
+          </div>
+          <div class="data">
+            نمره قامت: <span style="color: #4ade80;">${entry.data.score}/100</span> •
+            سر CVA: <span>${entry.data.cva}°</span> •
+            تراز شانه: <span>${entry.data.shoulderTilt}°</span> •
+            شیب لگن: <span>${entry.data.pelvicTilt}°</span> •
+            تراز زانو: <span>${entry.data.kneeValgus || '--'}°</span>
+          </div>
+        </div>
+      `;
+    } else if (entry.type === 'fms') {
+      const riskColor = entry.data.totalScore < 14 ? '#ef4444' : (entry.data.totalScore <= 17 ? '#eab308' : '#22c55e');
+      return `
+        <div class="historyItem" style="border-right: 3px solid #38bdf8;">
+          <div class="date">
+            <span>🧘 غربالگری حرکتی FMS • ${entry.date}</span>
+            ${athleteBadge}
+          </div>
+          <div class="data">
+            امتیاز کل: <strong style="color: #38bdf8; font-size: 13px;">${entry.data.totalScore}/۲۱</strong> •
+            ریسک آسیب: <span style="color: ${riskColor}; font-weight: bold;">${entry.data.riskLevel || '--'}</span> •
+            عدم تقارن: <span>${entry.data.hasAsymmetry ? '⚠️ دارد' : 'فاقد عدم تقارن'}</span> •
+            حلقه ضعیف: <span style="color: #94a3b8;">${entry.data.weakLink || '--'}</span>
+          </div>
+        </div>
+      `;
+    } else if (entry.type === 'rast') {
+      return `
+        <div class="historyItem" style="border-right: 3px solid #f97316;">
+          <div class="date">
+            <span>⚡ توان بی‌هوازی RAST (۶×۳۵m) • ${entry.date}</span>
+            ${athleteBadge}
+          </div>
+          <div class="data">
+            بیشینه توان: <strong style="color: #4ade80;">${entry.data.peakPower} W</strong> (${entry.data.peakRelative} W/kg) •
+            میانگین: <span>${entry.data.avgPower} W</span> •
+            حداقل: <span>${entry.data.minPower} W</span> •
+            شاخص خستگی: <span style="color: #f472b6;">${entry.data.fatigueIndex} W/s</span> (${entry.data.fatigueRating || '--'})
+          </div>
+        </div>
+      `;
+    } else if (entry.type === 'vo2max') {
+      return `
+        <div class="historyItem" style="border-right: 3px solid #22c55e;">
+          <div class="date">
+            <span>🫀 اکسیژن بیشینه VO2 Max [${entry.data.protocolName || 'هوازی'}] • ${entry.date}</span>
+            ${athleteBadge}
+          </div>
+          <div class="data">
+            اکسیژن بیشینه: <strong style="color: #4ade80; font-size: 13px;">${entry.data.vo2Max} ml/kg/min</strong> •
+            رتبه: <span style="color: #38bdf8;">${entry.data.rating || '--'}</span> •
+            ضربان بیشینه: <span>${entry.data.hrMax || '--'} bpm</span> •
+            زون هوازی: <span>${entry.data.hrTargetZone || '--'}</span>
+          </div>
+        </div>
+      `;
+    } else if (entry.type === 'one_rm') {
+      return `
+        <div class="historyItem" style="border-right: 3px solid #a855f7;">
+          <div class="date">
+            <span>🏋️‍♂️ قدرت عضلانی و ۱RM [${entry.data.exerciseName || 'حرکت'}] • ${entry.date}</span>
+            ${athleteBadge}
+          </div>
+          <div class="data">
+            تخمین ۱RM: <strong style="color: #c084fc; font-size: 13px;">${entry.data.estimated1Rm} kg</strong> •
+            وزنه/تکرار: <span>${entry.data.weight}kg × ${entry.data.reps}تکرار</span> •
+            قدرت نسبی: <span style="color: #4ade80;">${entry.data.relativeRatio}× وزن بدن</span> •
+            رتبه: <span>${entry.data.rating || '--'}</span>
+          </div>
+        </div>
+      `;
+    } else if (entry.type === 'body_comp') {
+      return `
+        <div class="historyItem" style="border-right: 3px solid #06b6d4;">
+          <div class="date">
+            <span>⚖️ آنتروپومتری و ترکیب بدنی • ${entry.date}</span>
+            ${athleteBadge}
+          </div>
+          <div class="data">
+            جرم بدنی لخم (LBM): <strong style="color: #22d3ee;">${entry.data.lbm} kg</strong> •
+            چربی: <span>${entry.data.bodyFat}%</span> (${entry.data.fatMass} kg) •
+            بدون چربی (FFBM): <span>${entry.data.ffbm} kg</span> •
+            BMI: <span>${entry.data.bmi}</span>
+          </div>
+        </div>
+      `;
+    } else if (entry.type === 'field_drill') {
+      return `
+        <div class="historyItem" style="border-right: 3px solid #eab308;">
+          <div class="date">
+            <span>🏆 آزمون مهارتی میدانی [${entry.data.drillName || 'مهارت'}] • ${entry.date}</span>
+            ${athleteBadge}
+          </div>
+          <div class="data">
+            رکورد: <strong style="color: #facc15;">${entry.data.recordVal} ${entry.data.unit || ''}</strong> •
+            ارزیابی: <span style="color: #38bdf8;">${entry.data.feedback || '--'}</span>
+          </div>
+        </div>
+      `;
     }
     return '';
   }).join('');
@@ -5876,9 +6037,14 @@ function generatePdfReportHtml(athlete, athleteHistory) {
       mainResult = `کورمیک: ${d.cormicIndex}%`;
       secResult = `Ape: ${d.apeIndex} | قد: ${d.heightCm}cm`;
       rating = 'پایش ساختار بدنی';
+    } else if (t.type === 'handball_skill') {
+      testName = `🤾‍♂️ ${d.testTitle || 'مهارت هندبال'}`;
+      mainResult = `${d.metricValue} ${d.unit || ''}`;
+      secResult = d.summary || d.detail || '--';
+      rating = d.rating || 'ثبت شده';
     } else {
       testName = 'فاصله اجسام';
-      mainResult = `${d.distanceCm} cm`;
+      mainResult = `${d.distanceCm || '--'} cm`;
       secResult = '--';
     }
 
@@ -6502,7 +6668,9 @@ function getSettings() {
       lowPowerMode: false,
       athleteHeight: 175,
       poseZeroLag: true,
-      poseModelSpeed: 'lite'
+      poseModelSpeed: 'lite',
+      aiWarningTheme: 'standard-red',
+      aiWarningPulseFrequency: 650
     }, JSON.parse(data)) : {
       jumpThresholdRatio: 0.12,
       landThresholdRatio: 0.06,
@@ -6510,7 +6678,9 @@ function getSettings() {
       lowPowerMode: false,
       athleteHeight: 175,
       poseZeroLag: true,
-      poseModelSpeed: 'lite'
+      poseModelSpeed: 'lite',
+      aiWarningTheme: 'standard-red',
+      aiWarningPulseFrequency: 650
     };
   } catch (e) {
     return { 
@@ -6518,7 +6688,11 @@ function getSettings() {
       landThresholdRatio: 0.06, 
       calibFrames: 20,
       lowPowerMode: false,
-      athleteHeight: 175
+      athleteHeight: 175,
+      poseZeroLag: true,
+      poseModelSpeed: 'lite',
+      aiWarningTheme: 'standard-red',
+      aiWarningPulseFrequency: 650
     };
   }
 }
@@ -6540,12 +6714,16 @@ function saveCurrentSettingsFromUI() {
   const calibFrEl = document.getElementById('calibFrames');
   const poseZeroLagEl = document.getElementById('settingPoseZeroLag');
   const poseModelSpeedEl = document.getElementById('settingPoseModelSpeed');
+  const warningThemeEl = document.getElementById('settingAiWarningTheme');
+  const pulseFreqEl = document.getElementById('settingAiPulseFrequency');
 
   const jumpSensVal = jumpSensEl ? parseFloat(jumpSensEl.value) : 0.12;
   const landSensVal = landSensEl ? parseFloat(landSensEl.value) : 0.06;
   const calibFramesVal = calibFrEl ? parseInt(calibFrEl.value) : 20;
   const poseZeroLagVal = poseZeroLagEl ? poseZeroLagEl.checked : true;
   const poseModelSpeedVal = poseModelSpeedEl ? poseModelSpeedEl.value : 'lite';
+  const warningThemeVal = warningThemeEl ? warningThemeEl.value : 'standard-red';
+  const pulseFreqVal = pulseFreqEl ? parseInt(pulseFreqEl.value) : 650;
 
   const safeHeight = Math.max(90, Math.min(240, athleteHeightVal));
   const settings = {
@@ -6555,7 +6733,9 @@ function saveCurrentSettingsFromUI() {
     lowPowerMode: !!lowPowerChecked,
     athleteHeight: safeHeight,
     poseZeroLag: !!poseZeroLagVal,
-    poseModelSpeed: poseModelSpeedVal
+    poseModelSpeed: poseModelSpeedVal,
+    aiWarningTheme: warningThemeVal || 'standard-red',
+    aiWarningPulseFrequency: isNaN(pulseFreqVal) ? 650 : Math.max(350, Math.min(1800, pulseFreqVal))
   };
   saveSettings(settings);
   applySettings();
@@ -6570,12 +6750,25 @@ function loadSettingsUI() {
   const lowPowerCb = document.getElementById('lowPowerMode');
   const poseZeroLagEl = document.getElementById('settingPoseZeroLag');
   const poseModelSpeedEl = document.getElementById('settingPoseModelSpeed');
+  const warningThemeEl = document.getElementById('settingAiWarningTheme');
+  const pulseFreqEl = document.getElementById('settingAiPulseFrequency');
+  const pulseFreqValEl = document.getElementById('settingAiPulseFreqVal');
 
   if (poseZeroLagEl) {
     poseZeroLagEl.checked = settings.poseZeroLag !== false;
   }
   if (poseModelSpeedEl) {
     poseModelSpeedEl.value = settings.poseModelSpeed || 'lite';
+  }
+  if (warningThemeEl) {
+    warningThemeEl.value = settings.aiWarningTheme || 'standard-red';
+  }
+  if (pulseFreqEl) {
+    const f = settings.aiWarningPulseFrequency || 650;
+    pulseFreqEl.value = f;
+    if (pulseFreqValEl) {
+      pulseFreqValEl.textContent = `${f} میلی‌ثانیه`;
+    }
   }
 
   if (jumpSens) {
@@ -6611,6 +6804,9 @@ function loadSettingsUI() {
   if (typeof loadSquatRomBaseline === 'function') {
     loadSquatRomBaseline();
   }
+
+  // Apply visual warning theme and pulse settings
+  applyAiWarningSettings(settings);
 }
 
 // Automatically bind listeners to auto-save settings to localStorage immediately upon user input
@@ -6686,13 +6882,184 @@ if (poseModelSpeedEl) {
   });
 }
 
+const warningThemeSelect = document.getElementById('settingAiWarningTheme');
+if (warningThemeSelect) {
+  warningThemeSelect.addEventListener('change', (e) => {
+    saveCurrentSettingsFromUI();
+    updateTelemetryPulseRealtimePreview(null, e.target.value);
+  });
+}
+
+// Real-time Pulse Frequency Preview & Urgency Calculation Engine
+function updateTelemetryPulseRealtimePreview(freqVal, themeVal) {
+  const slider = document.getElementById('settingAiPulseFrequency');
+  const themeSelect = document.getElementById('settingAiWarningTheme');
+  const val = typeof freqVal === 'number' ? freqVal : (slider ? parseInt(slider.value, 10) : 650) || 650;
+  const theme = themeVal || (themeSelect ? themeSelect.value : 'standard-red') || 'standard-red';
+
+  const valEl = document.getElementById('settingAiPulseFreqVal');
+  if (valEl) valEl.textContent = `${val} میلی‌ثانیه`;
+
+  const persistSec = (Math.max(250, Math.min(3000, val)) / 1000).toFixed(2);
+  const baseSec = (Math.max(250, Math.min(3000, val * 1.45)) / 1000).toFixed(2);
+  const hz = (1000 / val).toFixed(2);
+
+  // Update root CSS variables
+  document.documentElement.style.setProperty('--telem-pulse-frequency', `${baseSec}s`);
+  document.documentElement.style.setProperty('--telem-persist-duration', `${persistSec}s`);
+  document.documentElement.style.setProperty('--telem-pulse-duration', `${baseSec}s`);
+
+  // Urgency classification and contextual guidance
+  let urgencyBadge = '';
+  let urgencyDesc = '';
+  let urgencyColor = '';
+  if (val <= 450) {
+    urgencyBadge = '🚨 فوق‌سریع / فوریت حداکثری (مسابقه)';
+    urgencyDesc = `فرکانس ${val}ms (${hz} هرتز) • شتاب و فوریت انفجاری، ویژه تشخیص فوری ناهنجاری زانو و مچ در مسابقات سرعتی و تست‌های پرفشار.`;
+    urgencyColor = '#f87171';
+  } else if (val <= 700) {
+    urgencyBadge = '⚡ استاندارد / فوریت مسابقاتی';
+    urgencyDesc = `فرکانس ${val}ms (${hz} هرتز) • ریتم ضربان بیومکانیک متعادل، ایده‌آل برای ارزیابی پرش عمودی، فرود و آزمون‌های چابکی.`;
+    urgencyColor = '#38bdf8';
+  } else if (val <= 1100) {
+    urgencyBadge = '🎯 متوسط / تمرین تکنیکال';
+    urgencyDesc = `فرکانس ${val}ms (${hz} هرتز) • ریتم کنترل‌شده با تمرکز بر اصلاح زوایای مفصلی و بازخورد فرم اجرای حرکت.`;
+    urgencyColor = '#facc15';
+  } else {
+    urgencyBadge = '🧘 ریتم آرام / تمرینات اصلاحی و تمرکز';
+    urgencyDesc = `فرکانس ${val}ms (${hz} هرتز) • ضربان ملایم و نرم، بدون ایجاد استرس حرکتی برای بازآموزی الگوهای حرکتی در ورزشکاران مبتدی.`;
+    urgencyColor = '#4ade80';
+  }
+
+  // Update Settings in-modal Live Preview Card
+  const previewBox = document.getElementById('telemPulseSettingsPreview');
+  if (previewBox) {
+    previewBox.style.setProperty('--telem-pulse-frequency', `${baseSec}s`);
+    previewBox.style.setProperty('--telem-persist-duration', `${persistSec}s`);
+    previewBox.style.setProperty('--telem-pulse-duration', `${baseSec}s`);
+    previewBox.dataset.theme = theme;
+    previewBox.dataset.persisting = 'true';
+
+    if (theme === 'high-contrast-orange') {
+      previewBox.classList.add('theme-high-contrast-orange');
+      previewBox.classList.remove('theme-standard-red');
+      previewBox.style.borderColor = '#f97316';
+    } else {
+      previewBox.classList.remove('theme-high-contrast-orange');
+      previewBox.classList.add('theme-standard-red');
+      previewBox.style.borderColor = '#ef4444';
+    }
+
+    const badgeEl = document.getElementById('telemPulseUrgencyBadge');
+    if (badgeEl) {
+      badgeEl.textContent = urgencyBadge;
+      badgeEl.style.color = urgencyColor;
+      badgeEl.style.borderColor = urgencyColor;
+    }
+
+    const descEl = document.getElementById('telemPulsePreviewDesc');
+    if (descEl) descEl.textContent = urgencyDesc;
+
+    const speedEl = document.getElementById('telemPulseSpeedIndicator');
+    if (speedEl) speedEl.textContent = `⚡ سرعت تپش: ${hz} هرتز`;
+
+    const themeLbl = document.getElementById('telemPulsePreviewThemeLabel');
+    if (themeLbl) {
+      themeLbl.textContent = theme === 'high-contrast-orange' ? 'نارنجی با کنتراست بالا 🟠' : 'قرمز استاندارد 🔴';
+      themeLbl.style.color = theme === 'high-contrast-orange' ? '#fbbf24' : '#f87171';
+    }
+
+    // Instantly reset keyframe animation so coach perceives frequency acceleration or deceleration immediately
+    previewBox.style.animation = 'none';
+    void previewBox.offsetWidth;
+    previewBox.style.animation = '';
+  }
+
+  // Also update live #telemetryAiFormOverlay on the telemetry panel
+  const overlay = document.getElementById('telemetryAiFormOverlay');
+  if (overlay) {
+    overlay.style.setProperty('--telem-pulse-frequency', `${baseSec}s`);
+    overlay.style.setProperty('--telem-persist-duration', `${persistSec}s`);
+    overlay.style.setProperty('--telem-pulse-duration', `${baseSec}s`);
+    overlay.dataset.theme = theme;
+    if (theme === 'high-contrast-orange') {
+      overlay.classList.add('theme-high-contrast-orange');
+      overlay.classList.remove('theme-standard-red');
+    } else {
+      overlay.classList.remove('theme-high-contrast-orange');
+      overlay.classList.add('theme-standard-red');
+    }
+
+    if (overlay.style.display !== 'none' || overlay.classList.contains('visible')) {
+      overlay.style.animation = 'none';
+      void overlay.offsetWidth;
+      overlay.style.animation = '';
+    }
+  }
+}
+window.updateTelemetryPulseRealtimePreview = updateTelemetryPulseRealtimePreview;
+
+const pulseFreqSlider = document.getElementById('settingAiPulseFrequency');
+if (pulseFreqSlider) {
+  pulseFreqSlider.addEventListener('input', (e) => {
+    const val = parseInt(e.target.value, 10) || 650;
+    updateTelemetryPulseRealtimePreview(val);
+  });
+  pulseFreqSlider.addEventListener('change', () => {
+    saveCurrentSettingsFromUI();
+  });
+}
+
+function applyAiWarningSettings(settings = getSettings()) {
+  const theme = settings.aiWarningTheme || 'standard-red';
+  const pulseFreqMs = settings.aiWarningPulseFrequency || 650;
+
+  updateTelemetryPulseRealtimePreview(pulseFreqMs, theme);
+
+  const quickLabel = document.getElementById('telemThemeQuickLabel');
+  const quickIcon = document.getElementById('telemThemeQuickIcon');
+  if (quickLabel && quickIcon) {
+    if (theme === 'high-contrast-orange') {
+      quickLabel.textContent = 'پوسته: نارنجی کنتراست بالا';
+      quickIcon.textContent = '🟠';
+    } else {
+      quickLabel.textContent = 'پوسته: قرمز استاندارد';
+      quickIcon.textContent = '🔴';
+    }
+  }
+}
+
+function toggleAiWarningTheme() {
+  const settings = getSettings();
+  const nextTheme = settings.aiWarningTheme === 'high-contrast-orange' ? 'standard-red' : 'high-contrast-orange';
+  settings.aiWarningTheme = nextTheme;
+  saveSettings(settings);
+
+  const selectEl = document.getElementById('settingAiWarningTheme');
+  if (selectEl) selectEl.value = nextTheme;
+
+  applyAiWarningSettings(settings);
+
+  if (typeof showTelemDismissToast === 'function') {
+    showTelemDismissToast(nextTheme === 'high-contrast-orange' 
+      ? 'پوسته اخطار به «نارنجی با کنتراست بالا» تغییر یافت 🟠' 
+      : 'پوسته اخطار به «قرمز استاندارد» بازگشت 🔴');
+  }
+  if (typeof playChime === 'function') {
+    playChime(640, 'sine', 0.1);
+  }
+}
+window.toggleAiWarningTheme = toggleAiWarningTheme;
+
 // Automatically load and apply settings from localStorage upon script startup
 loadSettingsUI();
 applySettings();
 
 settingsBtn.addEventListener('click', () => {
   loadSettingsUI();
+  updateTelemetryPulseRealtimePreview();
   settingsPanel.classList.add('visible');
+  settingsPanel.style.display = 'block';
 });
 
 // Orientation lock button
@@ -6716,6 +7083,71 @@ if (cameraSwitcherBtn) {
 closeSettingsBtn.addEventListener('click', () => {
   saveCurrentSettingsFromUI();
   settingsPanel.classList.remove('visible');
+  settingsPanel.style.display = 'none';
+});
+
+// Universal Panel and Modal Close Button Delegation (برای بستن تمام پنجره‌ها و پنل‌های باز)
+document.addEventListener('click', (e) => {
+  const closeBtn = e.target.closest('.panel-close-x-btn');
+  if (!closeBtn) return;
+  e.preventDefault();
+  e.stopPropagation();
+
+  // Specific state cleanup handlers
+  if (closeBtn.id === 'closeSettingsXBtn') {
+    saveCurrentSettingsFromUI();
+  } else if (closeBtn.id === 'closeHeightCalibXBtn') {
+    isCalibratingHeight = false;
+    heightHeadPoint = null;
+    heightFeetPoint = null;
+  } else if (closeBtn.id === 'closeObjCalibXBtn') {
+    isObjectCalibrating = false;
+    if (typeof objectCalibPointA !== 'undefined') objectCalibPointA = null;
+    if (typeof objectCalibPointB !== 'undefined') objectCalibPointB = null;
+  }
+
+  // Find parent panel or modal and hide it
+  const panel = closeBtn.closest('.panel') || closeBtn.closest('.modal') || closeBtn.closest('#historyPanel');
+  if (panel) {
+    panel.classList.remove('visible');
+    panel.style.display = 'none';
+  }
+});
+
+// Explicit ID handlers for all individual panel close buttons
+const panelCloseMappings = [
+  { btnId: 'closeSettingsXBtn', action: () => { saveCurrentSettingsFromUI(); if (settingsPanel) { settingsPanel.classList.remove('visible'); settingsPanel.style.display = 'none'; } } },
+  { btnId: 'closeHeightCalibXBtn', action: () => { isCalibratingHeight = false; if (heightCalibPanel) { heightCalibPanel.style.display = 'none'; heightCalibPanel.classList.remove('visible'); } } },
+  { btnId: 'closeObjCalibXBtn', action: () => { isObjectCalibrating = false; if (objectCalibPanel) { objectCalibPanel.style.display = 'none'; objectCalibPanel.classList.remove('visible'); } } },
+  { btnId: 'closeDistPanelXBtn', action: () => { if (distPanel) { distPanel.classList.remove('visible'); distPanel.style.display = 'none'; } } },
+  { btnId: 'closeResultPanelXBtn', action: () => { if (resultPanel) { resultPanel.classList.remove('visible'); resultPanel.style.display = 'none'; } } },
+  { btnId: 'closeAgilityControlsXBtn', action: () => { if (agilityConeControls) { agilityConeControls.classList.remove('visible'); agilityConeControls.style.display = 'none'; } } },
+  { btnId: 'closeAgilityResultXBtn', action: () => { if (agilityResultPanel) { agilityResultPanel.classList.remove('visible'); agilityResultPanel.style.display = 'none'; } } },
+  { btnId: 'closeJumpResultXBtn', action: () => { if (jumpResultPanel) { jumpResultPanel.classList.remove('visible'); jumpResultPanel.style.display = 'none'; } } },
+  { btnId: 'closeBoscoStartXBtn', action: () => { if (boscoStartPanel) { boscoStartPanel.classList.remove('visible'); boscoStartPanel.style.display = 'none'; } } },
+  { btnId: 'closeBoscoResultXBtn', action: () => { if (boscoResultPanel) { boscoResultPanel.classList.remove('visible'); boscoResultPanel.style.display = 'none'; } } },
+  { btnId: 'closeSitupStartXBtn', action: () => { if (situpStartPanel) { situpStartPanel.classList.remove('visible'); situpStartPanel.style.display = 'none'; } } },
+  { btnId: 'closeSitupResultXBtn', action: () => { if (situpResultPanel) { situpResultPanel.classList.remove('visible'); situpResultPanel.style.display = 'none'; } } },
+  { btnId: 'closePushupStartXBtn', action: () => { if (pushupStartPanel) { pushupStartPanel.classList.remove('visible'); pushupStartPanel.style.display = 'none'; } } },
+  { btnId: 'closePushupResultXBtn', action: () => { if (pushupResultPanel) { pushupResultPanel.classList.remove('visible'); pushupResultPanel.style.display = 'none'; } } },
+  { btnId: 'closeSquatLungeStartXBtn', action: () => { if (squatLungeStartPanel) { squatLungeStartPanel.classList.remove('visible'); squatLungeStartPanel.style.display = 'none'; } } },
+  { btnId: 'closeSquatLungeResultXBtn', action: () => { if (squatLungeResultPanel) { squatLungeResultPanel.classList.remove('visible'); squatLungeResultPanel.style.display = 'none'; } } },
+  { btnId: 'closeFlexibilityXBtn', action: () => { if (flexibilityPanel) { flexibilityPanel.classList.remove('visible'); flexibilityPanel.style.display = 'none'; } } },
+  { btnId: 'closeAnthroXBtn', action: () => { if (anthroPanel) { anthroPanel.classList.remove('visible'); anthroPanel.style.display = 'none'; } } },
+  { btnId: 'closeWingspanXBtn', action: () => { if (wingspanPanel) { wingspanPanel.classList.remove('visible'); wingspanPanel.style.display = 'none'; } } },
+  { btnId: 'closeDistanceMeasureXBtn', action: () => { if (distanceMeasurePanel) { distanceMeasurePanel.classList.remove('visible'); distanceMeasurePanel.style.display = 'none'; } } },
+  { btnId: 'closeHandballModalXBtn', action: () => { if (typeof closeHandballScoutingModal === 'function') closeHandballScoutingModal(); else { const m = document.getElementById('handballScoutingModal'); if (m) { m.style.display = 'none'; m.classList.remove('visible'); } } } },
+  { btnId: 'closeHandballModalBtn', action: () => { if (typeof closeHandballScoutingModal === 'function') closeHandballScoutingModal(); else { const m = document.getElementById('handballScoutingModal'); if (m) { m.style.display = 'none'; m.classList.remove('visible'); } } } }
+];
+
+panelCloseMappings.forEach(({ btnId, action }) => {
+  const el = document.getElementById(btnId);
+  if (el) {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      action();
+    });
+  }
 });
 
 function applySettings() {
@@ -6728,6 +7160,7 @@ function applySettings() {
     landThresholdPx = legLengthPx * settings.landThresholdRatio;
   }
   CALIB_FRAMES_NEEDED = settings.calibFrames;
+  applyAiWarningSettings(settings);
 }
 
 // ================== WALL HEIGHT CALIBRATION ==================
@@ -7572,6 +8005,14 @@ function hideAllPanels() {
   if (agilityHud) agilityHud.style.display = 'none';
   if (agilityConeControls) agilityConeControls.classList.remove('visible');
   if (agilityResultPanel) agilityResultPanel.classList.remove('visible');
+  const yBalancePanel = document.getElementById('yBalancePanel');
+  if (yBalancePanel) yBalancePanel.classList.remove('visible');
+  const proAgilityPanel = document.getElementById('proAgilityPanel');
+  if (proAgilityPanel) proAgilityPanel.classList.remove('visible');
+  const armCockingPanel = document.getElementById('armCockingPanel');
+  if (armCockingPanel) armCockingPanel.classList.remove('visible');
+  const posturePanel = document.getElementById('posturePanel');
+  if (posturePanel) posturePanel.classList.remove('visible');
 }
 
 function setStatus(text) {
@@ -9421,6 +9862,20 @@ const aiFormStats = {
   situp: { insufficientRomCount: 0, backArchCount: 0, validReps: 0 }
 };
 
+function showTelemDismissToast(message = 'تمامی اخطارهای انباشته‌شده فرم با موفقیت پاکسازی شدند') {
+  const toast = document.getElementById('telemDismissToast');
+  const msgEl = document.getElementById('telemDismissToastMsg');
+  if (msgEl) msgEl.textContent = message;
+  if (toast) {
+    toast.classList.add('show');
+    clearTimeout(toast._timeout);
+    toast._timeout = setTimeout(() => {
+      toast.classList.remove('show');
+    }, 2500);
+  }
+}
+window.showTelemDismissToast = showTelemDismissToast;
+
 function dismissActiveAiFormWarning() {
   if (activeAiFormWarning) {
     dismissedWarningType = activeAiFormWarning.type;
@@ -9434,8 +9889,43 @@ function dismissActiveAiFormWarning() {
   }
 }
 
+function dismissAllAiFormWarnings() {
+  const now = performance.now();
+  // Clear active warning immediately and set global dismissal cooldown
+  dismissedWarningType = '__ALL__';
+  dismissedWarningUntil = now + 6000; // Suppress all warnings for 6 seconds upon Dismiss All
+
+  // Reset accumulated warning counters for active sport mode
+  if (typeof currentSportMode !== 'undefined') {
+    if (currentSportMode === 'pushup' && aiFormStats.pushup) {
+      aiFormStats.pushup.backArchCount = 0;
+      aiFormStats.pushup.insufficientRomCount = 0;
+      aiFormStats.pushup.pikeCount = 0;
+    } else if (currentSportMode === 'situp' && aiFormStats.situp) {
+      aiFormStats.situp.backArchCount = 0;
+      aiFormStats.situp.insufficientRomCount = 0;
+    }
+  }
+
+  // Clear overlay and panel styling
+  clearAiFormWarning(true);
+
+  // Play a clear audio confirmation cue
+  if (typeof playChime === 'function') {
+    playChime(580, 'sine', 0.14);
+  }
+
+  // Display toast feedback
+  showTelemDismissToast('تمامی اخطارهای انباشته‌شده فرم با موفقیت پاکسازی شدند ✓');
+}
+window.dismissAllAiFormWarnings = dismissAllAiFormWarnings;
+
 function triggerAiFormWarning(type, data) {
   const now = performance.now();
+  // If coach clicked 'Dismiss All', suppress all warnings until cooldown expires
+  if (dismissedWarningType === '__ALL__' && now < dismissedWarningUntil) {
+    return;
+  }
   // If coach/user manually acknowledged and closed this error, suppress until cooldown expires
   if (dismissedWarningType === type && now < dismissedWarningUntil) {
     return;
@@ -9500,7 +9990,7 @@ function clearAiFormWarning(fromUserDismiss = false) {
   }
   const panel = document.getElementById('laptopStatsTelemetryPanel');
   if (panel) {
-    panel.classList.remove('has-form-warning', 'has-form-warning-amber');
+    panel.classList.remove('has-form-warning', 'has-form-warning-amber', 'has-form-warning-high-contrast');
   }
   if (!fromUserDismiss) {
     dismissedWarningType = null;
@@ -9524,7 +10014,7 @@ function updateAiFormWarningTelemetry(warning) {
     overlay.style.display = 'none';
     delete overlay.dataset.currentWarningType;
     delete overlay.dataset.severity;
-    panel.classList.remove('has-form-warning', 'has-form-warning-amber');
+    panel.classList.remove('has-form-warning', 'has-form-warning-amber', 'has-form-warning-high-contrast');
     return;
   }
 
@@ -9535,10 +10025,14 @@ function updateAiFormWarningTelemetry(warning) {
   const isCritical = warning.severity === 'critical';
   const isPersisting = isCritical && (performance.now() - (warning.timestamp || performance.now()) >= 850);
 
+  const currentTheme = (typeof getSettings === 'function' ? getSettings().aiWarningTheme : 'standard-red') || 'standard-red';
+  overlay.dataset.theme = currentTheme;
+
   overlay.style.display = 'block';
   overlay.className = 'telemetry-form-overlay ' + 
     (isCritical ? 'warning-critical' : 'warning-moderate') + 
-    (isPersisting ? ' warning-critical-persisting' : '');
+    (isPersisting ? ' warning-critical-persisting' : '') +
+    (currentTheme === 'high-contrast-orange' ? ' theme-high-contrast-orange' : ' theme-standard-red');
   overlay.dataset.persisting = isPersisting ? 'true' : 'false';
 
   // Trigger smooth scale-in and fade-in animation whenever a form error is triggered
@@ -9550,11 +10044,16 @@ function updateAiFormWarningTelemetry(warning) {
 
   if (panel) {
     if (warning.severity === 'critical') {
-      panel.classList.add('has-form-warning');
-      panel.classList.remove('has-form-warning-amber');
+      if (currentTheme === 'high-contrast-orange') {
+        panel.classList.add('has-form-warning-high-contrast');
+        panel.classList.remove('has-form-warning', 'has-form-warning-amber');
+      } else {
+        panel.classList.add('has-form-warning');
+        panel.classList.remove('has-form-warning-amber', 'has-form-warning-high-contrast');
+      }
     } else {
       panel.classList.add('has-form-warning-amber');
-      panel.classList.remove('has-form-warning');
+      panel.classList.remove('has-form-warning', 'has-form-warning-high-contrast');
     }
   }
 
@@ -9578,6 +10077,35 @@ if (telemFormCloseBtn) {
   });
 }
 window.dismissActiveAiFormWarning = dismissActiveAiFormWarning;
+
+// Bind Dismiss All buttons
+const statsHeaderDismissAllBtn = document.getElementById('statsHeaderDismissAllBtn');
+if (statsHeaderDismissAllBtn) {
+  statsHeaderDismissAllBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    dismissAllAiFormWarnings();
+  });
+}
+
+const telemDismissAllOverlayBtn = document.getElementById('telemDismissAllOverlayBtn');
+if (telemDismissAllOverlayBtn) {
+  telemDismissAllOverlayBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    dismissAllAiFormWarnings();
+  });
+}
+
+// Bind quick theme toggle button in overlay
+const telemThemeQuickToggleBtn = document.getElementById('telemThemeQuickToggleBtn');
+if (telemThemeQuickToggleBtn) {
+  telemThemeQuickToggleBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    toggleAiWarningTheme();
+  });
+}
 
 // ================== SIT-UP (دراز و نشست) TEST SYSTEM ==================
 let situpPhase = 'intro'; // 'intro' | 'countdown' | 'running' | 'finished'
@@ -9812,6 +10340,7 @@ function situpProcessFrame(kp) {
 
       situpStatusMessage = `تکرار ${repStrFa} ثبت شد! ✅`;
       setStatus(`تکرار ${repStrFa} دراز و نشست ثبت شد`);
+      triggerLiveHudMetricAnimation(situpCountVal, 'celebration');
     }
   }
 
@@ -10243,6 +10772,7 @@ function pushupProcessFrame(kp) {
 
       pushupStatusMessage = `تکرار ${repStrFa} ثبت شد! ✅`;
       setStatus(`تکرار ${repStrFa} شنا سوئدی ثبت شد`);
+      triggerLiveHudMetricAnimation(pushupCountVal, 'celebration');
     }
   }
 
@@ -11305,6 +11835,7 @@ function squatLungeProcessFrame(kp) {
 
       squatLungeDepthStatusText = `تکرار ${repStrFa} ثبت شد! ✅`;
       setStatus(`تکرار ${repStrFa} ${squatLungeSubmode === 'squat' ? 'اسکات' : 'لانج'} ثبت شد`);
+      triggerLiveHudMetricAnimation(squatLungeRepVal, 'celebration');
 
       // Check rep target completion
       if (squatLungeTargetType === 'reps' && squatLungeRepCount >= squatLungeTargetVal) {
@@ -13318,6 +13849,8 @@ function agilityDrawOverlay() {
 
 // ================== HANDBALL & MULTI-SPORT TALENT SCOUTING ENGINE ==================
 function generateHandballScouting(athlete, athleteHistory) {
+  athlete = athlete || { name: 'ورزشکار ۱', code: '۱۰۱', heightCm: 175 };
+  athleteHistory = Array.isArray(athleteHistory) ? athleteHistory : [];
   let bestJump = 0, bestSpeed = 0, bestAgility = 0, bestPushup = 0, bestBosco = 0, bestFlex = 0;
   let wingspan = athlete.heightCm ? athlete.heightCm * 1.01 : 175;
   let apeIndex = 1.01;
@@ -13447,17 +13980,1122 @@ function generateHandballScouting(athlete, athleteHistory) {
   };
 }
 
-function openHandballScoutingModal() {
-  const active = getActiveAthlete();
-  const athletes = getAthletes();
-  const allHistory = getHistory();
-  const athleteHistory = allHistory.filter(h => h.athleteId === active.id);
+// =========================================================================
+// 14. HANDBALL SKILL ASSESSMENTS & REFEREE CONTROLLER (v1.23.0)
+// Complete 4 Categories, 13 Standardized Tests, Goalkeeper Goal Grid,
+// Passing/Catching Ball-Drop Timer Engine, Shooting Foul & Accuracy Scoring
+// =========================================================================
 
-  if (!handballScoutingContent) return;
+const HANDBALL_SKILL_TESTS = {
+  // --- 1. DRIBBLE TESTS ---
+  dribble_20m_sprint: {
+    id: 'dribble_20m_sprint',
+    category: 'dribble',
+    categoryFa: 'دریبلینگ',
+    number: '۱.۱',
+    titleFa: 'دریبل سرعت ۲۰ متر مستقیم',
+    type: 'dribble',
+    timerMode: 'stopwatch',
+    setupFa: 'مسافت ۲۰ متر مستقیم؛ خط شروع و خط پایان با علامت‌گذاری واضح.',
+    protocolFa: 'ورزشکار پشت خط شروع با توپ می‌ایستد. با صدای سوت مربی با حداکثر سرعت مسافت ۲۰ متر را با دریبل طی می‌کند و از خط پایان عبور می‌کند.',
+    measuredVariableFa: 'زمان ثبت‌شده از سوت شروع تا عبور از خط پایان (ثانیه)',
+    rulesFa: 'توقف در صورت خطای رانینگ (بیش از ۳ گام بدون دریبل) یا دابل دریبل. زمان با دقت صدم ثانیه ثبت می‌شود.',
+    unitFa: 'ثانیه',
+    lowerIsBetter: true,
+    norms: [
+      { max: 3.20, label: 'عالی (نخبه)', color: '#4ade80' },
+      { max: 3.65, label: 'خوب (پیشرفته)', color: '#38bdf8' },
+      { max: 4.10, label: 'متوسط (نرمال)', color: '#facc15' },
+      { max: 99.0, label: 'نیازمند تمرین سرعت', color: '#f87171' }
+    ]
+  },
+  dribble_20m_zigzag: {
+    id: 'dribble_20m_zigzag',
+    category: 'dribble',
+    categoryFa: 'دریبلینگ',
+    number: '۱.۲',
+    titleFa: 'دریبل زیگزاگ سرعت ۲۰ متر (۱۰ مانع)',
+    type: 'dribble',
+    timerMode: 'stopwatch',
+    hasCones: true,
+    setupFa: 'چیدمان ۱۰ مانع (کله‌قندی) با فاصله ۱.۵ متر از یکدیگر در طول ۲۰ متر مستقیم.',
+    protocolFa: 'ورزشکار با سوت مربی شروع به دریبل زیگزاگ از میان ۱۰ مانع کرده و از خط پایان عبور می‌کند.',
+    measuredVariableFa: 'زمان کل طی‌شده (ثانیه) + تعداد خطای برخورد به موانع',
+    rulesFa: 'برخورد یا انداختن هر مانع موجب ۱ ثانیه جریمه زمانی می‌شود.',
+    unitFa: 'ثانیه',
+    lowerIsBetter: true,
+    norms: [
+      { max: 5.30, label: 'عالی (نخبه)', color: '#4ade80' },
+      { max: 5.95, label: 'خوب (پیشرفته)', color: '#38bdf8' },
+      { max: 6.70, label: 'متوسط (نرمال)', color: '#facc15' },
+      { max: 99.0, label: 'نیازمند تمرین چابکی', color: '#f87171' }
+    ]
+  },
+  dribble_20m_shuttle: {
+    id: 'dribble_20m_shuttle',
+    category: 'dribble',
+    categoryFa: 'دریبلینگ',
+    number: '۱.۳',
+    titleFa: 'دریبل سرعت ۲۰ متر رفت و برگشت (شاتل)',
+    type: 'dribble',
+    timerMode: 'stopwatch',
+    setupFa: 'خط شروع، مسافت ۲۰ متر، مانع انتهایی جهت دور زدن و بازگشت به خط شروع (مجموعاً ۴۰ متر).',
+    protocolFa: 'طی کردن ۲۰ متر با حداکثر سرعت دریبل، دور زدن کامل مانع انتهایی و بازگشت پرشتاب به خط شروع.',
+    measuredVariableFa: 'زمان رفت و برگشت کل (ثانیه)',
+    rulesFa: 'دور زدن ناقص مانع خطا است.',
+    unitFa: 'ثانیه',
+    lowerIsBetter: true,
+    norms: [
+      { max: 7.50, label: 'عالی (نخبه)', color: '#4ade80' },
+      { max: 8.30, label: 'خوب (پیشرفته)', color: '#38bdf8' },
+      { max: 9.15, label: 'متوسط (نرمال)', color: '#facc15' },
+      { max: 99.0, label: 'نیازمند تمرین شاتل', color: '#f87171' }
+    ]
+  },
+  dribble_20m_zigzag_shuttle: {
+    id: 'dribble_20m_zigzag_shuttle',
+    category: 'dribble',
+    categoryFa: 'دریبلینگ',
+    number: '۱.۴',
+    titleFa: 'دریبل زیگزاگ ۲۰ متر رفت و برگشت',
+    type: 'dribble',
+    timerMode: 'stopwatch',
+    hasCones: true,
+    setupFa: '۱۰ مانع با فاصله ۱.۵ متر؛ مسیر رفت زیگزاگ و مسیر برگشت زیگزاگ مجدد.',
+    protocolFa: 'دریبل زیگزاگ از ۱۰ مانع در مسیر رفت، دور زدن مانع دهم و اجرای مجدد زیگزاگ در مسیر برگشت تا خط شروع.',
+    measuredVariableFa: 'زمان کل رفت و برگشت زیگزاگ (ثانیه)',
+    rulesFa: 'انداختن هر مانع ۱ ثانیه جریمه به زمان کل اضافه می‌کند.',
+    unitFa: 'ثانیه',
+    lowerIsBetter: true,
+    norms: [
+      { max: 11.60, label: 'عالی (نخبه)', color: '#4ade80' },
+      { max: 13.10, label: 'خوب (پیشرفته)', color: '#38bdf8' },
+      { max: 14.60, label: 'متوسط (نرمال)', color: '#facc15' },
+      { max: 99.0, label: 'نیازمند تمرین کنترل و تغییر جهت', color: '#f87171' }
+    ]
+  },
+
+  // --- 2. PASS & CATCH ---
+  pass_catch_3m_wall: {
+    id: 'pass_catch_3m_wall',
+    category: 'pass_catch',
+    categoryFa: 'پاس و دریافت',
+    number: '۲.۱',
+    titleFa: 'پاس و دریافت متوالی دیوار ۳ متری (Wall Pass & Catch)',
+    type: 'pass_catch',
+    timerMode: 'countdown30',
+    setupFa: 'دیوار صاف، خط ۳ متری روی زمین، توپ استاندارد هندبال متناسب با رده سنی.',
+    protocolFa: 'ایستادن پشت خط ۳ متری دیوار با توپ؛ با صدای سوت، ارسال پاس متوالی به دیوار و دریافت آن با دو دست یا یک دست.',
+    measuredVariableFa: 'تعداد پاس و دریافت صحیح در ۱۵ ثانیه اول (شاخص رسمی) + تعداد کل در ۳۰ ثانیه',
+    rulesFa: 'قانون متوقف شدن زمان: با افتادن توپ از دست بازیکن، زمان سنجش فوراً متوقف می‌شود تا بازیکن توپ را بردارد و مجدداً ادامه دهد. پا نباید روی خط ۳ متر قرار گیرد.',
+    unitFa: 'تکرار صحیح',
+    lowerIsBetter: false,
+    hasBallDropRule: true,
+    norms: [
+      { min: 12, label: 'عالی (نخبه)', color: '#4ade80' },
+      { min: 9, label: 'خوب (پیشرفته)', color: '#38bdf8' },
+      { min: 6, label: 'متوسط (نرمال)', color: '#facc15' },
+      { min: 0, label: 'نیازمند تمرین پنجه و تمرکز', color: '#f87171' }
+    ]
+  },
+
+  // --- 3. SHOOTING TESTS ---
+  shoot_penalty_7m: {
+    id: 'shoot_penalty_7m',
+    category: 'shooting',
+    categoryFa: 'شوت',
+    number: '۳.۱',
+    titleFa: 'آزمون پرتاب پنالتی ۷ متری به هدف دایره',
+    type: 'shooting',
+    timerMode: 'countdown30',
+    maxBalls: 25,
+    setupFa: 'رسم دایره‌ای به قطر ۱ متر روی دیوار (ارتفاع مرکز ۱.۵ متر)، خط ۷ متری، قرارگیری ۲۵ عدد توپ پشت خط ۷ متر.',
+    protocolFa: 'پرتاب متوالی پنالتی به سمت هدف دایره ۱ متری به مدت ۳۰ ثانیه.',
+    measuredVariableFa: 'تعداد پرتاب‌های موفق درون دایره هدف در ۳۰ ثانیه بدون خطای پا',
+    rulesFa: 'خطای پا: پا نباید روی خط ۷ متر یا جلوتر از آن قرار گیرد یا بلند شود. امتیاز نهایی = گل‌ها منهای خطاهای پا.',
+    unitFa: 'گل صحیح',
+    lowerIsBetter: false,
+    norms: [
+      { min: 18, label: 'عالی (شوت‌زن نخبه)', color: '#4ade80' },
+      { min: 14, label: 'خوب (پیشرفته)', color: '#38bdf8' },
+      { min: 10, label: 'متوسط (نرمال)', color: '#facc15' },
+      { min: 0, label: 'نیازمند تمرین دقت پرتاب', color: '#f87171' }
+    ]
+  },
+  shoot_3step_simple: {
+    id: 'shoot_3step_simple',
+    category: 'shooting',
+    categoryFa: 'شوت',
+    number: '۳.۲',
+    titleFa: 'آزمون شوت سه گام ساده از خط ۹ متر',
+    type: 'shooting',
+    timerMode: 'countdown30',
+    maxBalls: 25,
+    setupFa: 'دروازه رسمی هندبال، خط پرتاب پشت خط ۹ متر، ۲۵ توپ در سبد/فاصله ۱۵ متری دروازه.',
+    protocolFa: 'برداشتن متوالی توپ، اجرای تکنیک شوت سه گام از پشت خط ۹ متر به طرف دروازه به مدت ۳۰ ثانیه.',
+    measuredVariableFa: 'تعداد توپ‌های گل‌شده درون دروازه بدون خطای پا در ۳۰ ثانیه',
+    rulesFa: 'خطای پا روی خط ۹ متر باعث مردود شدن گل می‌شود. امتیاز = گل‌ها منهای خطای پا.',
+    unitFa: 'گل صحیح',
+    lowerIsBetter: false,
+    norms: [
+      { min: 16, label: 'عالی (نخبه)', color: '#4ade80' },
+      { min: 12, label: 'خوب (پیشرفته)', color: '#38bdf8' },
+      { min: 8, label: 'متوسط (نرمال)', color: '#facc15' },
+      { min: 0, label: 'نیازمند تمرین ریتم ۳ گام', color: '#f87171' }
+    ]
+  },
+  shoot_3step_obstacle: {
+    id: 'shoot_3step_obstacle',
+    category: 'shooting',
+    categoryFa: 'شوت',
+    number: '۳.۳',
+    titleFa: 'شوت سه گام از فراز دروازه-مانع ۹ متر',
+    type: 'shooting',
+    timerMode: 'countdown30',
+    maxBalls: 25,
+    hasObstacle: true,
+    setupFa: 'دروازه اصلی + قرار دادن یک دروازه دیگر روی خط ۹ متر به عنوان مانع عمودی دفاعی، ۲۵ توپ.',
+    protocolFa: 'اجرای شوت ۳ گام از فراز دروازه-مانع ۹ متر به طرف دروازه اصلی در مدت ۳۰ ثانیه.',
+    measuredVariableFa: 'تعداد گل‌های موفق عبور کرده از بالای مانع',
+    rulesFa: 'شوت‌های خارج از چهارچوب دروازه-مانع یا هرگونه برخورد به مانع یا خطای پا مردود است. امتیاز = گل‌ها منهای خطاها و برخوردها.',
+    unitFa: 'گل صحیح',
+    lowerIsBetter: false,
+    norms: [
+      { min: 14, label: 'عالی (شوت رو دفاع)', color: '#4ade80' },
+      { min: 10, label: 'خوب (پیشرفته)', color: '#38bdf8' },
+      { min: 6, label: 'متوسط (نرمال)', color: '#facc15' },
+      { min: 0, label: 'نیازمند تقویت زاویه پرتاب', color: '#f87171' }
+    ]
+  },
+  shoot_wing: {
+    id: 'shoot_wing',
+    category: 'shooting',
+    categoryFa: 'شوت',
+    number: '۳.۴',
+    titleFa: 'آزمون شوت از گوش (Wing Shot)',
+    type: 'shooting',
+    timerMode: 'countdown30',
+    maxBalls: 25,
+    hasObstacle: true,
+    setupFa: 'مانع روی خط ۶ متر و به فاصله ۱ متری از خط عرضی دروازه؛ ۲۵ توپ کنار خط طولی؛ شروع از نقطه کرنر.',
+    protocolFa: 'پرتاب شوت از گوش از میان مانع و خط عرضی در مدت ۳۰ ثانیه با زاویه‌گیری هوشمند.',
+    measuredVariableFa: 'تعداد گل‌های موفق ثبت‌شده از گوش در ۳۰ ثانیه',
+    rulesFa: 'برخورد به مانع، عبور از پشت مانع هنگام اقدام به شوت، یا لمس خط ۶ متر با پا خطا است (عبور از پشت مانع در بازگشت مجاز است).',
+    unitFa: 'گل صحیح',
+    lowerIsBetter: false,
+    norms: [
+      { min: 14, label: 'عالی (گوش‌زن تخصصی)', color: '#4ade80' },
+      { min: 10, label: 'خوب (پیشرفته)', color: '#38bdf8' },
+      { min: 6, label: 'متوسط (نرمال)', color: '#facc15' },
+      { min: 0, label: 'نیازمند تمرین زاویه‌گیری گوش', color: '#f87171' }
+    ]
+  },
+
+  // --- 4. GOALKEEPING TESTS ---
+  gk_lateral_defense: {
+    id: 'gk_lateral_defense',
+    category: 'goalkeeping',
+    categoryFa: 'دروازه‌بانی',
+    number: '۴.۱',
+    titleFa: 'دفاع از کنار بدن متناوب چپ و راست',
+    type: 'goalkeeping_general',
+    timerMode: 'countdown30',
+    setupFa: 'محوطه دروازه ۶ متر هندبال با لباس و کفش دروازه‌بانی.',
+    protocolFa: 'اجرای تکنیک دفاع کنار بدن (یک پا عمود بر پای دیگر، خم کردن زانو و پایین آوردن دست) به صورت متناوب به سمت چپ و راست به مدت ۳۰ ثانیه.',
+    measuredVariableFa: 'تعداد تکرار صحیح اجرای تکنیک دفاع در ۳۰ ثانیه',
+    rulesFa: 'پایین نیامدن کافی دست یا عدم اجرای زاویه عمود پا، عدم محاسبه تکرار را در پی دارد.',
+    unitFa: 'تکرار تکنیکی',
+    lowerIsBetter: false,
+    norms: [
+      { min: 26, label: 'عالی (واکنش نخبه)', color: '#4ade80' },
+      { min: 22, label: 'خوب (پیشرفته)', color: '#38bdf8' },
+      { min: 17, label: 'متوسط (نرمال)', color: '#facc15' },
+      { min: 0, label: 'نیازمند تمرین هماهنگی پا و دست', color: '#f87171' }
+    ]
+  },
+  gk_lower_corners: {
+    id: 'gk_lower_corners',
+    category: 'goalkeeping',
+    categoryFa: 'دروازه‌بانی',
+    number: '۴.۲',
+    titleFa: 'دفاع از گوشه‌های پایین دروازه (دست و پا)',
+    type: 'goalkeeping_grid',
+    timerMode: 'countdown30',
+    gridMode: 'lower_corners',
+    sequence: ['bottom_left', 'bottom_right'],
+    sequenceFa: 'پایین-چپ ⟷ پایین-راست (متناوب با دست و پا)',
+    setupFa: 'دروازه رسمی ۳×۲ متر هندبال.',
+    protocolFa: 'لمس متناوب گوشه چپ پایین و گوشه راست پایین دروازه با پا و دست در مدت ۳۰ ثانیه.',
+    measuredVariableFa: 'تعداد لمس‌های صحیح در ۳۰ ثانیه',
+    rulesFa: 'خطا: عدم لمس دروازه با پا خطای تکنیکی محسوب می‌شود. لمس باید با همپوشانی دست و پا صورت گیرد.',
+    unitFa: 'لمس صحیح',
+    lowerIsBetter: false,
+    norms: [
+      { min: 22, label: 'عالی (سرعت عمل فوق‌العاده)', color: '#4ade80' },
+      { min: 18, label: 'خوب (پیشرفته)', color: '#38bdf8' },
+      { min: 14, label: 'متوسط (نرمال)', color: '#facc15' },
+      { min: 0, label: 'نیازمند تمرین انعطاف لگن', color: '#f87171' }
+    ]
+  },
+  gk_upper_corners: {
+    id: 'gk_upper_corners',
+    category: 'goalkeeping',
+    categoryFa: 'دروازه‌بانی',
+    number: '۴.۳',
+    titleFa: 'دفاع از گوشه‌های بالای دروازه',
+    type: 'goalkeeping_grid',
+    timerMode: 'countdown30',
+    gridMode: 'upper_corners',
+    sequence: ['top_left', 'top_right'],
+    sequenceFa: 'بالا-چپ ⟷ بالا-راست (متناوب با دست و جهش)',
+    setupFa: 'دروازه رسمی هندبال ۳×۲ متر.',
+    protocolFa: 'لمس متناوب گوشه چپ بالا و گوشه راست بالا دروازه با دست و جهش در ۳۰ ثانیه.',
+    measuredVariableFa: 'تعداد لمس‌های گوشه بالای دروازه در ۳۰ ثانیه',
+    rulesFa: 'لمس باید به کنج تقاطع تیرک افقی و عمودی برسد.',
+    unitFa: 'لمس صحیح',
+    lowerIsBetter: false,
+    norms: [
+      { min: 22, label: 'عالی (پرش و پوشش نخبه)', color: '#4ade80' },
+      { min: 18, label: 'خوب (پیشرفته)', color: '#38bdf8' },
+      { min: 14, label: 'متوسط (نرمال)', color: '#facc15' },
+      { min: 0, label: 'نیازمند تمرین توان انفجاری پاها', color: '#f87171' }
+    ]
+  },
+  gk_4corners_diagonal: {
+    id: 'gk_4corners_diagonal',
+    category: 'goalkeeping',
+    categoryFa: 'دروازه‌بانی',
+    number: '۴.۴',
+    titleFa: 'لمس ۴ گوشه دروازه به صورت ضربدری (Diagonal)',
+    type: 'goalkeeping_grid',
+    timerMode: 'countdown30',
+    gridMode: 'diagonal',
+    sequence: ['bottom_left', 'top_right', 'bottom_right', 'top_left'],
+    sequenceFa: '۱. پایین-چپ ➔ ۲. بالا-راست ➔ ۳. پایین-راست ➔ ۴. بالا-چپ',
+    setupFa: 'دروازه رسمی ۳×۲ متر هندبال، شروع دروازه‌بان از مرکز دروازه.',
+    protocolFa: 'لمس متوالی ۴ گوشه دروازه طبق الگوی ضربدری: ۱.پایین-چپ ➔ ۲.بالا-راست ➔ ۳.پایین-راست ➔ ۴.بالا-چپ به مدت ۳۰ ثانیه.',
+    measuredVariableFa: 'تعداد لمس‌های صحیح طبق توالی مشخص در ۳۰ ثانیه',
+    rulesFa: 'عدم لمس کامل تیرک یا برهم زدن ترتیب الگوی ضربدری خطا است و ۱ امتیاز کسر می‌گردد.',
+    unitFa: 'لمس صحیح ضربدری',
+    lowerIsBetter: false,
+    norms: [
+      { min: 18, label: 'عالی (چابکی و جهت‌یابی نخبه)', color: '#4ade80' },
+      { min: 14, label: 'خوب (پیشرفته)', color: '#38bdf8' },
+      { min: 10, label: 'متوسط (نرمال)', color: '#facc15' },
+      { min: 0, label: 'نیازمند تمرین هماهنگی ضربدری', color: '#f87171' }
+    ]
+  },
+  gk_4corners_clockwise: {
+    id: 'gk_4corners_clockwise',
+    category: 'goalkeeping',
+    categoryFa: 'دروازه‌بانی',
+    number: '۴.۵',
+    titleFa: 'لمس ۴ گوشه دروازه در جهت عقربه‌های ساعت (Clockwise)',
+    type: 'goalkeeping_grid',
+    timerMode: 'countdown30',
+    gridMode: 'clockwise',
+    sequence: ['bottom_left', 'bottom_right', 'top_right', 'top_left'],
+    sequenceFa: '۱. پایین-چپ ➔ ۲. پایین-راست ➔ ۳. بالا-راست ➔ ۴. بالا-چپ',
+    setupFa: 'دروازه ۳×۲ متر هندبال.',
+    protocolFa: 'لمس متوالی ۴ گوشه دروازه در جهت عقربه‌های ساعت: ۱.پایین-چپ ➔ ۲.پایین-راست ➔ ۳.بالا-راست ➔ ۴.بالا-چپ در مدت ۳۰ ثانیه.',
+    measuredVariableFa: 'تعداد لمس‌های معتبر در جهت عقربه‌های ساعت',
+    rulesFa: 'عدم رعایت جهت یا عدم لمس کامل خطا محسوب شده و کسر امتیاز دارد.',
+    unitFa: 'لمس صحیح چرخشی',
+    lowerIsBetter: false,
+    norms: [
+      { min: 18, label: 'عالی (دید محیطی و سرعت چرخش)', color: '#4ade80' },
+      { min: 14, label: 'خوب (پیشرفته)', color: '#38bdf8' },
+      { min: 10, label: 'متوسط (نرمال)', color: '#facc15' },
+      { min: 0, label: 'نیازمند تمرین چابکی جهت‌دار', color: '#f87171' }
+    ]
+  }
+};
+
+// State Object for Handball Referee Engine
+const hbState = {
+  activeTestId: 'dribble_20m_sprint',
+  activeTab: 'skills',
+  timerState: 'idle', // 'idle' | 'running' | 'paused' | 'finished'
+  timerRemainingMs: 30000,
+  timerElapsedMs: 0,
+  timerInterval: null,
+  timerLastTick: 0,
+  
+  // Specific Test Metrics
+  scoreAt15s: null,
+  ballDropped: false,
+  ballDropCount: 0,
+
+  // Goalkeeper Grid State
+  gkTargetIndex: 0,
+  gkTouches: 0,
+  gkSequenceErrors: 0,
+
+  // Shooting State
+  shootingTotalBalls: 25,
+  shootingGoals: 0,
+  shootingFootFaults: 0,
+  shootingObstacleHits: 0,
+
+  // General Pass/Catch & Reps
+  passReps: 0,
+  generalReps: 0,
+
+  // Dribble State
+  dribbleConePenalties: 0,
+  dribbleFouls: 0,
+
+  lastResult: null
+};
+
+function getHandballCornerNameFa(key) {
+  switch (key) {
+    case 'top_left': return 'بالا-چپ (↖️)';
+    case 'top_right': return 'بالا-راست (↗️)';
+    case 'bottom_left': return 'پایین-چپ (↙️)';
+    case 'bottom_right': return 'پایین-راست (↘️)';
+    default: return key;
+  }
+}
+
+function switchHandballModalTab(tab = 'skills') {
+  hbState.activeTab = tab;
+  const skillsBtn = document.getElementById('tabHbSkillsBtn');
+  const scoutingBtn = document.getElementById('tabHbScoutingBtn');
+  const skillsView = document.getElementById('hbSkillsView');
+  const scoutingView = document.getElementById('hbScoutingView');
+
+  if (skillsBtn) skillsBtn.classList.toggle('active', tab === 'skills');
+  if (scoutingBtn) scoutingBtn.classList.toggle('active', tab === 'scouting');
+
+  if (skillsView) skillsView.style.display = tab === 'skills' ? 'block' : 'none';
+  if (scoutingView) scoutingView.style.display = tab === 'scouting' ? 'block' : 'none';
+
+  if (tab === 'scouting') {
+    renderHandballScoutingTab();
+  }
+}
+
+function selectHandballTest(testId) {
+  if (!HANDBALL_SKILL_TESTS[testId]) testId = 'dribble_20m_sprint';
+  hbState.activeTestId = testId;
+  resetHandballTimer();
+
+  const test = HANDBALL_SKILL_TESTS[testId];
+  
+  // Update category badge
+  const catBadge = document.getElementById('hbTestCategoryBadge');
+  if (catBadge) {
+    catBadge.textContent = test.categoryFa;
+  }
+
+  // Update timer mode label
+  const modeLabel = document.getElementById('hbTimerModeLabel');
+  if (modeLabel) {
+    modeLabel.textContent = test.timerMode === 'countdown30' ? 'شمارش معکوس ۳۰ ثانیه' : 'کرنومتر ثبت زمان رکورد (صدم ثانیه)';
+  }
+
+  // Render Protocol Card
+  const protocolCard = document.getElementById('hbProtocolCard');
+  if (protocolCard) {
+    protocolCard.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+        <span style="font-weight: bold; color: #38bdf8; font-size: 13px;">${test.number} ${test.titleFa}</span>
+        <span style="background: rgba(15,23,42,0.8); border: 1px solid #475569; padding: 2px 8px; border-radius: 6px; font-size: 10.5px; color: #94a3b8;">
+          واحد: ${test.unitFa}
+        </span>
+      </div>
+      <div style="margin-bottom: 4px;"><strong>📐 چیدمان و تجهیزات:</strong> ${test.setupFa}</div>
+      <div style="margin-bottom: 4px;"><strong>📋 پروتکل اجرا:</strong> ${test.protocolFa}</div>
+      <div style="margin-bottom: 4px;"><strong>🎯 متغیر سنجش:</strong> ${test.measuredVariableFa}</div>
+      <div style="color: #fbbf24;"><strong>⚠️ قوانین و خطاها:</strong> ${test.rulesFa}</div>
+    `;
+  }
+
+  // Render Interactive Controller for Test Type
+  renderHandballInteractiveController(test);
+
+  // Reset Score Summary
+  const scoreSumEl = document.getElementById('hbScoreSummaryText');
+  const scoreDetEl = document.getElementById('hbScoreDetailText');
+  const ratingBadge = document.getElementById('hbRatingBadge');
+  if (scoreSumEl) scoreSumEl.textContent = 'آماده شروع آزمون';
+  if (scoreDetEl) scoreDetEl.textContent = 'برای آغاز آزمون دکمه «شروع آزمون ▶️» را لمس کنید.';
+  if (ratingBadge) {
+    ratingBadge.textContent = '--';
+    ratingBadge.style.background = 'rgba(148,163,184,0.2)';
+    ratingBadge.style.color = '#94a3b8';
+    ratingBadge.style.borderColor = '#64748b';
+  }
+}
+
+function renderHandballInteractiveController(test) {
+  const container = document.getElementById('hbInteractiveControllerContainer');
+  if (!container) return;
+
+  if (test.type === 'goalkeeping_grid') {
+    // 4-Corner Goal Grid Layout
+    const expectedKey = test.sequence ? test.sequence[hbState.gkTargetIndex] : null;
+
+    container.innerHTML = `
+      <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid #334155; border-radius: 12px; padding: 12px; text-align: center;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-size: 12px; font-weight: bold; color: #38bdf8;">🧤 چهارچوب تعاملی دروازه و سنسور لمس ۴ گوشه:</span>
+          <span style="font-size: 11px; color: #94a3b8;">${test.sequenceFa || 'لمس گوشه‌ها'}</span>
+        </div>
+
+        <div class="hbGoalGrid" id="hbGoalGridFrame">
+          <button type="button" class="hbCornerBtn ${expectedKey === 'top_left' ? 'target-next' : ''}" data-corner="top_left" id="hbCorner_top_left">
+            <span>↖️</span>
+            <span>بالا-چپ</span>
+          </button>
+          <button type="button" class="hbCornerBtn ${expectedKey === 'top_right' ? 'target-next' : ''}" data-corner="top_right" id="hbCorner_top_right">
+            <span>↗️</span>
+            <span>بالا-راست</span>
+          </button>
+          <button type="button" class="hbCornerBtn ${expectedKey === 'bottom_left' ? 'target-next' : ''}" data-corner="bottom_left" id="hbCorner_bottom_left">
+            <span>↙️</span>
+            <span>پایین-چپ</span>
+          </button>
+          <button type="button" class="hbCornerBtn ${expectedKey === 'bottom_right' ? 'target-next' : ''}" data-corner="bottom_right" id="hbCorner_bottom_right">
+            <span>↘️</span>
+            <span>پایین-راست</span>
+          </button>
+        </div>
+
+        <div style="display: flex; justify-content: space-around; background: rgba(30,41,59,0.7); padding: 8px 12px; border-radius: 8px; font-size: 12px; margin-top: 8px;">
+          <div>لمس‌های صحیح: <strong id="hbGkTouchesVal" style="color: #4ade80; font-size: 15px;">${hbState.gkTouches}</strong></div>
+          <div>خطای توالی/ترتیب: <strong id="hbGkErrorsVal" style="color: #ef4444; font-size: 15px;">${hbState.gkSequenceErrors}</strong></div>
+          <div>امتیاز خالص: <strong id="hbGkNetVal" style="color: #38bdf8; font-size: 15px;">${Math.max(0, hbState.gkTouches - hbState.gkSequenceErrors)}</strong></div>
+        </div>
+        <div id="hbGkPromptNotice" style="font-size: 11px; color: #cbd5e1; margin-top: 6px;">
+          ${expectedKey ? `هدف بعدی: <strong style="color: #38bdf8;">${getHandballCornerNameFa(expectedKey)}</strong>` : 'آماده ثبت لمس دروازه'}
+        </div>
+      </div>
+    `;
+
+    // Wire corner buttons
+    container.querySelectorAll('.hbCornerBtn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const corner = btn.getAttribute('data-corner');
+        handleGoalkeeperCornerTap(corner);
+      });
+    });
+
+  } else if (test.type === 'shooting') {
+    // Shooting Scorecard Layout
+    container.innerHTML = `
+      <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid #334155; border-radius: 12px; padding: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <span style="font-size: 12.5px; font-weight: bold; color: #38bdf8;">🎯 کنسول داوری زنده شوت هندبال (۲۵ توپ در ۳۰ ثانیه):</span>
+          <span style="font-size: 11px; color: #94a3b8;">تعداد کل مجاز: ۲۵ پرتاب</span>
+        </div>
+
+        <!-- Big Action Buttons -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+          <button type="button" id="hbShootingGoalBtn" style="background: linear-gradient(135deg, #16a34a, #22c55e); color: #fff; border: none; padding: 14px; border-radius: 10px; font-weight: 900; font-size: 15px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; box-shadow: 0 4px 12px rgba(34,197,94,0.35);">
+            <span style="font-size: 24px;">⚽</span>
+            <span>+۱ گل / پرتاب موفق</span>
+          </button>
+          <button type="button" id="hbShootingFootFaultBtn" style="background: rgba(245, 158, 11, 0.2); border: 2px solid #f59e0b; color: #fbbf24; padding: 14px; border-radius: 10px; font-weight: bold; font-size: 13.5px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px;">
+            <span style="font-size: 24px;">🦶</span>
+            <span>+۱ خطای پا روی خط</span>
+          </button>
+        </div>
+
+        ${test.hasObstacle ? `
+          <div style="margin-bottom: 12px;">
+            <button type="button" id="hbShootingObstacleBtn" style="width: 100%; background: rgba(239, 68, 68, 0.15); border: 2px solid #ef4444; color: #f87171; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 12.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+              <span>🚫</span>
+              <span>+۱ برخورد به مانع یا خروج از چهارچوب دروازه-مانع</span>
+            </button>
+          </div>
+        ` : ''}
+
+        <!-- Stats Bar -->
+        <div style="display: flex; justify-content: space-around; background: rgba(30,41,59,0.7); padding: 8px 12px; border-radius: 8px; font-size: 12px;">
+          <div>پرتاب‌ها: <strong id="hbShootAttemptsVal" style="color: #f8fafc;">${hbState.shootingGoals + hbState.shootingFootFaults + hbState.shootingObstacleHits}/۲۵</strong></div>
+          <div>گل‌ها: <strong id="hbShootGoalsVal" style="color: #4ade80;">${hbState.shootingGoals}</strong></div>
+          <div>خطای پا: <strong id="hbShootFaultsVal" style="color: #fbbf24;">${hbState.shootingFootFaults}</strong></div>
+          ${test.hasObstacle ? `<div>برخورد مانع: <strong id="hbShootObstaclesVal" style="color: #f87171;">${hbState.shootingObstacleHits}</strong></div>` : ''}
+          <div>امتیاز نهایی: <strong id="hbShootNetVal" style="color: #38bdf8; font-size: 14px;">${Math.max(0, hbState.shootingGoals - hbState.shootingFootFaults - hbState.shootingObstacleHits)}</strong></div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('hbShootingGoalBtn')?.addEventListener('click', handleShootingGoalTap);
+    document.getElementById('hbShootingFootFaultBtn')?.addEventListener('click', handleShootingFootFaultTap);
+    document.getElementById('hbShootingObstacleBtn')?.addEventListener('click', handleShootingObstacleTap);
+
+  } else if (test.type === 'pass_catch') {
+    // Passing & Catching Controller
+    container.innerHTML = `
+      <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid #334155; border-radius: 12px; padding: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <span style="font-size: 12.5px; font-weight: bold; color: #38bdf8;">🏐 داوری پاس و دریافت متوالی دیوار ۳ متری:</span>
+          <span id="hbPassCatch15sIndicator" style="font-size: 11px; background: rgba(56,189,248,0.2); color: #38bdf8; padding: 2px 8px; border-radius: 4px;">
+            رکورد ۱۵ ثانیه: ${hbState.scoreAt15s !== null ? hbState.scoreAt15s + ' تکرار' : 'در انتظار ثانیه ۱۵'}
+          </span>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 10px; margin-bottom: 12px;">
+          <button type="button" id="hbPassCatchAddBtn" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: #fff; border: none; padding: 16px; border-radius: 10px; font-weight: 900; font-size: 16px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; box-shadow: 0 4px 12px rgba(2,132,199,0.35);">
+            <span style="font-size: 26px;">🏐</span>
+            <span>+۱ پاس و دریافت موفق</span>
+          </button>
+          <button type="button" id="hbBallDropToggleBtn" style="background: ${hbState.ballDropped ? 'linear-gradient(135deg, #16a34a, #22c55e)' : 'rgba(239, 68, 68, 0.2)'}; border: 2px solid ${hbState.ballDropped ? '#22c55e' : '#ef4444'}; color: #fff; padding: 16px; border-radius: 10px; font-weight: bold; font-size: 13px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;">
+            <span style="font-size: 24px;">${hbState.ballDropped ? '▶️' : '⏸️'}</span>
+            <span id="hbBallDropBtnLabel">${hbState.ballDropped ? 'بازیابی و ادامه تایمر' : 'افتادن توپ (توقف زمان)'}</span>
+          </button>
+        </div>
+
+        <div style="display: flex; justify-content: space-around; background: rgba(30,41,59,0.7); padding: 8px 12px; border-radius: 8px; font-size: 12px;">
+          <div>رکورد رسمی (۱۵ ثانیه اول): <strong id="hbPassAt15Val" style="color: #38bdf8; font-size: 14px;">${hbState.scoreAt15s !== null ? hbState.scoreAt15s : '--'}</strong></div>
+          <div>مجموع پاس‌های ۳۰ ثانیه: <strong id="hbPassTotalVal" style="color: #4ade80; font-size: 14px;">${hbState.passReps}</strong></div>
+          <div>تعداد افتادن توپ: <strong id="hbBallDropCountVal" style="color: #fbbf24;">${hbState.ballDropCount}</strong></div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('hbPassCatchAddBtn')?.addEventListener('click', handlePassCatchTap);
+    document.getElementById('hbBallDropToggleBtn')?.addEventListener('click', handleBallDroppedToggle);
+
+  } else if (test.type === 'dribble') {
+    // Dribble Controller
+    container.innerHTML = `
+      <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid #334155; border-radius: 12px; padding: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <span style="font-size: 12.5px; font-weight: bold; color: #38bdf8;">🏃 داوری و زمان‌گیری دقیق آزمون دریبل سرعت:</span>
+          <span style="font-size: 11px; color: #94a3b8;">شروع با سوت و پایان با خط</span>
+        </div>
+
+        <div style="display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap;">
+          ${test.hasCones ? `
+            <button type="button" id="hbConePenaltyBtn" style="flex: 1; background: rgba(245, 158, 11, 0.18); border: 1.5px solid #f59e0b; color: #fbbf24; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+              <span>🚩</span>
+              <span>+۱ برخورد با موانع (+۱ ثانیه جریمه)</span>
+            </button>
+          ` : ''}
+          <button type="button" id="hbDribbleFoulBtn" style="flex: 1; background: rgba(239, 68, 68, 0.18); border: 1.5px solid #ef4444; color: #f87171; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+            <span>⚠️</span>
+            <span>+۱ خطای گام (رانینگ / دابل)</span>
+          </button>
+        </div>
+
+        <div style="display: flex; justify-content: space-around; background: rgba(30,41,59,0.7); padding: 8px 12px; border-radius: 8px; font-size: 12px;">
+          <div>زمان پایه: <strong id="hbDribbleBaseTimeVal" style="color: #38bdf8;">${(hbState.timerElapsedMs / 1000).toFixed(2)}s</strong></div>
+          ${test.hasCones ? `<div>جریمه موانع: <strong id="hbDribblePenaltyVal" style="color: #fbbf24;">+${hbState.dribbleConePenalties}s</strong></div>` : ''}
+          <div>زمان نهایی ثبت‌شده: <strong id="hbDribbleFinalTimeVal" style="color: #4ade80; font-size: 14px;">${((hbState.timerElapsedMs / 1000) + hbState.dribbleConePenalties).toFixed(2)}s</strong></div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('hbConePenaltyBtn')?.addEventListener('click', handleConePenaltyTap);
+    document.getElementById('hbDribbleFoulBtn')?.addEventListener('click', handleDribbleFoulTap);
+
+  } else {
+    // Goalkeeping General (Lateral Defense)
+    container.innerHTML = `
+      <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid #334155; border-radius: 12px; padding: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <span style="font-size: 12.5px; font-weight: bold; color: #38bdf8;">🧤 ثبت تکرار تکنیک دفاع کنار بدن (متناوب چپ و راست):</span>
+          <span style="font-size: 11px; color: #94a3b8;">۳۰ ثانیه زمان کل</span>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+          <button type="button" id="hbGeneralRepBtn" style="flex: 2; background: linear-gradient(135deg, #16a34a, #22c55e); color: #fff; border: none; padding: 14px; border-radius: 10px; font-weight: 900; font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+            <span>🧤</span>
+            <span>+۱ تکرار تکنیک دفاع کامل (چپ و راست)</span>
+          </button>
+        </div>
+
+        <div style="display: flex; justify-content: space-around; background: rgba(30,41,59,0.7); padding: 8px 12px; border-radius: 8px; font-size: 12px;">
+          <div>تکرارهای صحیح: <strong id="hbGeneralRepsVal" style="color: #4ade80; font-size: 15px;">${hbState.generalReps}</strong></div>
+          <div>وضعیت: <span style="color: #38bdf8;">دست پایین، زانو خم و پای عمود</span></div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('hbGeneralRepBtn')?.addEventListener('click', () => {
+      hbState.generalReps++;
+      const valEl = document.getElementById('hbGeneralRepsVal');
+      if (valEl) valEl.textContent = hbState.generalReps;
+      if (typeof playChime === 'function') playChime(660, 'triangle', 0.12);
+      calculateHandballScore();
+    });
+  }
+}
+
+// Timer Logic for Handball Assessment Suite
+function updateHandballTimerDisplay() {
+  const display = document.getElementById('hbTimerDisplay');
+  if (!display) return;
+
+  const test = HANDBALL_SKILL_TESTS[hbState.activeTestId];
+  if (test.timerMode === 'countdown30') {
+    const seconds = Math.max(0, hbState.timerRemainingMs / 1000);
+    display.textContent = seconds.toFixed(2);
+
+    display.classList.remove('mid', 'urgent');
+    if (seconds <= 5.0) {
+      display.classList.add('urgent');
+    } else if (seconds <= 15.0) {
+      display.classList.add('mid');
+    }
+  } else {
+    // Stopwatch
+    const seconds = hbState.timerElapsedMs / 1000;
+    display.textContent = seconds.toFixed(2);
+    display.classList.remove('mid', 'urgent');
+  }
+}
+
+function startHandballTimer() {
+  if (hbState.timerState === 'running') return;
+  hbState.timerState = 'running';
+  hbState.timerLastTick = performance.now();
+
+  const startBtn = document.getElementById('hbStartTimerBtn');
+  const pauseBtn = document.getElementById('hbPauseTimerBtn');
+  if (startBtn) startBtn.style.display = 'none';
+  if (pauseBtn) {
+    pauseBtn.style.display = 'inline-flex';
+    pauseBtn.querySelector('span:last-child').textContent = 'توقف';
+  }
+
+  if (typeof playChime === 'function') playChime(880, 'sine', 0.25); // Start Whistle
+
+  clearInterval(hbState.timerInterval);
+  hbState.timerInterval = setInterval(() => {
+    const now = performance.now();
+    const delta = now - hbState.timerLastTick;
+    hbState.timerLastTick = now;
+
+    const test = HANDBALL_SKILL_TESTS[hbState.activeTestId];
+    if (test.timerMode === 'countdown30') {
+      const prev = hbState.timerRemainingMs;
+      hbState.timerRemainingMs = Math.max(0, hbState.timerRemainingMs - delta);
+
+      // Check 15-second milestone in Pass & Catch
+      if (test.id === 'pass_catch_3m_wall' && prev > 15000 && hbState.timerRemainingMs <= 15000) {
+        hbState.scoreAt15s = hbState.passReps;
+        if (typeof playChime === 'function') playChime(987, 'triangle', 0.3);
+        const ind = document.getElementById('hbPassCatch15sIndicator');
+        const at15Val = document.getElementById('hbPassAt15Val');
+        if (ind) ind.textContent = `✅ رکورد ۱۵ ثانیه: ${hbState.scoreAt15s} تکرار`;
+        if (at15Val) at15Val.textContent = hbState.scoreAt15s;
+      }
+
+      if (hbState.timerRemainingMs <= 0) {
+        finishHandballTest();
+      }
+    } else {
+      hbState.timerElapsedMs += delta;
+      const baseEl = document.getElementById('hbDribbleBaseTimeVal');
+      const finalEl = document.getElementById('hbDribbleFinalTimeVal');
+      if (baseEl) baseEl.textContent = `${(hbState.timerElapsedMs / 1000).toFixed(2)}s`;
+      if (finalEl) finalEl.textContent = `${((hbState.timerElapsedMs / 1000) + hbState.dribbleConePenalties).toFixed(2)}s`;
+    }
+
+    updateHandballTimerDisplay();
+  }, 20);
+}
+
+function pauseHandballTimer() {
+  if (hbState.timerState !== 'running') return;
+  hbState.timerState = 'paused';
+  clearInterval(hbState.timerInterval);
+
+  const startBtn = document.getElementById('hbStartTimerBtn');
+  const pauseBtn = document.getElementById('hbPauseTimerBtn');
+  if (startBtn) {
+    startBtn.style.display = 'inline-flex';
+    startBtn.querySelector('span:last-child').textContent = 'ادامه آزمون';
+  }
+  if (pauseBtn) pauseBtn.style.display = 'none';
+
+  if (typeof playChime === 'function') playChime(440, 'triangle', 0.15);
+}
+
+function resetHandballTimer() {
+  clearInterval(hbState.timerInterval);
+  hbState.timerState = 'idle';
+  hbState.timerRemainingMs = 30000;
+  hbState.timerElapsedMs = 0;
+  hbState.scoreAt15s = null;
+  hbState.ballDropped = false;
+  hbState.ballDropCount = 0;
+
+  hbState.gkTargetIndex = 0;
+  hbState.gkTouches = 0;
+  hbState.gkSequenceErrors = 0;
+
+  hbState.shootingGoals = 0;
+  hbState.shootingFootFaults = 0;
+  hbState.shootingObstacleHits = 0;
+
+  hbState.passReps = 0;
+  hbState.generalReps = 0;
+  hbState.dribbleConePenalties = 0;
+  hbState.dribbleFouls = 0;
+  hbState.lastResult = null;
+
+  const startBtn = document.getElementById('hbStartTimerBtn');
+  const pauseBtn = document.getElementById('hbPauseTimerBtn');
+  if (startBtn) {
+    startBtn.style.display = 'inline-flex';
+    startBtn.querySelector('span:last-child').textContent = 'شروع آزمون';
+  }
+  if (pauseBtn) pauseBtn.style.display = 'none';
+
+  updateHandballTimerDisplay();
+}
+
+function finishHandballTest() {
+  clearInterval(hbState.timerInterval);
+  hbState.timerState = 'finished';
+
+  const startBtn = document.getElementById('hbStartTimerBtn');
+  const pauseBtn = document.getElementById('hbPauseTimerBtn');
+  if (startBtn) {
+    startBtn.style.display = 'inline-flex';
+    startBtn.querySelector('span:last-child').textContent = 'اجرای مجدد';
+  }
+  if (pauseBtn) pauseBtn.style.display = 'none';
+
+  // Finish whistle sound
+  if (typeof playChime === 'function') {
+    playChime(1046, 'square', 0.4);
+    setTimeout(() => playChime(1046, 'square', 0.5), 180);
+  }
+  if (navigator.vibrate) {
+    try { navigator.vibrate([200, 100, 200]); } catch (e) {}
+  }
+
+  calculateHandballScore();
+}
+
+// Goalkeeper Grid Event Handler
+function handleGoalkeeperCornerTap(cornerKey) {
+  const test = HANDBALL_SKILL_TESTS[hbState.activeTestId];
+  if (!test || test.type !== 'goalkeeping_grid') return;
+
+  const btn = document.getElementById(`hbCorner_${cornerKey}`);
+  const expectedKey = test.sequence ? test.sequence[hbState.gkTargetIndex] : null;
+
+  if (expectedKey && cornerKey === expectedKey) {
+    // Correct Match
+    hbState.gkTouches++;
+    hbState.gkTargetIndex = (hbState.gkTargetIndex + 1) % test.sequence.length;
+
+    if (btn) {
+      btn.classList.add('touched-success');
+      setTimeout(() => btn.classList.remove('touched-success'), 300);
+    }
+    if (typeof playChime === 'function') playChime(784, 'sine', 0.12); // G5
+  } else if (expectedKey) {
+    // Sequence Error
+    hbState.gkSequenceErrors++;
+    if (btn) {
+      btn.classList.add('touched-error');
+      setTimeout(() => btn.classList.remove('touched-error'), 380);
+    }
+    if (typeof playChime === 'function') playChime(220, 'sawtooth', 0.22); // Error buzz
+  } else {
+    // Free touch
+    hbState.gkTouches++;
+    if (btn) {
+      btn.classList.add('touched-success');
+      setTimeout(() => btn.classList.remove('touched-success'), 300);
+    }
+    if (typeof playChime === 'function') playChime(700, 'sine', 0.12);
+  }
+
+  // Update DOM stats
+  const touchesVal = document.getElementById('hbGkTouchesVal');
+  const errorsVal = document.getElementById('hbGkErrorsVal');
+  const netVal = document.getElementById('hbGkNetVal');
+  const promptNotice = document.getElementById('hbGkPromptNotice');
+
+  const netScore = Math.max(0, hbState.gkTouches - hbState.gkSequenceErrors);
+  if (touchesVal) touchesVal.textContent = hbState.gkTouches;
+  if (errorsVal) errorsVal.textContent = hbState.gkSequenceErrors;
+  if (netVal) netVal.textContent = netScore;
+
+  // Highlight next expected corner
+  const nextExpected = test.sequence ? test.sequence[hbState.gkTargetIndex] : null;
+  document.querySelectorAll('.hbCornerBtn').forEach(b => b.classList.remove('target-next'));
+  if (nextExpected) {
+    const nextBtn = document.getElementById(`hbCorner_${nextExpected}`);
+    if (nextBtn) nextBtn.classList.add('target-next');
+    if (promptNotice) {
+      promptNotice.innerHTML = `هدف بعدی: <strong style="color: #38bdf8;">${getHandballCornerNameFa(nextExpected)}</strong>`;
+    }
+  }
+
+  calculateHandballScore();
+}
+
+// Shooting Event Handlers
+function handleShootingGoalTap() {
+  const test = HANDBALL_SKILL_TESTS[hbState.activeTestId];
+  const max = test.maxBalls || 25;
+  const attempts = hbState.shootingGoals + hbState.shootingFootFaults + hbState.shootingObstacleHits;
+  if (attempts >= max) return;
+
+  hbState.shootingGoals++;
+  updateShootingUI();
+  if (typeof playChime === 'function') playChime(880, 'triangle', 0.15); // A5
+  calculateHandballScore();
+}
+
+function handleShootingFootFaultTap() {
+  const test = HANDBALL_SKILL_TESTS[hbState.activeTestId];
+  const max = test.maxBalls || 25;
+  const attempts = hbState.shootingGoals + hbState.shootingFootFaults + hbState.shootingObstacleHits;
+  if (attempts >= max) return;
+
+  hbState.shootingFootFaults++;
+  updateShootingUI();
+  if (typeof playChime === 'function') playChime(330, 'sawtooth', 0.2);
+  calculateHandballScore();
+}
+
+function handleShootingObstacleTap() {
+  const test = HANDBALL_SKILL_TESTS[hbState.activeTestId];
+  const max = test.maxBalls || 25;
+  const attempts = hbState.shootingGoals + hbState.shootingFootFaults + hbState.shootingObstacleHits;
+  if (attempts >= max) return;
+
+  hbState.shootingObstacleHits++;
+  updateShootingUI();
+  if (typeof playChime === 'function') playChime(260, 'sawtooth', 0.22);
+  calculateHandballScore();
+}
+
+function updateShootingUI() {
+  const total = hbState.shootingGoals + hbState.shootingFootFaults + hbState.shootingObstacleHits;
+  const net = Math.max(0, hbState.shootingGoals - hbState.shootingFootFaults - hbState.shootingObstacleHits);
+
+  const attEl = document.getElementById('hbShootAttemptsVal');
+  const goalEl = document.getElementById('hbShootGoalsVal');
+  const faultEl = document.getElementById('hbShootFaultsVal');
+  const obsEl = document.getElementById('hbShootObstaclesVal');
+  const netEl = document.getElementById('hbShootNetVal');
+
+  if (attEl) attEl.textContent = `${total}/۲۵`;
+  if (goalEl) goalEl.textContent = hbState.shootingGoals;
+  if (faultEl) faultEl.textContent = hbState.shootingFootFaults;
+  if (obsEl) obsEl.textContent = hbState.shootingObstacleHits;
+  if (netEl) netEl.textContent = net;
+}
+
+// Pass & Catch Handlers
+function handlePassCatchTap() {
+  if (hbState.ballDropped) return; // cannot add passes while ball is dropped
+  hbState.passReps++;
+  const passEl = document.getElementById('hbPassTotalVal');
+  if (passEl) passEl.textContent = hbState.passReps;
+  if (typeof playChime === 'function') playChime(740, 'sine', 0.12);
+  calculateHandballScore();
+}
+
+function handleBallDroppedToggle() {
+  hbState.ballDropped = !hbState.ballDropped;
+  const btn = document.getElementById('hbBallDropToggleBtn');
+  const lbl = document.getElementById('hbBallDropBtnLabel');
+  const dropCountEl = document.getElementById('hbBallDropCountVal');
+
+  if (hbState.ballDropped) {
+    // Ball was dropped: immediately pause active timer!
+    hbState.ballDropCount++;
+    pauseHandballTimer();
+    if (btn) {
+      btn.style.background = 'linear-gradient(135deg, #16a34a, #22c55e)';
+      btn.style.borderColor = '#22c55e';
+    }
+    if (lbl) lbl.textContent = 'بازیابی و ادامه تایمر ▶️';
+    if (dropCountEl) dropCountEl.textContent = hbState.ballDropCount;
+    if (typeof playChime === 'function') playChime(250, 'sawtooth', 0.25);
+  } else {
+    // Ball retrieved: resume active timer!
+    startHandballTimer();
+    if (btn) {
+      btn.style.background = 'rgba(239, 68, 68, 0.2)';
+      btn.style.borderColor = '#ef4444';
+    }
+    if (lbl) lbl.textContent = 'افتادن توپ (توقف زمان) ⏸️';
+    if (typeof playChime === 'function') playChime(660, 'sine', 0.15);
+  }
+}
+
+// Dribble Cone & Foul Handlers
+function handleConePenaltyTap() {
+  hbState.dribbleConePenalties++;
+  const penEl = document.getElementById('hbDribblePenaltyVal');
+  const finalEl = document.getElementById('hbDribbleFinalTimeVal');
+  if (penEl) penEl.textContent = `+${hbState.dribbleConePenalties}s`;
+  if (finalEl) finalEl.textContent = `${((hbState.timerElapsedMs / 1000) + hbState.dribbleConePenalties).toFixed(2)}s`;
+  if (typeof playChime === 'function') playChime(300, 'sawtooth', 0.2);
+  calculateHandballScore();
+}
+
+function handleDribbleFoulTap() {
+  hbState.dribbleFouls++;
+  if (typeof playChime === 'function') playChime(220, 'sawtooth', 0.25);
+  calculateHandballScore();
+}
+
+// Scoring & Grading Calculation
+function calculateHandballScore() {
+  const test = HANDBALL_SKILL_TESTS[hbState.activeTestId];
+  if (!test) return;
+
+  let metricValue = 0;
+  let summaryText = '';
+  let detailText = '';
+
+  if (test.type === 'dribble') {
+    const rawSeconds = hbState.timerElapsedMs / 1000;
+    metricValue = parseFloat((rawSeconds + hbState.dribbleConePenalties).toFixed(2));
+    summaryText = `زمان رکورد دریبل: ${metricValue} ثانیه`;
+    detailText = `زمان خام: ${rawSeconds.toFixed(2)}s • خطای موانع: +${hbState.dribbleConePenalties} ثانیه • سایر خطاها: ${hbState.dribbleFouls}`;
+  } else if (test.type === 'pass_catch') {
+    metricValue = (hbState.scoreAt15s !== null) ? hbState.scoreAt15s : hbState.passReps;
+    summaryText = `رکورد رسمی ۱۵ ثانیه: ${metricValue} تکرار صحیح`;
+    detailText = `کل پاس‌های ۳۰ ثانیه: ${hbState.passReps} • توقف‌های افتادن توپ: ${hbState.ballDropCount} بار`;
+  } else if (test.type === 'shooting') {
+    metricValue = Math.max(0, hbState.shootingGoals - hbState.shootingFootFaults - hbState.shootingObstacleHits);
+    const totalAttempted = hbState.shootingGoals + hbState.shootingFootFaults + hbState.shootingObstacleHits;
+    const pct = totalAttempted > 0 ? Math.round((hbState.shootingGoals / totalAttempted) * 100) : 0;
+    summaryText = `امتیاز نهایی شوت: ${metricValue} گل صحیح`;
+    detailText = `گل‌های موفق: ${hbState.shootingGoals} • خطای پا: ${hbState.shootingFootFaults} • برخورد مانع: ${hbState.shootingObstacleHits} • دقت: ${pct}٪`;
+  } else if (test.type === 'goalkeeping_grid') {
+    metricValue = Math.max(0, hbState.gkTouches - hbState.gkSequenceErrors);
+    summaryText = `امتیاز لمس ۴ گوشه: ${metricValue} امتیاز خالص`;
+    detailText = `کل لمس‌های ثبت‌شده: ${hbState.gkTouches} • خطاهای توالی/الگو: ${hbState.gkSequenceErrors}`;
+  } else {
+    // Lateral defense
+    metricValue = hbState.generalReps;
+    summaryText = `تکرار دفاع کنار بدن: ${metricValue} تکرار`;
+    detailText = `تکنیک استاندارد دست پایین و پای عمود در ۳۰ ثانیه`;
+  }
+
+  // Calculate Standard Rating based on norms
+  let rating = { label: 'در حال ارزیابی', color: '#94a3b8' };
+  if (test.norms && test.norms.length > 0) {
+    if (test.lowerIsBetter) {
+      for (const n of test.norms) {
+        if (metricValue <= n.max) {
+          rating = n;
+          break;
+        }
+      }
+    } else {
+      for (const n of test.norms) {
+        if (metricValue >= n.min) {
+          rating = n;
+          break;
+        }
+      }
+    }
+  }
+
+  hbState.lastResult = {
+    testId: test.id,
+    testNumber: test.number,
+    testTitle: test.titleFa,
+    category: test.category,
+    categoryFa: test.categoryFa,
+    metricValue,
+    unit: test.unitFa,
+    summaryText,
+    detailText,
+    ratingLabel: rating.label,
+    ratingColor: rating.color,
+    timestamp: Date.now()
+  };
+
+  // Update UI Card
+  const scoreSumEl = document.getElementById('hbScoreSummaryText');
+  const scoreDetEl = document.getElementById('hbScoreDetailText');
+  const ratingBadge = document.getElementById('hbRatingBadge');
+
+  if (scoreSumEl) scoreSumEl.textContent = summaryText;
+  if (scoreDetEl) scoreDetEl.textContent = detailText;
+  if (ratingBadge) {
+    ratingBadge.textContent = rating.label;
+    ratingBadge.style.color = rating.color;
+    ratingBadge.style.borderColor = rating.color;
+    ratingBadge.style.background = `rgba(15, 23, 42, 0.8)`;
+  }
+}
+
+function saveHandballTestToAthlete() {
+  if (!hbState.lastResult || hbState.lastResult.metricValue <= 0) {
+    calculateHandballScore();
+  }
+  const res = hbState.lastResult;
+  if (!res) {
+    alert('لطفاً ابتدا آزمون را اجرا و داده‌های آن را ثبت نمایید.');
+    return;
+  }
+
+  if (typeof saveToHistory === 'function') {
+    saveToHistory('handball_skill', {
+      testId: res.testId,
+      testNumber: res.testNumber,
+      testTitle: res.testTitle,
+      category: res.category,
+      categoryFa: res.categoryFa,
+      metricValue: res.metricValue,
+      unit: res.unit,
+      summary: res.summaryText,
+      detail: res.detailText,
+      rating: res.ratingLabel,
+      scoreAt15s: hbState.scoreAt15s,
+      ballDropCount: hbState.ballDropCount,
+      footFaults: hbState.shootingFootFaults,
+      sequenceErrors: hbState.gkSequenceErrors
+    });
+  }
+
+  const saveBtn = document.getElementById('hbSaveToAthleteBtn');
+  if (saveBtn) {
+    saveBtn.innerHTML = '<span>✅</span><span>ثبت شد!</span>';
+    saveBtn.style.background = '#16a34a';
+    setTimeout(() => {
+      saveBtn.innerHTML = '<span>💾</span><span>ثبت در پرونده</span>';
+      saveBtn.style.background = '#0284c7';
+    }, 2000);
+  }
+
+  if (typeof playChime === 'function') playChime(1046, 'triangle', 0.2);
+}
+
+// Render Physical Scouting Tab
+function renderHandballScoutingTab() {
+  let active = null;
+  try {
+    active = typeof getActiveAthlete === 'function' ? getActiveAthlete() : null;
+  } catch (err) {}
+  if (!active) {
+    const list = typeof getAthletes === 'function' ? getAthletes() : [];
+    active = list && list.length > 0 ? list[0] : { name: 'ورزشکار ۱', code: '۱۰۱', heightCm: 178, weightKg: 72, sport: 'هندبال' };
+  }
+
+  const allHistory = typeof getHistory === 'function' ? getHistory() : [];
+  const athleteHistory = allHistory.filter(h => h && h.athleteId === (active ? active.id : ''));
+  const contentEl = document.getElementById('handballScoutingContent');
+  if (!contentEl) return;
 
   const analysis = generateHandballScouting(active, athleteHistory);
 
-  handballScoutingContent.innerHTML = `
+  // Collect skills records
+  const skillRecords = athleteHistory.filter(h => h.type === 'handball_skill');
+
+  contentEl.innerHTML = `
     <!-- Overall Compatibility Banner -->
     <div style="background: linear-gradient(135deg, rgba(2,132,199,0.15), rgba(22,163,74,0.15)); border: 1.5px solid #38bdf8; border-radius: 12px; padding: 14px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
       <div>
@@ -13466,7 +15104,7 @@ function openHandballScoutingModal() {
           ${active.name} <span style="font-size: 12px; color: #38bdf8; font-weight: normal;">(کد: ${active.code || '۱۰۱'} • قد: ${active.heightCm}cm)</span>
         </div>
         <div style="font-size: 12px; color: #cbd5e1; margin-top: 4px;">
-          تحلیل عملکرد بر اساس داده‌های بیومکانیک پرش، چابکی، سرعت، استقامت و ابعاد بدنی.
+          تحلیل عملکرد بر اساس آزمون‌های ۱۳گانه مهارت، بیومکانیک پرش، چابکی، سرعت، استقامت و ابعاد بدنی.
         </div>
       </div>
       <div style="text-align: center; background: rgba(15,23,42,0.85); border: 2px solid #22c55e; border-radius: 12px; padding: 8px 18px;">
@@ -13474,6 +15112,35 @@ function openHandballScoutingModal() {
         <div style="font-size: 26px; font-weight: 900; color: #4ade80; font-family: monospace;">${analysis.handballOverallScore}٪</div>
       </div>
     </div>
+
+    ${skillRecords.length > 0 ? `
+      <!-- Recorded Handball Skill Assessments Table -->
+      <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid #38bdf8; border-radius: 10px; padding: 12px; margin-bottom: 16px;">
+        <div style="font-size: 13px; font-weight: bold; color: #38bdf8; margin-bottom: 8px;">🤾‍♂️ سوابق آزمون‌های مهارت تخصصی ثبت‌شده در پرونده:</div>
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; font-size: 11.5px; text-align: right; border-collapse: collapse;">
+            <thead>
+              <tr style="border-bottom: 1px solid #475569; color: #94a3b8;">
+                <th style="padding: 6px;">آزمون</th>
+                <th style="padding: 6px;">رکورد</th>
+                <th style="padding: 6px;">رتبه استاندارد</th>
+                <th style="padding: 6px;">تاریخ</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${skillRecords.slice(0, 6).map(r => `
+                <tr style="border-bottom: 1px solid rgba(71,85,105,0.3);">
+                  <td style="padding: 6px; color: #f8fafc;">${r.data?.testTitle || 'آزمون مهارت'}</td>
+                  <td style="padding: 6px; color: #4ade80; font-weight: bold;">${r.data?.metricValue} ${r.data?.unit || ''}</td>
+                  <td style="padding: 6px; color: #38bdf8;">${r.data?.rating || '--'}</td>
+                  <td style="padding: 6px; color: #64748b; font-size: 10px;">${r.date || '--'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    ` : ''}
 
     <!-- Top Recommended Positions -->
     <div style="margin-bottom: 16px;">
@@ -13518,63 +15185,152 @@ function openHandballScoutingModal() {
         </ul>
       </div>
     </div>
-
-    <!-- Multi-Sport Comparison -->
-    <div style="background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 10px; padding: 12px; margin-bottom: 16px;">
-      <div style="font-size: 12px; font-weight: bold; color: #94a3b8; margin-bottom: 8px;">🌐 مقایسه پتانسیل در سایر رشته‌های ورزشی:</div>
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px;">
-        ${analysis.otherSports.map(s => `
-          <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(148, 163, 184, 0.15); border-radius: 8px; padding: 8px 10px; display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-size: 11px; color: #f8fafc;">${s.icon} ${s.name}</span>
-            <span style="font-size: 12px; font-weight: bold; color: #38bdf8;">${s.pct}٪</span>
-          </div>
-        `).join('')}
-      </div>
-    </div>
-
-    <!-- Suggested Microcycle Drills -->
-    <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid #38bdf8; border-radius: 10px; padding: 12px;">
-      <div style="font-size: 12px; font-weight: bold; color: #38bdf8; margin-bottom: 8px;">📋 برنامه تمرینی ریزدوره (Microcycle) تخصصی هندبال:</div>
-      <div style="font-size: 11px; color: #cbd5e1; line-height: 1.6;">
-        <div><strong>• جلسه ۱ (پلایومتریک و پرش شوت):</strong> پرش جعبه ۵۰cm + شوت ۳ گام از منطقه بک با حداکثر سرعت رهایی توپ (۴ ست × ۶ تکرار).</div>
-        <div><strong>• جلسه ۲ (چابکی دفاعی و شاتل):</strong> دوی شاتل مخروط ۵×۲ متر با تغییر مسیر جانبی دفاع ۶-۰ + استارت ۲۰ متر ضدحمله (۵ دور).</div>
-        <div><strong>• جلسه ۳ (کمربند شانه و Core):</strong> تمرینات کش مقاومتی برای روتاتور کاف، شنا سوئدی سرعتی و پلانک جانبی جهت استحکام بالاتنه در نبردهای فیزیکی.</div>
-      </div>
-    </div>
   `;
-
-  if (handballScoutingModal) handballScoutingModal.classList.add('visible');
 }
 
-if (openHandballScoutingFromProfileBtn) {
-  openHandballScoutingFromProfileBtn.addEventListener('click', () => {
-    if (athleteProfileModal) athleteProfileModal.classList.remove('visible');
-    openHandballScoutingModal();
-  });
+function openHandballScoutingModal(initialTab = 'skills') {
+  let active = null;
+  try {
+    active = typeof getActiveAthlete === 'function' ? getActiveAthlete() : null;
+  } catch (err) {}
+  if (!active) {
+    const list = typeof getAthletes === 'function' ? getAthletes() : [];
+    active = list && list.length > 0 ? list[0] : { name: 'ورزشکار ۱', code: '۱۰۱', heightCm: 178, weightKg: 72, sport: 'هندبال' };
+  }
+
+  // Update header athlete badge
+  const athBadge = document.getElementById('hbModalAthleteBadge');
+  if (athBadge) {
+    athBadge.textContent = `ورزشکار: ${active.name} (کد: ${active.code || '۱۰۱'} • قد: ${active.heightCm || 178}cm • رشته: ${active.sport || 'هندبال'})`;
+  }
+
+  if (athleteProfileModal) {
+    athleteProfileModal.style.display = 'none';
+    athleteProfileModal.classList.remove('visible');
+  }
+
+  switchHandballModalTab(initialTab);
+
+  if (handballScoutingModal) {
+    handballScoutingModal.style.display = 'block';
+    handballScoutingModal.classList.add('visible');
+    handballScoutingModal.scrollTop = 0;
+  }
 }
 
-if (drawerItemHandball) {
-  drawerItemHandball.addEventListener('click', () => {
-    closeDrawer();
-    openHandballScoutingModal();
-  });
+function closeHandballScoutingModal() {
+  if (handballScoutingModal) {
+    handballScoutingModal.style.display = 'none';
+    handballScoutingModal.classList.remove('visible');
+  }
+  resetHandballTimer();
 }
+window.openHandballScoutingModal = openHandballScoutingModal;
+window.closeHandballScoutingModal = closeHandballScoutingModal;
 
-if (closeHandballModalXBtn) {
-  closeHandballModalXBtn.addEventListener('click', () => {
-    if (handballScoutingModal) handballScoutingModal.classList.remove('visible');
+function initHandballSkillsSuite() {
+  // Tabs switching
+  document.getElementById('tabHbSkillsBtn')?.addEventListener('click', () => switchHandballModalTab('skills'));
+  document.getElementById('tabHbScoutingBtn')?.addEventListener('click', () => switchHandballModalTab('scouting'));
+
+  // Category filter pills
+  document.querySelectorAll('.hbCategoryPill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      document.querySelectorAll('.hbCategoryPill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      const cat = pill.getAttribute('data-cat');
+      
+      const testSelect = document.getElementById('hbTestSelect');
+      if (testSelect) {
+        let firstMatch = null;
+        for (let i = 0; i < testSelect.options.length; i++) {
+          const opt = testSelect.options[i];
+          const test = HANDBALL_SKILL_TESTS[opt.value];
+          if (cat === 'all' || (test && test.category === cat)) {
+            opt.hidden = false;
+            if (!firstMatch) firstMatch = opt.value;
+          } else {
+            opt.hidden = true;
+          }
+        }
+        if (firstMatch) {
+          testSelect.value = firstMatch;
+          selectHandballTest(firstMatch);
+        }
+      }
+    });
   });
+
+  // Test selector dropdown
+  document.getElementById('hbTestSelect')?.addEventListener('change', (e) => {
+    selectHandballTest(e.target.value);
+  });
+
+  // Timer controls
+  document.getElementById('hbStartTimerBtn')?.addEventListener('click', startHandballTimer);
+  document.getElementById('hbPauseTimerBtn')?.addEventListener('click', pauseHandballTimer);
+  document.getElementById('hbResetTimerBtn')?.addEventListener('click', resetHandballTimer);
+  document.getElementById('hbFinishTestBtn')?.addEventListener('click', finishHandballTest);
+
+  // Save to athlete record
+  document.getElementById('hbSaveToAthleteBtn')?.addEventListener('click', saveHandballTestToAthlete);
+
+  // Close buttons
+  document.getElementById('closeHandballModalXBtn')?.addEventListener('click', closeHandballScoutingModal);
+  document.getElementById('closeHandballModalBtn')?.addEventListener('click', closeHandballScoutingModal);
+
+  // Profile modal trigger
+  document.getElementById('openHandballScoutingFromProfileBtn')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openHandballScoutingModal('skills');
+  });
+
+  // Drawer menu trigger
+  document.getElementById('drawerItemHandball')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (typeof closeDrawer === 'function') closeDrawer();
+    openHandballScoutingModal('skills');
+  });
+
+  // Sports Science Suite trigger
+  document.getElementById('openHandballFromSuiteBtn')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openHandballScoutingModal('skills');
+  });
+
+  // Back to Profile
+  document.getElementById('backToAthleteProfileBtn')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    closeHandballScoutingModal();
+    if (athleteProfileModal) {
+      athleteProfileModal.style.display = 'block';
+      athleteProfileModal.classList.add('visible');
+      if (typeof renderAthleteModal === 'function') renderAthleteModal();
+    }
+  });
+
+  // Initialize first test
+  selectHandballTest('dribble_20m_sprint');
+  console.log('🤾‍♂️ Handball Skill Assessment Suite & Referee Controller initialized (13 Tests)');
 }
 
 if (closeHandballModalBtn) {
-  closeHandballModalBtn.addEventListener('click', () => {
-    if (handballScoutingModal) handballScoutingModal.classList.remove('visible');
+  closeHandballModalBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    closeHandballScoutingModal();
   });
 }
 
 if (handballExportPdfBtn) {
-  handballExportPdfBtn.addEventListener('click', () => {
-    if (handballScoutingModal) handballScoutingModal.classList.remove('visible');
+  handballExportPdfBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    closeHandballScoutingModal();
     if (exportPdfBtn) exportPdfBtn.click();
   });
 }
@@ -13689,7 +15445,11 @@ function switchMode(newMode) {
     flexibility: drawerItemFlex,
     anthro: drawerItemAnthro,
     wingspan: drawerItemWingspan,
-    distance: drawerItemDistance
+    distance: drawerItemDistance,
+    y_balance: document.getElementById('drawerItemYBalance') || document.getElementById('modeYBalanceBtn'),
+    pro_agility: document.getElementById('drawerItemProAgility') || document.getElementById('modeProAgilityBtn'),
+    arm_cocking: document.getElementById('drawerItemArmCocking') || document.getElementById('modeArmCockingBtn'),
+    posture: document.getElementById('drawerItemPosture') || document.getElementById('modePostureBtn')
   };
   Object.keys(drawerItems).forEach(k => {
     if (drawerItems[k]) drawerItems[k].classList.toggle('active', mode === k);
@@ -13707,7 +15467,11 @@ function switchMode(newMode) {
     flexibility: { icon: '🧘‍♀️', label: 'انعطاف‌پذیری' },
     anthro: { icon: '📐', label: 'آنتروپومتری' },
     wingspan: { icon: '📏', label: 'طول دو دست' },
-    distance: { icon: '📐', label: 'فاصله موانع' }
+    distance: { icon: '📐', label: 'فاصله موانع' },
+    y_balance: { icon: '🤸‍♂️', label: 'تعادل پویا Y' },
+    pro_agility: { icon: '⚡', label: 'شاتل ۵-۱۰-۵' },
+    arm_cocking: { icon: '🤾‍♂️', label: 'زاویه پرتاب دست' },
+    posture: { icon: '🧍‍♂️', label: 'راستای قامتی' }
   };
   const curMeta = modeMeta[mode] || { icon: '🏃', label: 'حالت آزمون' };
   if (currentModeIcon) currentModeIcon.textContent = curMeta.icon;
@@ -13735,6 +15499,14 @@ function switchMode(newMode) {
     flexibilityEnterMode();
   } else if (mode === 'anthro') {
     anthroEnterMode();
+  } else if (mode === 'y_balance') {
+    if (typeof yBalanceEnterMode === 'function') yBalanceEnterMode();
+  } else if (mode === 'pro_agility') {
+    if (typeof proAgilityEnterMode === 'function') proAgilityEnterMode();
+  } else if (mode === 'arm_cocking') {
+    if (typeof armCockingEnterMode === 'function') armCockingEnterMode();
+  } else if (mode === 'posture') {
+    if (typeof postureEnterMode === 'function') postureEnterMode();
   }
 
   if (typeof updateLaptopStatsPanel === 'function') {
@@ -13753,6 +15525,25 @@ if (modeWingspanBtn) modeWingspanBtn.addEventListener('click', () => switchMode(
 if (modeDistanceBtn) modeDistanceBtn.addEventListener('click', () => switchMode('distance'));
 if (modeFlexBtn) modeFlexBtn.addEventListener('click', () => switchMode('flexibility'));
 if (modeAnthroBtn) modeAnthroBtn.addEventListener('click', () => switchMode('anthro'));
+
+// Roadmap items 4-7: New mode buttons & drawer items
+const modeYBalanceBtn = document.getElementById('modeYBalanceBtn');
+if (modeYBalanceBtn) modeYBalanceBtn.addEventListener('click', () => switchMode('y_balance'));
+const modeProAgilityBtn = document.getElementById('modeProAgilityBtn');
+if (modeProAgilityBtn) modeProAgilityBtn.addEventListener('click', () => switchMode('pro_agility'));
+const modeArmCockingBtn = document.getElementById('modeArmCockingBtn');
+if (modeArmCockingBtn) modeArmCockingBtn.addEventListener('click', () => switchMode('arm_cocking'));
+const modePostureBtn = document.getElementById('modePostureBtn');
+if (modePostureBtn) modePostureBtn.addEventListener('click', () => switchMode('posture'));
+
+const drawerItemYBalance = document.getElementById('drawerItemYBalance');
+if (drawerItemYBalance) drawerItemYBalance.addEventListener('click', () => { closeDrawer(); switchMode('y_balance'); });
+const drawerItemProAgility = document.getElementById('drawerItemProAgility');
+if (drawerItemProAgility) drawerItemProAgility.addEventListener('click', () => { closeDrawer(); switchMode('pro_agility'); });
+const drawerItemArmCocking = document.getElementById('drawerItemArmCocking');
+if (drawerItemArmCocking) drawerItemArmCocking.addEventListener('click', () => { closeDrawer(); switchMode('arm_cocking'); });
+const drawerItemPosture = document.getElementById('drawerItemPosture');
+if (drawerItemPosture) drawerItemPosture.addEventListener('click', () => { closeDrawer(); switchMode('posture'); });
 
 // ---- Convert a tap's client (viewport) coords to canvas pixel space,
 // accurately accounting for object-fit: contain (wide uncropped) or cover (fullscreen). ----
@@ -14415,10 +16206,103 @@ class PointKalmanFilter2D {
   }
 }
 
-// Global registry of keypoint Kalman filters
+// Global registry of keypoint Kalman & One-Euro filters
 const poseKalmanFilters = {};
+const oneEuroFilters = {};
 const runnerXKalmanFilter = new KalmanFilter1D(0.012, 0.04);
 let lastPoseDetectionTime = 0;
+let oneEuroFilterEnabled = true;
+let oneEuroBetaValue = 0.007;
+
+/**
+ * 1€ (One-Euro) Filter implementation for anatomical keypoints jitter reduction.
+ * Casiez, Roussel, Vogel (CHI 2012)
+ * Eliminates high-frequency camera sensor noise during low velocities while
+ * dynamically reducing lag to 0 during high-speed athletic movements.
+ */
+class LowPassFilter {
+  constructor(alpha = 0.5, initVal = 0) {
+    this.s = initVal;
+    this.alpha = Math.max(0, Math.min(1, alpha));
+    this.initialized = false;
+  }
+  setAlpha(alpha) {
+    this.alpha = Math.max(0, Math.min(1, alpha));
+  }
+  filter(val) {
+    if (!this.initialized) {
+      this.s = val;
+      this.initialized = true;
+      return val;
+    }
+    this.s = this.alpha * val + (1.0 - this.alpha) * this.s;
+    return this.s;
+  }
+  last() {
+    return this.s;
+  }
+  reset() {
+    this.initialized = false;
+  }
+}
+
+class OneEuroFilter1D {
+  constructor(minCutoff = 1.0, beta = 0.007, dCutoff = 1.0) {
+    this.minCutoff = minCutoff;
+    this.beta = beta;
+    this.dCutoff = dCutoff;
+    this.xFilter = new LowPassFilter();
+    this.dxFilter = new LowPassFilter();
+    this.lastTime = null;
+  }
+  alpha(rate, cutoff) {
+    const tau = 1.0 / (2 * Math.PI * cutoff);
+    const te = 1.0 / rate;
+    return 1.0 / (1.0 + tau / te);
+  }
+  filter(val, timestamp = performance.now()) {
+    if (this.lastTime === null) {
+      this.lastTime = timestamp;
+      return this.xFilter.filter(val);
+    }
+    const dt = Math.max(0.001, (timestamp - this.lastTime) / 1000.0);
+    this.lastTime = timestamp;
+    const rate = 1.0 / dt;
+    const prevVal = this.xFilter.last();
+    const dx = (val - prevVal) * rate;
+    this.dxFilter.setAlpha(this.alpha(rate, this.dCutoff));
+    const edx = this.dxFilter.filter(dx);
+    const cutoff = this.minCutoff + this.beta * Math.abs(edx);
+    this.xFilter.setAlpha(this.alpha(rate, cutoff));
+    return this.xFilter.filter(val);
+  }
+  reset() {
+    this.lastTime = null;
+    this.xFilter.reset();
+    this.dxFilter.reset();
+  }
+}
+
+class OneEuroFilter2D {
+  constructor(minCutoff = 1.0, beta = 0.007, dCutoff = 1.0) {
+    this.fx = new OneEuroFilter1D(minCutoff, beta, dCutoff);
+    this.fy = new OneEuroFilter1D(minCutoff, beta, dCutoff);
+  }
+  setBeta(b) {
+    this.fx.beta = b;
+    this.fy.beta = b;
+  }
+  filter(x, y, timestamp = performance.now()) {
+    return {
+      x: this.fx.filter(x, timestamp),
+      y: this.fy.filter(y, timestamp)
+    };
+  }
+  reset() {
+    this.fx.reset();
+    this.fy.reset();
+  }
+}
 
 function applyPoseKalmanFilter(keypoints) {
   if (!keypoints || !keypoints.length) return;
@@ -14431,6 +16315,17 @@ function applyPoseKalmanFilter(keypoints) {
 
   for (const pt of keypoints) {
     if (!pt || !pt.name) continue;
+
+    // Apply One-Euro filter on joints (especially knees, shoulders, ankles, hips, wrists)
+    if (oneEuroFilterEnabled) {
+      if (!oneEuroFilters[pt.name]) {
+        oneEuroFilters[pt.name] = new OneEuroFilter2D(1.0, oneEuroBetaValue, 1.0);
+      }
+      const oeFiltered = oneEuroFilters[pt.name].filter(pt.x, pt.y, now);
+      pt.x = oeFiltered.x;
+      pt.y = oeFiltered.y;
+    }
+
     if (!poseKalmanFilters[pt.name]) {
       poseKalmanFilters[pt.name] = new PointKalmanFilter2D(pt.name);
     }
@@ -14443,6 +16338,9 @@ function applyPoseKalmanFilter(keypoints) {
 function resetPoseKalmanFilters() {
   for (const key in poseKalmanFilters) {
     poseKalmanFilters[key].reset();
+  }
+  for (const key in oneEuroFilters) {
+    oneEuroFilters[key].reset();
   }
   runnerXKalmanFilter.reset();
 }
@@ -14553,6 +16451,10 @@ function drawPose(poses) {
     if (mode === 'distance') distanceDrawOverlay();
     if (mode === 'flexibility') flexibilityDrawOverlay();
     if (mode === 'anthro') anthroDrawOverlay();
+    if (mode === 'y_balance' && typeof yBalanceDrawOverlay === 'function') yBalanceDrawOverlay();
+    if (mode === 'pro_agility' && typeof proAgilityDrawOverlay === 'function') proAgilityDrawOverlay();
+    if (mode === 'arm_cocking' && typeof armCockingDrawOverlay === 'function') armCockingDrawOverlay();
+    if (mode === 'posture' && typeof postureDrawOverlay === 'function') postureDrawOverlay();
     if (isCalibratingHeight) heightCalibDrawOverlay();
     if (isObjectCalibrating) objectCalibDrawOverlay();
     if (typeof isSquatCalibrating !== 'undefined' && isSquatCalibrating) squatCalibDrawOverlay();
@@ -16251,9 +18153,26 @@ if (openCameraSettingsBtn) {
 }
 
 // ================== VERSION CHECK ==================
-const APP_VERSION = '1.15.0';
+const APP_VERSION = '1.23.0';
 console.log(`%c🚀 Motion Tracker v${APP_VERSION}`, 'color: #22c55e; font-size: 16px; font-weight: bold');
-console.log('%c✨ Urgent Persisting AI Form Warning Pulse & Zero-Lag Biometric Tracking Enabled', 'color: #38bdf8; font-size: 12px');
+console.log('%c✨ Handball Skill Assessments (13 Tests), Live Refereeing, HUD Transitions & Biomechanics Activated', 'color: #38bdf8; font-size: 12px');
+
+// Synchronize version tags across DOM elements
+function syncAppVersionDisplay() {
+  const appVerEl = document.getElementById('appVersionDisplay');
+  if (appVerEl) {
+    appVerEl.textContent = `نسخه ${APP_VERSION} (مجموعه جامع ۱۳ آزمون مهارت هندبال، داوری زنده، HUD تعاملی و علوم ورزشی)`;
+  }
+  const drawerFooterVer = document.getElementById('drawerVersionFooter');
+  if (drawerFooterVer) {
+    drawerFooterVer.textContent = `سامانه حرکت‌سنج هوشمند • نسخه ${APP_VERSION}`;
+  }
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', syncAppVersionDisplay);
+} else {
+  syncAppVersionDisplay();
+}
 
 // Global cache purge and hard reload utility
 window.forceAppReloadAndClearCache = async function() {
@@ -18396,4 +20315,2515 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initDesktopStudioArchitecture);
 } else {
   initDesktopStudioArchitecture();
+}
+
+// =========================================================================
+// 🚀 11-POINT PERFORMANCE & SCOUTING ROADMAP SYSTEM (v1.19.0)
+// =========================================================================
+
+// --- 1 & 2. ONE-EURO FILTER & WEB WORKER INTEGRATION ---
+let webWorkerEnabled = true;
+let biomechanicsWorker = null;
+let latestWorkerBiometrics = {
+  angles: null,
+  rsi: null,
+  posture: null
+};
+
+function initBiomechanicsWorker() {
+  try {
+    if (typeof Worker !== 'undefined') {
+      biomechanicsWorker = new Worker('/biomechanics-worker.js');
+      biomechanicsWorker.onmessage = function (e) {
+        const { type, result } = e.data || {};
+        if (type === 'ANGLES_CALCULATED') {
+          latestWorkerBiometrics.angles = result;
+        } else if (type === 'RSI_CALCULATED') {
+          latestWorkerBiometrics.rsi = result;
+        } else if (type === 'POSTURE_CALCULATED') {
+          latestWorkerBiometrics.posture = result;
+        }
+      };
+      biomechanicsWorker.onerror = function (err) {
+        console.warn('Biomechanics worker encountered error, running on main thread:', err);
+      };
+      console.log('✅ Biomechanics Web Worker initialized successfully');
+    }
+  } catch (err) {
+    console.warn('Web Worker initialization skipped:', err);
+  }
+
+  // Web Worker setting checkbox
+  const settingWebWorker = document.getElementById('settingWebWorker');
+  if (settingWebWorker) {
+    settingWebWorker.addEventListener('change', (e) => {
+      webWorkerEnabled = e.target.checked;
+    });
+  }
+
+  // One-Euro Filter settings
+  const settingOneEuroFilter = document.getElementById('settingOneEuroFilter');
+  if (settingOneEuroFilter) {
+    settingOneEuroFilter.addEventListener('change', (e) => {
+      oneEuroFilterEnabled = e.target.checked;
+    });
+  }
+  const settingOneEuroBeta = document.getElementById('settingOneEuroBeta');
+  const settingOneEuroBetaVal = document.getElementById('settingOneEuroBetaVal');
+  if (settingOneEuroBeta) {
+    settingOneEuroBeta.addEventListener('input', (e) => {
+      oneEuroBetaValue = parseFloat(e.target.value) || 0.007;
+      if (settingOneEuroBetaVal) {
+        settingOneEuroBetaVal.textContent = oneEuroBetaValue.toFixed(4);
+      }
+      for (const k in oneEuroFilters) {
+        oneEuroFilters[k].setBeta(oneEuroBetaValue);
+      }
+    });
+  }
+}
+
+function dispatchToBiomechanicsWorker(keypoints) {
+  if (!webWorkerEnabled || !biomechanicsWorker || !keypoints || !keypoints.length) return;
+  try {
+    const simplified = {};
+    for (const kp of keypoints) {
+      if (kp && kp.name) simplified[kp.name] = { x: kp.x, y: kp.y, score: kp.score || 0.5 };
+    }
+    biomechanicsWorker.postMessage({
+      type: 'CALC_ANGLES',
+      payload: { keypoints: simplified, scale: (typeof pxToCmScale !== 'undefined' ? pxToCmScale : 0.25) }
+    });
+  } catch (e) {}
+}
+
+// --- 3. HARDWARE GYROSCOPE & CAMERA PITCH AUTO-CORRECTION ---
+let currentCameraPitchAngle = 0.0;
+let cameraPitchCorrectionEnabled = true;
+
+function initDeviceInclinometer() {
+  if (typeof window !== 'undefined' && 'DeviceOrientationEvent' in window) {
+    window.addEventListener('deviceorientation', (event) => {
+      if (event.beta != null) {
+        const isLandscape = window.innerWidth > window.innerHeight;
+        let rawPitch = isLandscape ? (event.gamma || 0) : (event.beta || 0);
+        let pitch = rawPitch;
+        if (Math.abs(pitch) > 90) {
+          pitch = pitch > 0 ? (180 - pitch) : (-180 - pitch);
+        }
+        currentCameraPitchAngle = pitch;
+        updateInclinometerBadge();
+      }
+    }, { passive: true });
+  }
+
+  const settingCameraPitch = document.getElementById('settingCameraPitch');
+  if (settingCameraPitch) {
+    settingCameraPitch.addEventListener('change', (e) => {
+      cameraPitchCorrectionEnabled = e.target.checked;
+      updateInclinometerBadge();
+    });
+  }
+}
+
+function updateInclinometerBadge() {
+  const badge = document.getElementById('inclinometerBadge');
+  const angleVal = document.getElementById('inclinometerAngleVal');
+  const settingDisplay = document.getElementById('settingPitchAngleDisplay');
+  const absAngle = Math.abs(currentCameraPitchAngle);
+
+  if (angleVal) angleVal.textContent = `${absAngle.toFixed(1)}°`;
+  if (badge) {
+    if (absAngle < 3.0) {
+      badge.className = 'inclinometer-badge level';
+      badge.title = 'تراز دوربین ایده‌آل است (کمتر از ۳ درجه شیب)';
+    } else {
+      badge.className = 'inclinometer-badge tilt';
+      badge.title = `زاویه شیب ${absAngle.toFixed(1)}° - تصحیح خودکار پرسپکتیو فعال است`;
+    }
+  }
+  if (settingDisplay) {
+    settingDisplay.textContent = `${absAngle.toFixed(1)}° (${absAngle < 3.0 ? 'تراز ایده‌آل' : 'تصحیح زاویه فعال'})`;
+    settingDisplay.style.color = absAngle < 3.0 ? '#4ade80' : '#fbbf24';
+  }
+}
+
+function getPitchCorrectionFactor() {
+  if (!cameraPitchCorrectionEnabled) return 1.0;
+  const absAngle = Math.abs(currentCameraPitchAngle);
+  if (absAngle < 3.0) return 1.0;
+  const rad = (absAngle * Math.PI) / 180.0;
+  const cos = Math.cos(rad);
+  return cos > 0.4 ? 1.0 / cos : 1.0;
+}
+
+// --- 10. LIVE AUDIO AI COACH & METRONOME ENGINE ---
+class LiveAudioCoachEngine {
+  constructor() {
+    this.audioCtx = null;
+    this.speechSynth = typeof window !== 'undefined' ? window.speechSynthesis : null;
+    this.metronomeInterval = null;
+    this.bpm = 60;
+    this.isMetronomeActive = false;
+    this.isVoiceEnabled = true;
+    this.lastVoiceTime = 0;
+  }
+
+  ensureContext() {
+    if (!this.audioCtx) {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (AudioContextClass) this.audioCtx = new AudioContextClass();
+    }
+    if (this.audioCtx && this.audioCtx.state === 'suspended') {
+      this.audioCtx.resume();
+    }
+  }
+
+  playClick(freq = 880, duration = 0.05, type = 'sine') {
+    try {
+      this.ensureContext();
+      if (!this.audioCtx) return;
+      const osc = this.audioCtx.createOscillator();
+      const gain = this.audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, this.audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.25, this.audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(this.audioCtx.destination);
+      osc.start();
+      osc.stop(this.audioCtx.currentTime + duration);
+    } catch (e) {}
+  }
+
+  startMetronome(bpm = 60) {
+    this.stopMetronome();
+    this.bpm = Math.max(30, Math.min(220, bpm));
+    this.isMetronomeActive = true;
+    const intervalMs = (60 / this.bpm) * 1000;
+    let beat = 0;
+    this.metronomeInterval = setInterval(() => {
+      beat = (beat + 1) % 4;
+      if (beat === 1) {
+        this.playClick(1200, 0.06, 'triangle'); // Downbeat accent
+      } else {
+        this.playClick(800, 0.04, 'sine');
+      }
+    }, intervalMs);
+    this.updateUi();
+  }
+
+  stopMetronome() {
+    if (this.metronomeInterval) {
+      clearInterval(this.metronomeInterval);
+      this.metronomeInterval = null;
+    }
+    this.isMetronomeActive = false;
+    this.updateUi();
+  }
+
+  toggleMetronome(bpm) {
+    if (this.isMetronomeActive) {
+      this.stopMetronome();
+    } else {
+      this.startMetronome(bpm || this.bpm);
+    }
+  }
+
+  updateUi() {
+    const btn = document.getElementById('liveAudioCoachBtn');
+    if (btn) {
+      btn.classList.toggle('active', this.isMetronomeActive);
+      btn.style.color = this.isMetronomeActive ? '#38bdf8' : '';
+      btn.style.borderColor = this.isMetronomeActive ? '#38bdf8' : '';
+    }
+  }
+
+  speakCue(phrase) {
+    if (!this.isVoiceEnabled || !this.speechSynth) return;
+    const now = performance.now();
+    if (now - this.lastVoiceTime < 1900) return; // Prevent overlapping speech
+    this.lastVoiceTime = now;
+    try {
+      const utterance = new SpeechSynthesisUtterance(phrase);
+      utterance.lang = 'fa-IR';
+      utterance.rate = 1.05;
+      utterance.pitch = 1.0;
+      this.speechSynth.speak(utterance);
+    } catch (e) {}
+  }
+}
+
+const liveAudioCoach = new LiveAudioCoachEngine();
+
+function initLiveAudioCoachUI() {
+  const btn = document.getElementById('liveAudioCoachBtn');
+  if (btn) {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      liveAudioCoach.toggleMetronome();
+    });
+  }
+
+  const drawerItemAudioCoach = document.getElementById('drawerItemAudioCoach');
+  if (drawerItemAudioCoach) {
+    drawerItemAudioCoach.addEventListener('click', () => {
+      closeDrawer();
+      liveAudioCoach.toggleMetronome();
+    });
+  }
+
+  const settingLiveAudioCoach = document.getElementById('settingLiveAudioCoach');
+  if (settingLiveAudioCoach) {
+    settingLiveAudioCoach.addEventListener('change', (e) => {
+      liveAudioCoach.isVoiceEnabled = e.target.checked;
+    });
+  }
+
+  const settingMetronomeBpm = document.getElementById('settingMetronomeBpm');
+  const settingMetronomeBpmVal = document.getElementById('settingMetronomeBpmVal');
+  if (settingMetronomeBpm) {
+    settingMetronomeBpm.addEventListener('input', (e) => {
+      const bpm = parseInt(e.target.value, 10) || 60;
+      liveAudioCoach.bpm = bpm;
+      if (settingMetronomeBpmVal) settingMetronomeBpmVal.textContent = bpm;
+      if (liveAudioCoach.isMetronomeActive) {
+        liveAudioCoach.startMetronome(bpm);
+      }
+    });
+  }
+
+  // Keyboard shortcut 'm' for metronome toggle
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'm' || e.key === 'M') {
+      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+      liveAudioCoach.toggleMetronome();
+    }
+  });
+}
+
+// --- 4. Y-BALANCE DYNAMIC TEST (ACL RISK ASSESSMENT) ---
+let yBalanceStanceLeg = 'right'; // 'right' | 'left'
+let yBalanceActiveDir = 'ant'; // 'ant' | 'pm' | 'pl'
+let yBalanceReaches = {
+  right: { ant: 0, pm: 0, pl: 0 },
+  left: { ant: 0, pm: 0, pl: 0 }
+};
+let yBalanceCurrentReachLive = 0;
+
+function yBalanceEnterMode() {
+  hideAllPanels();
+  const panel = document.getElementById('yBalancePanel');
+  if (panel) panel.classList.add('visible');
+  yBalanceUpdateLabels();
+}
+
+function yBalanceUpdateLabels() {
+  const dirLabel = document.getElementById('yBalanceActiveDirectionLabel');
+  const dirMap = {
+    ant: 'جهت قدامی (Anterior Reach)',
+    pm: 'جهت خلفی-داخلی (Posteromedial)',
+    pl: 'جهت خلفی-خارجی (Posterolateral)'
+  };
+  if (dirLabel) dirLabel.textContent = dirMap[yBalanceActiveDir] || dirMap.ant;
+
+  const antEl = document.getElementById('yBalanceAntVal');
+  const pmEl = document.getElementById('yBalancePmVal');
+  const plEl = document.getElementById('yBalancePlVal');
+  const cur = yBalanceReaches[yBalanceStanceLeg];
+  if (antEl) antEl.textContent = cur.ant > 0 ? `${cur.ant.toFixed(1)} cm` : '--';
+  if (pmEl) pmEl.textContent = cur.pm > 0 ? `${cur.pm.toFixed(1)} cm` : '--';
+  if (plEl) plEl.textContent = cur.pl > 0 ? `${cur.pl.toFixed(1)} cm` : '--';
+}
+
+function yBalanceDrawOverlay() {
+  if (!lastSeenKeypoints || mode !== 'y_balance') return;
+  const isRight = yBalanceStanceLeg === 'right';
+  const stanceAnkle = isRight ? lastSeenKeypoints['right_ankle'] : lastSeenKeypoints['left_ankle'];
+  const reachAnkle = isRight ? lastSeenKeypoints['left_ankle'] : lastSeenKeypoints['right_ankle'];
+
+  if (!stanceAnkle || !reachAnkle || (stanceAnkle.score || 0) < 0.2 || (reachAnkle.score || 0) < 0.2) return;
+
+  const dx = reachAnkle.x - stanceAnkle.x;
+  const dy = reachAnkle.y - stanceAnkle.y;
+  const distPx = Math.hypot(dx, dy);
+  const scale = (typeof pxToCmScale !== 'undefined' && pxToCmScale > 0) ? pxToCmScale : 0.22;
+  const reachCm = Math.round(distPx * scale * getPitchCorrectionFactor() * 10) / 10;
+  yBalanceCurrentReachLive = reachCm;
+
+  const curReachValEl = document.getElementById('yBalanceCurrentReachVal');
+  if (curReachValEl) curReachValEl.textContent = reachCm.toFixed(1);
+
+  // Draw on main canvas: Y-Axis guides
+  ctx.save();
+  ctx.translate(stanceAnkle.x, stanceAnkle.y);
+
+  // Guide lines: Ant (up), PM (down-back), PL (down-out)
+  const lineLen = 140;
+  const directions = [
+    { angle: -Math.PI / 2, label: 'قدامی (ANT)', color: '#38bdf8', active: yBalanceActiveDir === 'ant' },
+    { angle: Math.PI / 4, label: 'خلفی-داخلی (PM)', color: '#4ade80', active: yBalanceActiveDir === 'pm' },
+    { angle: (3 * Math.PI) / 4, label: 'خلفی-خارجی (PL)', color: '#c084fc', active: yBalanceActiveDir === 'pl' }
+  ];
+
+  directions.forEach(d => {
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(Math.cos(d.angle) * lineLen, Math.sin(d.angle) * lineLen);
+    ctx.strokeStyle = d.active ? d.color : 'rgba(148, 163, 184, 0.35)';
+    ctx.lineWidth = d.active ? 4 : 2;
+    if (d.active) {
+      ctx.shadowColor = d.color;
+      ctx.shadowBlur = 10;
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Arrow tip
+    const tx = Math.cos(d.angle) * lineLen;
+    const ty = Math.sin(d.angle) * lineLen;
+    ctx.beginPath();
+    ctx.arc(tx, ty, d.active ? 7 : 4, 0, Math.PI * 2);
+    ctx.fillStyle = d.color;
+    ctx.fill();
+  });
+
+  ctx.restore();
+
+  // Highlight reaching foot
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(reachAnkle.x, reachAnkle.y, 14, 0, Math.PI * 2);
+  ctx.strokeStyle = '#facc15';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(250, 204, 21, 0.25)';
+  ctx.fill();
+
+  // Draw distance line from stance to reach foot
+  ctx.beginPath();
+  ctx.moveTo(stanceAnkle.x, stanceAnkle.y);
+  ctx.lineTo(reachAnkle.x, reachAnkle.y);
+  ctx.strokeStyle = '#38bdf8';
+  ctx.setLineDash([5, 4]);
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+function yBalanceLockReach() {
+  const cur = yBalanceReaches[yBalanceStanceLeg];
+  cur[yBalanceActiveDir] = yBalanceCurrentReachLive;
+  liveAudioCoach.playClick(960, 0.08, 'triangle');
+
+  if (yBalanceActiveDir === 'ant') {
+    yBalanceActiveDir = 'pm';
+    liveAudioCoach.speakCue('جهت خلفی-داخلی');
+  } else if (yBalanceActiveDir === 'pm') {
+    yBalanceActiveDir = 'pl';
+    liveAudioCoach.speakCue('جهت خلفی-خارجی');
+  } else {
+    yBalanceCalculateComposite();
+    liveAudioCoach.speakCue('تست کامل شد');
+  }
+  yBalanceUpdateLabels();
+}
+
+function yBalanceCalculateComposite() {
+  const cur = yBalanceReaches[yBalanceStanceLeg];
+  const activeAth = getActiveAthlete();
+  const height = activeAth ? parseFloat(activeAth.heightCm) : 175;
+  const legLenCm = Math.round(height * 0.53); // Standard leg length proxy
+
+  const sum = (cur.ant || 0) + (cur.pm || 0) + (cur.pl || 0);
+  const composite = (sum / (3 * legLenCm)) * 100;
+  const compRounded = Math.round(composite * 10) / 10;
+
+  const compEl = document.getElementById('yBalanceCompositeScore');
+  if (compEl) compEl.textContent = `${compRounded}%`;
+
+  // ACL Risk assessment
+  const badge = document.getElementById('yBalanceAclRiskBadge');
+  const isElevated = compRounded < 94.0 || cur.ant < 50;
+  if (badge) {
+    if (isElevated) {
+      badge.textContent = 'ریسک متوسط تا بالا / نیازمند ثبات زانو';
+      badge.style.background = 'rgba(239, 68, 68, 0.2)';
+      badge.style.color = '#f87171';
+      badge.style.borderColor = 'rgba(239, 68, 68, 0.5)';
+    } else {
+      badge.textContent = 'ریسک پایین / تعادل و تقارن مطلوب ✓';
+      badge.style.background = 'rgba(74, 222, 128, 0.2)';
+      badge.style.color = '#4ade80';
+      badge.style.borderColor = 'rgba(74, 222, 128, 0.5)';
+    }
+  }
+}
+
+function initYBalanceUI() {
+  const rightBtn = document.getElementById('yBalanceLegRightBtn');
+  const leftBtn = document.getElementById('yBalanceLegLeftBtn');
+  if (rightBtn && leftBtn) {
+    rightBtn.addEventListener('click', () => {
+      yBalanceStanceLeg = 'right';
+      rightBtn.className = 'primary-blue active';
+      leftBtn.className = 'secondary';
+      yBalanceActiveDir = 'ant';
+      yBalanceUpdateLabels();
+    });
+    leftBtn.addEventListener('click', () => {
+      yBalanceStanceLeg = 'left';
+      leftBtn.className = 'primary-blue active';
+      rightBtn.className = 'secondary';
+      yBalanceActiveDir = 'ant';
+      yBalanceUpdateLabels();
+    });
+  }
+
+  const lockBtn = document.getElementById('yBalanceLockReachBtn');
+  if (lockBtn) lockBtn.addEventListener('click', yBalanceLockReach);
+
+  const resetBtn = document.getElementById('yBalanceResetBtn');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+      yBalanceReaches[yBalanceStanceLeg] = { ant: 0, pm: 0, pl: 0 };
+      yBalanceActiveDir = 'ant';
+      yBalanceUpdateLabels();
+      const compEl = document.getElementById('yBalanceCompositeScore');
+      if (compEl) compEl.textContent = '-- %';
+    });
+  }
+
+  const saveBtn = document.getElementById('yBalanceSaveBtn');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', () => {
+      const cur = yBalanceReaches[yBalanceStanceLeg];
+      const activeAth = getActiveAthlete();
+      const height = activeAth ? parseFloat(activeAth.heightCm) : 175;
+      const legLenCm = Math.round(height * 0.53);
+      const sum = (cur.ant || 0) + (cur.pm || 0) + (cur.pl || 0);
+      const composite = Math.round(((sum / (3 * legLenCm)) * 100) * 10) / 10;
+      const aclRisk = composite < 94 ? 'ریسک بالا' : 'ریسک پایین / ایمن';
+
+      saveToHistory('y_balance', {
+        leg: yBalanceStanceLeg,
+        ant: cur.ant,
+        pm: cur.pm,
+        pl: cur.pl,
+        composite,
+        aclRisk
+      });
+      playChime(880, 'sine', 0.2);
+      saveBtn.textContent = '✅ ذخیره شد';
+      setTimeout(() => { saveBtn.textContent = '💾 ذخیره در پرونده'; }, 1800);
+    });
+  }
+
+  const closeX = document.getElementById('closeYBalanceXBtn');
+  if (closeX) {
+    closeX.addEventListener('click', () => {
+      const panel = document.getElementById('yBalancePanel');
+      if (panel) panel.classList.remove('visible');
+    });
+  }
+}
+
+// --- 5. 5-10-5 PRO AGILITY SHUTTLE ---
+let proAgilityPhase = 'idle'; // 'idle' | 'split1' | 'split2' | 'split3' | 'finished'
+let proAgilityStartTime = 0;
+let proAgilitySplits = { s1: 0, s2: 0, s3: 0, total: 0 };
+let proAgilityLateralTilt = 0;
+let proAgilityTimerRaf = null;
+
+function proAgilityEnterMode() {
+  hideAllPanels();
+  const panel = document.getElementById('proAgilityPanel');
+  if (panel) panel.classList.add('visible');
+}
+
+function proAgilityDrawOverlay() {
+  if (mode !== 'pro_agility') return;
+
+  // Draw 3 Virtual Lines on Canvas: 5 yd right, center, 10 yd left
+  const w = canvas.width;
+  const h = canvas.height;
+  const leftX = w * 0.15;
+  const centerX = w * 0.50;
+  const rightX = w * 0.85;
+
+  ctx.save();
+  // Left Line (10 yards touch)
+  ctx.beginPath();
+  ctx.moveTo(leftX, 0);
+  ctx.lineTo(leftX, h);
+  ctx.strokeStyle = 'rgba(74, 222, 128, 0.6)';
+  ctx.lineWidth = 3;
+  ctx.setLineDash([8, 6]);
+  ctx.stroke();
+
+  // Center Line (Start / Finish)
+  ctx.beginPath();
+  ctx.moveTo(centerX, 0);
+  ctx.lineTo(centerX, h);
+  ctx.strokeStyle = 'rgba(56, 189, 248, 0.8)';
+  ctx.lineWidth = 4;
+  ctx.setLineDash([]);
+  ctx.stroke();
+
+  // Right Line (5 yards touch)
+  ctx.beginPath();
+  ctx.moveTo(rightX, 0);
+  ctx.lineTo(rightX, h);
+  ctx.strokeStyle = 'rgba(250, 204, 21, 0.6)';
+  ctx.lineWidth = 3;
+  ctx.setLineDash([8, 6]);
+  ctx.stroke();
+
+  // Labels
+  ctx.fillStyle = '#facc15';
+  ctx.font = 'bold 13px Vazirmatn, sans-serif';
+  ctx.fillText('خط ۵ یارد (راست)', rightX - 50, 30);
+  ctx.fillStyle = '#38bdf8';
+  ctx.fillText('مرکز (استارت و پایان)', centerX - 55, 30);
+  ctx.fillStyle = '#4ade80';
+  ctx.fillText('خط ۱۰ یارد (چپ)', leftX - 45, 30);
+
+  // Torso lateral tilt angle calculation
+  if (lastSeenKeypoints) {
+    const ls = lastSeenKeypoints['left_shoulder'];
+    const rs = lastSeenKeypoints['right_shoulder'];
+    const lh = lastSeenKeypoints['left_hip'];
+    const rh = lastSeenKeypoints['right_hip'];
+    if (ls && rs && lh && rh) {
+      const midShoulder = { x: (ls.x + rs.x) / 2, y: (ls.y + rs.y) / 2 };
+      const midHip = { x: (lh.x + rh.x) / 2, y: (lh.y + rh.y) / 2 };
+      const spineAngle = Math.atan2(midShoulder.y - midHip.y, midShoulder.x - midHip.x) * (180 / Math.PI);
+      const tilt = Math.abs(Math.round(90 + spineAngle));
+      proAgilityLateralTilt = Math.min(45, tilt);
+      const tiltEl = document.getElementById('proAgilityTurnTilt');
+      if (tiltEl) tiltEl.textContent = `${proAgilityLateralTilt}°`;
+    }
+  }
+  ctx.restore();
+}
+
+function proAgilityTrigger() {
+  const triggerBtn = document.getElementById('proAgilityTriggerBtn');
+  const stageBadge = document.getElementById('proAgilityStageBadge');
+  const timeVal = document.getElementById('proAgilityTimeVal');
+  const now = performance.now();
+
+  if (proAgilityPhase === 'idle') {
+    proAgilityPhase = 'split1';
+    proAgilityStartTime = now;
+    liveAudioCoach.speakCue('شروع! بدو به راست ۵ یارد');
+    liveAudioCoach.playClick(1000, 0.1, 'square');
+    if (triggerBtn) triggerBtn.textContent = '📍 ثبت لمس خط ۵ یارد (راست)';
+    if (stageBadge) {
+      stageBadge.textContent = 'بخش ۱: دویدن به سمت راست (۵ یارد)';
+      stageBadge.style.color = '#facc15';
+    }
+
+    const updateTimer = () => {
+      if (proAgilityPhase !== 'finished' && proAgilityPhase !== 'idle') {
+        const elapsed = (performance.now() - proAgilityStartTime) / 1000;
+        if (timeVal) timeVal.textContent = elapsed.toFixed(2);
+        requestAnimationFrame(updateTimer);
+      }
+    };
+    requestAnimationFrame(updateTimer);
+
+  } else if (proAgilityPhase === 'split1') {
+    proAgilityPhase = 'split2';
+    proAgilitySplits.s1 = (now - proAgilityStartTime) / 1000;
+    const s1El = document.getElementById('proAgilitySplit1');
+    if (s1El) s1El.textContent = `${proAgilitySplits.s1.toFixed(2)} s`;
+    liveAudioCoach.speakCue('تغییر جهت! ۱۰ یارد به چپ');
+    liveAudioCoach.playClick(1200, 0.08, 'sine');
+    if (triggerBtn) triggerBtn.textContent = '📍 ثبت لمس خط ۱۰ یارد (چپ)';
+    if (stageBadge) {
+      stageBadge.textContent = 'بخش ۲: تغییر جهت به سمت چپ (۱۰ یارد)';
+      stageBadge.style.color = '#38bdf8';
+    }
+
+  } else if (proAgilityPhase === 'split2') {
+    proAgilityPhase = 'split3';
+    const s2Total = (now - proAgilityStartTime) / 1000;
+    proAgilitySplits.s2 = s2Total - proAgilitySplits.s1;
+    const s2El = document.getElementById('proAgilitySplit2');
+    if (s2El) s2El.textContent = `${proAgilitySplits.s2.toFixed(2)} s`;
+    liveAudioCoach.speakCue('بازگشت! عبور از خط پایان');
+    liveAudioCoach.playClick(1400, 0.08, 'sine');
+    if (triggerBtn) triggerBtn.textContent = '🏁 ثبت عبور از خط پایان';
+    if (stageBadge) {
+      stageBadge.textContent = 'بخش ۳: شتاب نهایی به سمت مرکز (۵ یارد)';
+      stageBadge.style.color = '#4ade80';
+    }
+
+  } else if (proAgilityPhase === 'split3') {
+    proAgilityPhase = 'finished';
+    proAgilitySplits.total = (now - proAgilityStartTime) / 1000;
+    proAgilitySplits.s3 = proAgilitySplits.total - (proAgilitySplits.s1 + proAgilitySplits.s2);
+    const s3El = document.getElementById('proAgilitySplit3');
+    if (s3El) s3El.textContent = `${proAgilitySplits.s3.toFixed(2)} s`;
+    if (timeVal) timeVal.textContent = proAgilitySplits.total.toFixed(2);
+    liveAudioCoach.speakCue('عالی بود! پایان آزمون');
+    playChime(1100, 'triangle', 0.25);
+    if (triggerBtn) triggerBtn.textContent = '⚡ شروع مجدد شاتل';
+    if (stageBadge) {
+      stageBadge.textContent = `آزمون تکمیل شد • رکورد نهایی: ${proAgilitySplits.total.toFixed(2)} ثانیه`;
+      stageBadge.style.color = '#4ade80';
+    }
+  } else if (proAgilityPhase === 'finished') {
+    proAgilityPhase = 'idle';
+    proAgilityTrigger();
+  }
+}
+
+function initProAgilityUI() {
+  const triggerBtn = document.getElementById('proAgilityTriggerBtn');
+  if (triggerBtn) triggerBtn.addEventListener('click', proAgilityTrigger);
+
+  const resetBtn = document.getElementById('proAgilityResetBtn');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+      proAgilityPhase = 'idle';
+      const timeVal = document.getElementById('proAgilityTimeVal');
+      if (timeVal) timeVal.textContent = '0.00';
+      const s1 = document.getElementById('proAgilitySplit1');
+      const s2 = document.getElementById('proAgilitySplit2');
+      const s3 = document.getElementById('proAgilitySplit3');
+      if (s1) s1.textContent = '-- s';
+      if (s2) s2.textContent = '-- s';
+      if (s3) s3.textContent = '-- s';
+      const badge = document.getElementById('proAgilityStageBadge');
+      if (badge) {
+        badge.textContent = 'آماده برای شروع (استارت در مرکز)';
+        badge.style.color = '#38bdf8';
+      }
+      if (triggerBtn) triggerBtn.textContent = '⚡ شروع زمان‌گیری شاتل';
+    });
+  }
+
+  const saveBtn = document.getElementById('proAgilitySaveBtn');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', () => {
+      if (proAgilitySplits.total <= 0) {
+        alert('لطفاً ابتدا تست را اجرا کنید');
+        return;
+      }
+      saveToHistory('pro_agility', {
+        totalTime: proAgilitySplits.total.toFixed(2),
+        split1: proAgilitySplits.s1.toFixed(2),
+        split2: proAgilitySplits.s2.toFixed(2),
+        split3: proAgilitySplits.s3.toFixed(2),
+        lateralTilt: proAgilityLateralTilt
+      });
+      playChime(880, 'sine', 0.2);
+      saveBtn.textContent = '✅ ذخیره شد';
+      setTimeout(() => { saveBtn.textContent = '💾 ذخیره رکورد'; }, 1800);
+    });
+  }
+
+  const closeX = document.getElementById('closeProAgilityXBtn');
+  if (closeX) {
+    closeX.addEventListener('click', () => {
+      const panel = document.getElementById('proAgilityPanel');
+      if (panel) panel.classList.remove('visible');
+    });
+  }
+}
+
+// --- 6. ARM COCKING ANGLE (HANDBALL SHOULDER SAFETY) ---
+let armCockingPeakMer = 0;
+let armCockingPeakAbd = 0;
+let armCockingCurrentMer = 0;
+let armCockingCurrentAbd = 0;
+
+function armCockingEnterMode() {
+  hideAllPanels();
+  const panel = document.getElementById('armCockingPanel');
+  if (panel) panel.classList.add('visible');
+}
+
+function armCockingDrawOverlay() {
+  if (mode !== 'arm_cocking' || !lastSeenKeypoints) return;
+  // Use throwing shoulder (prefer right, fallback to left)
+  const isRight = (lastSeenKeypoints['right_wrist']?.score || 0) >= (lastSeenKeypoints['left_wrist']?.score || 0);
+  const sh = isRight ? lastSeenKeypoints['right_shoulder'] : lastSeenKeypoints['left_shoulder'];
+  const el = isRight ? lastSeenKeypoints['right_elbow'] : lastSeenKeypoints['left_elbow'];
+  const wr = isRight ? lastSeenKeypoints['right_wrist'] : lastSeenKeypoints['left_wrist'];
+  const hip = isRight ? lastSeenKeypoints['right_hip'] : lastSeenKeypoints['left_hip'];
+
+  if (!sh || !el || !wr || (sh.score || 0) < 0.25 || (el.score || 0) < 0.25 || (wr.score || 0) < 0.25) return;
+
+  // Calculate Shoulder Abduction (angle between torso vector and upper arm vector)
+  let abdAngle = 90;
+  if (hip) {
+    const vTorso = { x: sh.x - hip.x, y: sh.y - hip.y };
+    const vArm = { x: el.x - sh.x, y: el.y - sh.y };
+    const dot = vTorso.x * vArm.x + vTorso.y * vArm.y;
+    const mag = Math.hypot(vTorso.x, vTorso.y) * Math.hypot(vArm.x, vArm.y);
+    abdAngle = mag > 0 ? Math.round(Math.acos(Math.max(-1, Math.min(1, dot / mag))) * (180 / Math.PI)) : 90;
+  }
+
+  // Calculate Maximum External Rotation (MER) angle between upper arm and forearm
+  const vUpper = { x: el.x - sh.x, y: el.y - sh.y };
+  const vFore = { x: wr.x - el.x, y: wr.y - el.y };
+  const dotEl = vUpper.x * vFore.x + vUpper.y * vFore.y;
+  const magEl = Math.hypot(vUpper.x, vUpper.y) * Math.hypot(vFore.x, vFore.y);
+  let merAngle = magEl > 0 ? Math.round(180 - Math.acos(Math.max(-1, Math.min(1, dotEl / magEl))) * (180 / Math.PI)) : 165;
+  merAngle = Math.max(90, Math.min(200, merAngle));
+
+  armCockingCurrentMer = merAngle;
+  armCockingCurrentAbd = abdAngle;
+
+  if (merAngle > armCockingPeakMer) armCockingPeakMer = merAngle;
+  if (abdAngle > armCockingPeakAbd) armCockingPeakAbd = abdAngle;
+
+  const merEl = document.getElementById('armCockingExtRotAngle');
+  const abdEl = document.getElementById('armCockingAbductionAngle');
+  if (merEl) merEl.textContent = `${merAngle}°`;
+  if (abdEl) abdEl.textContent = `${abdAngle}°`;
+
+  // Rotator cuff safety assessment
+  const badge = document.getElementById('armCockingStressBadge');
+  const isOverload = merAngle > 182 || abdAngle < 75 || abdAngle > 115;
+  if (badge) {
+    if (isOverload) {
+      badge.textContent = 'ریسک آسیب / فشار بیش از حد بر روتاتور کاف';
+      badge.style.background = 'rgba(239, 68, 68, 0.25)';
+      badge.style.color = '#f87171';
+    } else {
+      badge.textContent = 'ایمن / استاندارد پرتاب بیومکانیک ✓';
+      badge.style.background = 'rgba(74, 222, 128, 0.2)';
+      badge.style.color = '#4ade80';
+    }
+  }
+
+  // Draw HUD angle arcs on Canvas
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(el.x, el.y, 22, 0, Math.PI * 2);
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  ctx.fillStyle = '#facc15';
+  ctx.font = 'bold 12px monospace';
+  ctx.fillText(`${merAngle}°`, el.x + 15, el.y - 10);
+  ctx.restore();
+}
+
+function initArmCockingUI() {
+  const recordBtn = document.getElementById('armCockingRecordBtn');
+  if (recordBtn) {
+    recordBtn.addEventListener('click', () => {
+      liveAudioCoach.speakCue(`زاویه ثبت شد، ${armCockingPeakMer} درجه`);
+      playChime(900, 'sine', 0.15);
+      recordBtn.textContent = '📸 اوج ثبت شد ✓';
+      setTimeout(() => { recordBtn.textContent = '📸 ثبت اوج چرخش پرتاب'; }, 1500);
+    });
+  }
+
+  const resetBtn = document.getElementById('armCockingResetBtn');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+      armCockingPeakMer = 0;
+      armCockingPeakAbd = 0;
+      const merEl = document.getElementById('armCockingExtRotAngle');
+      const abdEl = document.getElementById('armCockingAbductionAngle');
+      if (merEl) merEl.textContent = '--°';
+      if (abdEl) abdEl.textContent = '--°';
+    });
+  }
+
+  const saveBtn = document.getElementById('armCockingSaveBtn');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', () => {
+      const mer = armCockingPeakMer || armCockingCurrentMer || 165;
+      const abd = armCockingPeakAbd || armCockingCurrentAbd || 92;
+      const stress = mer > 182 ? 'ریسک گیرافتادگی' : 'ایمن و استاندارد';
+      saveToHistory('arm_cocking', { mer, abduction: abd, stress });
+      playChime(880, 'sine', 0.2);
+      saveBtn.textContent = '✅ ذخیره شد';
+      setTimeout(() => { saveBtn.textContent = '💾 ذخیره در سوابق'; }, 1800);
+    });
+  }
+
+  const closeX = document.getElementById('closeArmCockingXBtn');
+  if (closeX) {
+    closeX.addEventListener('click', () => {
+      const panel = document.getElementById('armCockingPanel');
+      if (panel) panel.classList.remove('visible');
+    });
+  }
+}
+
+// --- 7. POSTURAL SCREENING & BODY ALIGNMENT ---
+let postureMetrics = {
+  cva: 50,
+  shoulderTilt: 1.0,
+  pelvicTilt: 0.8,
+  kneeValgus: 174,
+  overallScore: 95
+};
+let isPostureFrozen = false;
+
+function postureEnterMode() {
+  hideAllPanels();
+  const panel = document.getElementById('posturePanel');
+  if (panel) panel.classList.add('visible');
+}
+
+function postureDrawOverlay() {
+  if (mode !== 'posture' || !lastSeenKeypoints || isPostureFrozen) return;
+
+  const ls = lastSeenKeypoints['left_shoulder'];
+  const rs = lastSeenKeypoints['right_shoulder'];
+  const lh = lastSeenKeypoints['left_hip'];
+  const rh = lastSeenKeypoints['right_hip'];
+  const lk = lastSeenKeypoints['left_knee'];
+  const rk = lastSeenKeypoints['right_knee'];
+  const la = lastSeenKeypoints['left_ankle'];
+  const ra = lastSeenKeypoints['right_ankle'];
+  const nose = lastSeenKeypoints['nose'];
+
+  if (!ls || !rs || !lh || !rh) return;
+
+  // 1. Shoulder Level Tilt
+  const sDy = rs.y - ls.y;
+  const sDx = rs.x - ls.x;
+  const shoulderTilt = Math.abs(Math.round(Math.atan2(sDy, sDx) * (180 / Math.PI) * 10) / 10);
+
+  // 2. Pelvic Tilt
+  const hDy = rh.y - lh.y;
+  const hDx = rh.x - lh.x;
+  const pelvicTilt = Math.abs(Math.round(Math.atan2(hDy, hDx) * (180 / Math.PI) * 10) / 10);
+
+  // 3. Knee Valgus / Frontal Alignment
+  let kneeValgus = 175;
+  if (rk && ra) {
+    const vThigh = { x: rk.x - rh.x, y: rk.y - rh.y };
+    const vShin = { x: ra.x - rk.x, y: ra.y - rk.y };
+    const dotK = vThigh.x * vShin.x + vThigh.y * vShin.y;
+    const magK = Math.hypot(vThigh.x, vThigh.y) * Math.hypot(vShin.x, vShin.y);
+    kneeValgus = magK > 0 ? Math.round(Math.acos(Math.max(-1, Math.min(1, dotK / magK))) * (180 / Math.PI)) : 175;
+  }
+
+  // 4. Forward Head (CVA)
+  let cva = 49;
+  if (nose) {
+    const midShoulder = { x: (ls.x + rs.x) / 2, y: (ls.y + rs.y) / 2 };
+    const nDx = nose.x - midShoulder.x;
+    const nDy = nose.y - midShoulder.y;
+    cva = Math.abs(Math.round(Math.atan2(Math.abs(nDy), Math.abs(nDx)) * (180 / Math.PI)));
+  }
+
+  // Overall Posture Score
+  let penalties = (shoulderTilt * 3) + (pelvicTilt * 3) + (Math.abs(180 - kneeValgus) * 0.8) + (cva < 48 ? (48 - cva) * 2 : 0);
+  const score = Math.max(50, Math.min(100, Math.round(100 - penalties)));
+
+  postureMetrics = { cva, shoulderTilt, pelvicTilt, kneeValgus, overallScore: score };
+
+  const cvaEl = document.getElementById('postureHeadForwardVal');
+  const stEl = document.getElementById('postureShoulderTiltVal');
+  const ptEl = document.getElementById('posturePelvicTiltVal');
+  const kvEl = document.getElementById('postureKneeValgusVal');
+  const scoreEl = document.getElementById('postureOverallScoreVal');
+
+  if (cvaEl) cvaEl.textContent = `${cva}° (${cva >= 48 ? 'طبیعی' : 'جلوآمدگی خفیف'})`;
+  if (stEl) stEl.textContent = `${shoulderTilt}° (${shoulderTilt < 2.5 ? 'تراز' : 'افتادگی یک‌طرفه'})`;
+  if (ptEl) ptEl.textContent = `${pelvicTilt}° (${pelvicTilt < 2.0 ? 'تراز' : 'چرخش لگن'})`;
+  if (kvEl) kvEl.textContent = `${kneeValgus}° (${kneeValgus > 170 ? 'طبیعی' : 'والگوس زانو'})`;
+  if (scoreEl) scoreEl.textContent = `${score} / ۱۰۰`;
+
+  // Draw plumb line on Canvas
+  const midX = (ls.x + rs.x + lh.x + rh.x) / 4;
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(midX, 10);
+  ctx.lineTo(midX, canvas.height - 10);
+  ctx.strokeStyle = 'rgba(56, 189, 248, 0.5)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 6]);
+  ctx.stroke();
+
+  // Shoulder horizontal line
+  ctx.beginPath();
+  ctx.moveTo(ls.x - 30, ls.y);
+  ctx.lineTo(rs.x + 30, rs.y);
+  ctx.strokeStyle = shoulderTilt < 2.5 ? 'rgba(74, 222, 128, 0.7)' : 'rgba(239, 68, 68, 0.7)';
+  ctx.lineWidth = 3;
+  ctx.setLineDash([]);
+  ctx.stroke();
+
+  // Pelvic horizontal line
+  ctx.beginPath();
+  ctx.moveTo(lh.x - 30, lh.y);
+  ctx.lineTo(rh.x + 30, rh.y);
+  ctx.strokeStyle = pelvicTilt < 2.0 ? 'rgba(74, 222, 128, 0.7)' : 'rgba(250, 204, 21, 0.7)';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.restore();
+}
+
+function initPostureUI() {
+  const capBtn = document.getElementById('postureCaptureBtn');
+  if (capBtn) {
+    capBtn.addEventListener('click', () => {
+      isPostureFrozen = !isPostureFrozen;
+      capBtn.textContent = isPostureFrozen ? '▶ ادامه اسکن زنده' : '📸 اسکن و تثبیت راستا';
+      liveAudioCoach.speakCue(`نمره قامت ${postureMetrics.overallScore} از صد`);
+    });
+  }
+
+  const resetBtn = document.getElementById('postureResetBtn');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+      isPostureFrozen = false;
+      if (capBtn) capBtn.textContent = '📸 اسکن و تثبیت راستا';
+    });
+  }
+
+  const saveBtn = document.getElementById('postureSaveBtn');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', () => {
+      saveToHistory('posture', {
+        cva: postureMetrics.cva,
+        shoulderTilt: postureMetrics.shoulderTilt,
+        pelvicTilt: postureMetrics.pelvicTilt,
+        kneeValgus: postureMetrics.kneeValgus,
+        score: postureMetrics.overallScore
+      });
+      playChime(880, 'sine', 0.2);
+      saveBtn.textContent = '✅ ذخیره شد';
+      setTimeout(() => { saveBtn.textContent = '💾 ذخیره در پرونده'; }, 1800);
+    });
+  }
+
+  const closeX = document.getElementById('closePostureXBtn');
+  if (closeX) {
+    closeX.addEventListener('click', () => {
+      const panel = document.getElementById('posturePanel');
+      if (panel) panel.classList.remove('visible');
+    });
+  }
+}
+
+// --- 8. BOSCO REACTIVE STRENGTH INDEX (RSI) CALCULATION ---
+function calculateBoscoRSI(jumpHeightCm, contactTimeSeconds) {
+  if (!contactTimeSeconds || contactTimeSeconds <= 0) return 0;
+  const heightM = (jumpHeightCm || 30) / 100;
+  const rsi = heightM / contactTimeSeconds;
+  return Math.round(rsi * 100) / 100;
+}
+
+function getRsiCategory(rsi) {
+  if (rsi >= 2.5) return { label: 'الیت (Elite)', color: '#a855f7' };
+  if (rsi >= 2.0) return { label: 'عالی (Excellent)', color: '#4ade80' };
+  if (rsi >= 1.5) return { label: 'خوب (Good)', color: '#38bdf8' };
+  if (rsi >= 1.0) return { label: 'متوسط (Fair)', color: '#facc15' };
+  return { label: 'نیاز به تمرین پلیومتریک', color: '#f87171' };
+}
+
+// --- 9. HEAD-TO-HEAD RADAR COMPARISON SYSTEM ---
+function openCompareAthletesModal() {
+  const modal = document.getElementById('compareAthletesModal');
+  if (!modal) return;
+
+  const athletes = getAthletes();
+  const select1 = document.getElementById('compareAthlete1Select');
+  const select2 = document.getElementById('compareAthlete2Select');
+
+  if (select1 && select2) {
+    select1.innerHTML = athletes.map(a => `<option value="${a.id}">${a.name} (${a.code || '۱۰۱'})</option>`).join('');
+    select2.innerHTML = athletes.map(a => `<option value="${a.id}">${a.name} (${a.code || '۱۰۱'})</option>`).join('');
+
+    const activeId = getActiveAthleteId();
+    select1.value = activeId;
+    if (athletes.length > 1) {
+      const other = athletes.find(a => a.id !== activeId) || athletes[1];
+      select2.value = other.id;
+    }
+  }
+
+  modal.style.display = 'block';
+  updateCompareRadar();
+}
+
+function calculateAthleteRadarScores(athleteId) {
+  const history = getHistory();
+  const athHistory = history.filter(h => h.athleteId === athleteId);
+  const athletes = getAthletes();
+  const ath = athletes.find(a => a.id === athleteId) || DEFAULT_ATHLETE;
+  const height = parseFloat(ath.heightCm) || 175;
+
+  // 1. Explosive Jump Power (Jump & Bosco)
+  let maxJump = 35;
+  athHistory.forEach(h => {
+    if (h.type === 'jump' && h.data?.height) maxJump = Math.max(maxJump, parseFloat(h.data.height));
+    if (h.type === 'bosco' && h.data?.maxHeight) maxJump = Math.max(maxJump, parseFloat(h.data.maxHeight));
+  });
+  const scoreJump = Math.min(100, Math.round((maxJump / 65) * 100));
+
+  // 2. Speed & Agility
+  let bestRunTime = 2.5;
+  athHistory.forEach(h => {
+    if (h.type === 'run' && h.data?.time) bestRunTime = Math.min(bestRunTime, parseFloat(h.data.time));
+    if (h.type === 'pro_agility' && h.data?.totalTime) bestRunTime = Math.min(bestRunTime, parseFloat(h.data.totalTime) / 2);
+  });
+  const scoreSpeed = Math.min(100, Math.max(30, Math.round((1.8 / Math.max(1.2, bestRunTime)) * 85)));
+
+  // 3. Muscular Endurance (Pushup, Situp, Squat)
+  let totalReps = 25;
+  athHistory.forEach(h => {
+    if (h.type === 'pushup' || h.type === 'situp' || h.type === 'squat_lunge') {
+      totalReps = Math.max(totalReps, parseInt(h.data?.totalReps, 10) || 0);
+    }
+  });
+  const scoreEndurance = Math.min(100, Math.round((totalReps / 50) * 100));
+
+  // 4. Flexibility & Joint ROM
+  let maxFlex = 25;
+  athHistory.forEach(h => {
+    if (h.type === 'flexibility' && h.data?.reachDistanceCm) maxFlex = Math.max(maxFlex, parseFloat(h.data.reachDistanceCm));
+    if (h.type === 'arm_cocking' && h.data?.mer) maxFlex = Math.max(maxFlex, (parseFloat(h.data.mer) / 180) * 35);
+  });
+  const scoreFlexibility = Math.min(100, Math.round((maxFlex / 40) * 100));
+
+  // 5. Balance & Core Stability (Y-Balance & Posture)
+  let balanceComp = 90;
+  athHistory.forEach(h => {
+    if (h.type === 'y_balance' && h.data?.composite) balanceComp = Math.max(balanceComp, parseFloat(h.data.composite));
+    if (h.type === 'posture' && h.data?.score) balanceComp = Math.max(balanceComp, parseFloat(h.data.score));
+  });
+  const scoreBalance = Math.min(100, Math.round((balanceComp / 110) * 100));
+
+  // 6. Anthropometric Leverage (Ape Index & Cormic)
+  const ape = ath.wingspanCm ? (parseFloat(ath.wingspanCm) / height) : 1.02;
+  const scoreAnthro = Math.min(100, Math.round((ape / 1.08) * 95));
+
+  return [scoreJump, scoreSpeed, scoreEndurance, scoreFlexibility, scoreBalance, scoreAnthro];
+}
+
+function updateCompareRadar() {
+  const select1 = document.getElementById('compareAthlete1Select');
+  const select2 = document.getElementById('compareAthlete2Select');
+  if (!select1 || !select2) return;
+
+  const id1 = select1.value;
+  const id2 = select2.value;
+  const athletes = getAthletes();
+  const ath1 = athletes.find(a => a.id === id1) || athletes[0] || DEFAULT_ATHLETE;
+  const ath2 = athletes.find(a => a.id === id2) || athletes[1] || DEFAULT_ATHLETE;
+
+  const name1El = document.getElementById('compareRadarName1');
+  const name2El = document.getElementById('compareRadarName2');
+  if (name1El) name1El.textContent = `🔷 ${ath1.name}`;
+  if (name2El) name2El.textContent = `🔶 ${ath2.name}`;
+
+  const scores1 = calculateAthleteRadarScores(id1);
+  const scores2 = calculateAthleteRadarScores(id2);
+
+  // Draw Dual Radar Chart
+  const canvas = document.getElementById('compareRadarCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width;
+  const h = canvas.height;
+  const cx = w / 2;
+  const cy = h / 2;
+  const maxR = Math.min(cx, cy) - 38;
+
+  ctx.clearRect(0, 0, w, h);
+
+  const axes = [
+    'توان انفجاری',
+    'سرعت و شتاب',
+    'استقامت عضلانی',
+    'دامنه حرکتی',
+    'تعادل و ثبات',
+    'اهرم‌های قامتی'
+  ];
+  const numAxes = axes.length;
+  const angleStep = (Math.PI * 2) / numAxes;
+
+  // Concentric spider web circles
+  [0.2, 0.4, 0.6, 0.8, 1.0].forEach(level => {
+    ctx.beginPath();
+    for (let i = 0; i < numAxes; i++) {
+      const ang = i * angleStep - Math.PI / 2;
+      const x = cx + Math.cos(ang) * (maxR * level);
+      const y = cy + Math.sin(ang) * (maxR * level);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = 'rgba(71, 85, 105, 0.4)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  });
+
+  // Radial axes lines & text
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '10.5px Vazirmatn, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  for (let i = 0; i < numAxes; i++) {
+    const ang = i * angleStep - Math.PI / 2;
+    const x = cx + Math.cos(ang) * maxR;
+    const y = cy + Math.sin(ang) * maxR;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(x, y);
+    ctx.strokeStyle = 'rgba(71, 85, 105, 0.5)';
+    ctx.stroke();
+
+    const tx = cx + Math.cos(ang) * (maxR + 22);
+    const ty = cy + Math.sin(ang) * (maxR + 22);
+    ctx.fillText(axes[i], tx, ty);
+  }
+
+  // Draw Polygon for Athlete 1 (Cyan)
+  drawRadarPolygon(ctx, cx, cy, maxR, scores1, angleStep, 'rgba(56, 189, 248, 0.35)', '#38bdf8');
+
+  // Draw Polygon for Athlete 2 (Yellow)
+  drawRadarPolygon(ctx, cx, cy, maxR, scores2, angleStep, 'rgba(250, 204, 21, 0.35)', '#facc15');
+
+  // Render Metric Breakdown Cards
+  const listEl = document.getElementById('compareMetricsList');
+  if (listEl) {
+    listEl.innerHTML = axes.map((axis, i) => {
+      const v1 = scores1[i];
+      const v2 = scores2[i];
+      const win1 = v1 > v2;
+      const win2 = v2 > v1;
+      const diff = Math.abs(v1 - v2);
+
+      return `
+        <div class="compare-metric-card">
+          <span style="font-weight: 600; color: #cbd5e1;">${axis}</span>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="color: #38bdf8; font-weight: bold;">${v1}</span>
+            <span style="color: #64748b; font-size: 10px;">مقابل</span>
+            <span style="color: #facc15; font-weight: bold;">${v2}</span>
+            <span class="compare-delta-win" style="background: ${win1 ? 'rgba(56,189,248,0.2)' : win2 ? 'rgba(250,204,21,0.2)' : 'rgba(148,163,184,0.15)'}; color: ${win1 ? '#38bdf8' : win2 ? '#facc15' : '#94a3b8'};">
+              ${win1 ? `+${diff} برتری ۱` : win2 ? `+${diff} برتری ۲` : 'برابر'}
+            </span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+}
+
+function drawRadarPolygon(ctx, cx, cy, maxR, scores, angleStep, fillColor, strokeColor) {
+  ctx.save();
+  ctx.beginPath();
+  scores.forEach((sc, i) => {
+    const norm = Math.max(10, Math.min(100, sc)) / 100;
+    const ang = i * angleStep - Math.PI / 2;
+    const x = cx + Math.cos(ang) * (maxR * norm);
+    const y = cy + Math.sin(ang) * (maxR * norm);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.closePath();
+  ctx.fillStyle = fillColor;
+  ctx.fill();
+  ctx.strokeStyle = strokeColor;
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  // Draw points
+  scores.forEach((sc, i) => {
+    const norm = Math.max(10, Math.min(100, sc)) / 100;
+    const ang = i * angleStep - Math.PI / 2;
+    const x = cx + Math.cos(ang) * (maxR * norm);
+    const y = cy + Math.sin(ang) * (maxR * norm);
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = strokeColor;
+    ctx.fill();
+  });
+  ctx.restore();
+}
+
+function initCompareAthletesUI() {
+  const select1 = document.getElementById('compareAthlete1Select');
+  const select2 = document.getElementById('compareAthlete2Select');
+  if (select1) select1.addEventListener('change', updateCompareRadar);
+  if (select2) select2.addEventListener('change', updateCompareRadar);
+
+  const drawerBtn = document.getElementById('drawerItemCompare');
+  if (drawerBtn) {
+    drawerBtn.addEventListener('click', () => {
+      closeDrawer();
+      openCompareAthletesModal();
+    });
+  }
+
+  const openSettingsBtn = document.getElementById('openCompareAthletesBtn');
+  if (openSettingsBtn) {
+    openSettingsBtn.addEventListener('click', () => {
+      openCompareAthletesModal();
+    });
+  }
+
+  const closeX = document.getElementById('closeCompareModalXBtn');
+  const closeBtn = document.getElementById('closeCompareModalBtn');
+  const modal = document.getElementById('compareAthletesModal');
+  if (closeX && modal) closeX.addEventListener('click', () => { modal.style.display = 'none'; });
+  if (closeBtn && modal) closeBtn.addEventListener('click', () => { modal.style.display = 'none'; });
+
+  const exportPdfBtn = document.getElementById('compareExportPdfBtn');
+  if (exportPdfBtn) {
+    exportPdfBtn.addEventListener('click', () => {
+      window.print();
+    });
+  }
+}
+
+// --- 11. BULK FEDERATION EXCEL / CSV EXPORT ---
+function exportBulkFederationCsv() {
+  const athletes = getAthletes();
+  const history = getHistory();
+
+  // CSV Headers
+  const headers = [
+    'ردیف',
+    'کد ورزشکار',
+    'نام و نام خانوادگی',
+    'سن',
+    'جنسیت',
+    'قد (cm)',
+    'وزن (kg)',
+    'شاخص BMI',
+    'رشته ورزشی',
+    'نام باشگاه',
+    'بهترین زمان دوی سرعت (s)',
+    'اوج پرش عمودی تک (cm)',
+    'تعداد پرش متوالی باسکو',
+    'شاخص توان واکنشی (RSI)',
+    'زمان شاتل چابکی ۵-۱۰-۵ (s)',
+    'تکرار اسکات صحیح',
+    'عمق اسکات (درجه)',
+    'تکرار شنا سوئدی',
+    'تکرار دراز و نشست',
+    'انعطاف‌پذیری (cm)',
+    'طول دو دست (cm)',
+    'شاخص Ape Index',
+    'امتیاز ترکیبی تعادل Y (٪)',
+    'ریسک آسیب ACL',
+    'زاویه چرخش خارجی شانه MER (درجه)',
+    'نمره راستای قامتی (از ۱۰۰)'
+  ];
+
+  const rows = athletes.map((ath, idx) => {
+    const athHist = history.filter(h => h.athleteId === ath.id);
+    const height = parseFloat(ath.heightCm) || 175;
+    const weight = parseFloat(ath.weightKg) || 70;
+    const bmi = (weight / ((height / 100) ** 2)).toFixed(1);
+
+    // Extract best metrics
+    let bestRun = '--';
+    let bestJump = '--';
+    let boscoJumps = '--';
+    let boscoRsi = '--';
+    let proAgility = '--';
+    let squatReps = '--';
+    let squatDepth = '--';
+    let pushupReps = '--';
+    let situpReps = '--';
+    let flexCm = '--';
+    let wingspan = ath.wingspanCm || '--';
+    let apeIndex = ath.wingspanCm ? (parseFloat(ath.wingspanCm) / height).toFixed(2) : '--';
+    let yBalanceComp = '--';
+    let aclRisk = '--';
+    let armMer = '--';
+    let postureScore = '--';
+
+    athHist.forEach(h => {
+      if (h.type === 'run' && h.data?.time) {
+        if (bestRun === '--' || parseFloat(h.data.time) < parseFloat(bestRun)) bestRun = h.data.time;
+      }
+      if (h.type === 'jump' && h.data?.height) {
+        if (bestJump === '--' || parseFloat(h.data.height) > parseFloat(bestJump)) bestJump = h.data.height;
+      }
+      if (h.type === 'bosco' && h.data?.totalJumps) {
+        boscoJumps = h.data.totalJumps;
+        if (h.data.maxHeight && h.data.avgAirTime) {
+          boscoRsi = calculateBoscoRSI(parseFloat(h.data.maxHeight), 0.22);
+        }
+      }
+      if (h.type === 'pro_agility' && h.data?.totalTime) proAgility = h.data.totalTime;
+      if (h.type === 'squat_lunge' && h.data?.totalReps) {
+        squatReps = h.data.totalReps;
+        squatDepth = h.data.avgDepth || '--';
+      }
+      if (h.type === 'pushup' && h.data?.totalReps) pushupReps = h.data.totalReps;
+      if (h.type === 'situp' && h.data?.totalReps) situpReps = h.data.totalReps;
+      if (h.type === 'flexibility' && h.data?.reachDistanceCm) flexCm = h.data.reachDistanceCm;
+      if (h.type === 'wingspan' && h.data?.wingspan) {
+        wingspan = h.data.wingspan;
+        apeIndex = (parseFloat(wingspan) / height).toFixed(2);
+      }
+      if (h.type === 'y_balance' && h.data?.composite) {
+        yBalanceComp = h.data.composite;
+        aclRisk = h.data.aclRisk || 'ایمن';
+      }
+      if (h.type === 'arm_cocking' && h.data?.mer) armMer = h.data.mer;
+      if (h.type === 'posture' && h.data?.score) postureScore = h.data.score;
+    });
+
+    return [
+      idx + 1,
+      `"${ath.code || '۱۰۱'}"`,
+      `"${ath.name || 'ورزشکار'}"`,
+      ath.age || '--',
+      ath.gender === 'female' ? 'خانم' : 'آقا',
+      height,
+      weight,
+      bmi,
+      `"${ath.sport || 'عمومی'}"`,
+      `"${ath.club || 'باشگاه مرکزی'}"`,
+      bestRun,
+      bestJump,
+      boscoJumps,
+      boscoRsi,
+      proAgility,
+      squatReps,
+      squatDepth,
+      pushupReps,
+      situpReps,
+      flexCm,
+      wingspan,
+      apeIndex,
+      yBalanceComp,
+      `"${aclRisk}"`,
+      armMer,
+      postureScore
+    ];
+  });
+
+  // Format with UTF-8 BOM for Microsoft Excel Persian support
+  const csvContent = '\uFEFF' + [
+    headers.join(','),
+    ...rows.map(r => r.join(','))
+  ].join('\r\n');
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', `حرکت_سنج_خروجی_جامع_ورزشکاران_${new Date().toLocaleDateString('fa-IR').replace(/\//g, '-')}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+function initBulkExportUI() {
+  const bulkExportBtn = document.getElementById('bulkExportBtn');
+  if (bulkExportBtn) {
+    bulkExportBtn.addEventListener('click', () => {
+      exportBulkFederationCsv();
+      playChime(920, 'sine', 0.2);
+    });
+  }
+
+  const drawerItemBulkCsv = document.getElementById('drawerItemBulkCsv');
+  if (drawerItemBulkCsv) {
+    drawerItemBulkCsv.addEventListener('click', () => {
+      closeDrawer();
+      exportBulkFederationCsv();
+    });
+  }
+}
+
+// =========================================================================
+// 12. COMPREHENSIVE SPORTS SCIENCE & FITNESS TESTING SUITE (v1.22.0)
+// FMS (7 Patterns + Clearing Tests), RAST Anaerobic Power, VO2 Max (Rockport, YoYo, Beep, Cooper),
+// 1RM Strength, Body Composition (LBM/FFBM), and Field Skills (Handball & Soccer)
+// =========================================================================
+
+function openSportsScienceSuiteModal() {
+  const modal = document.getElementById('sportsScienceSuiteModal');
+  if (!modal) return;
+  modal.style.display = 'block';
+  syncSportsScienceAthleteInfo();
+  calculateFmsScore();
+  calculateRastPower();
+  calculateVo2Max();
+  calculate1Rm();
+  calculateBodyComposition();
+  updateFieldDrillView();
+}
+
+function closeSportsScienceSuiteModal() {
+  const modal = document.getElementById('sportsScienceSuiteModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function syncSportsScienceAthleteInfo() {
+  const nameEl = document.getElementById('sportsScienceAthleteName');
+  const metaEl = document.getElementById('sportsScienceAthleteMeta');
+  const selectEl = document.getElementById('sportsScienceAthleteSelect');
+  const athletes = typeof getAthletes === 'function' ? getAthletes() : [];
+  const activeAth = typeof getActiveAthlete === 'function' ? getActiveAthlete() : null;
+
+  if (selectEl && athletes.length > 0) {
+    selectEl.innerHTML = athletes.map(a => `<option value="${a.id}" ${activeAth && a.id === activeAth.id ? 'selected' : ''}>${a.name} (${a.code || a.id})</option>`).join('');
+  }
+
+  if (activeAth) {
+    if (nameEl) nameEl.textContent = activeAth.name;
+    const weight = parseFloat(activeAth.weightKg) || 70;
+    const age = parseInt(activeAth.age) || 20;
+    const gender = activeAth.gender === 'female' ? 'زن' : 'مرد';
+    if (metaEl) metaEl.textContent = `(وزن: ${weight}kg • سن: ${age} • جنسیت: ${gender})`;
+
+    // Sync default weights into tabs
+    const rastW = document.getElementById('rastWeightInput');
+    if (rastW && (!rastW.value || rastW.value === '70')) rastW.value = weight;
+    const bodyW = document.getElementById('bodyCompWeightInput');
+    if (bodyW && (!bodyW.value || bodyW.value === '72')) bodyW.value = weight;
+    const bodyG = document.getElementById('bodyCompGenderSelect');
+    if (bodyG) bodyG.value = activeAth.gender === 'female' ? 'female' : 'male';
+  } else {
+    if (nameEl) nameEl.textContent = 'ورزشکار ۱';
+    if (metaEl) metaEl.textContent = '(وزن: ۷۰kg • سن: ۲۰ • جنسیت: مرد)';
+  }
+}
+
+// --- 12.1 FMS (Functional Movement Screen) Calculation ---
+function calculateFmsScore() {
+  const getVal = id => {
+    const el = document.getElementById(id);
+    return el ? (parseInt(el.value, 10) || 0) : 0;
+  };
+  const getChecked = id => {
+    const el = document.getElementById(id);
+    return el ? el.checked : false;
+  };
+
+  // 1. Deep Squat
+  const deepSquat = getVal('fms_deepSquat');
+
+  // 2. Hurdle Step (bilateral)
+  const hurdleL = getVal('fms_hurdle_L');
+  const hurdleR = getVal('fms_hurdle_R');
+  const hurdleFinal = Math.min(hurdleL, hurdleR);
+  const hurdleFinalEl = document.getElementById('fms_hurdle_final');
+  if (hurdleFinalEl) hurdleFinalEl.textContent = `نهایی: ${hurdleFinal}`;
+
+  // 3. Inline Lunge (bilateral)
+  const lungeL = getVal('fms_lunge_L');
+  const lungeR = getVal('fms_lunge_R');
+  const lungeFinal = Math.min(lungeL, lungeR);
+  const lungeFinalEl = document.getElementById('fms_lunge_final');
+  if (lungeFinalEl) lungeFinalEl.textContent = `نهایی: ${lungeFinal}`;
+
+  // 4. Shoulder Mobility (bilateral + clearing)
+  const shoulderL = getVal('fms_shoulder_L');
+  const shoulderR = getVal('fms_shoulder_R');
+  const shoulderPain = getChecked('fms_shoulder_pain');
+  let shoulderFinal = Math.min(shoulderL, shoulderR);
+  if (shoulderPain) shoulderFinal = 0; // Clearing test pain override
+  const shoulderFinalEl = document.getElementById('fms_shoulder_final');
+  if (shoulderFinalEl) shoulderFinalEl.textContent = `نهایی: ${shoulderFinal} ${shoulderPain ? '(⚠️ درد)' : ''}`;
+
+  // 5. Active Straight-Leg Raise (bilateral)
+  const aslrL = getVal('fms_aslr_L');
+  const aslrR = getVal('fms_aslr_R');
+  const aslrFinal = Math.min(aslrL, aslrR);
+  const aslrFinalEl = document.getElementById('fms_aslr_final');
+  if (aslrFinalEl) aslrFinalEl.textContent = `نهایی: ${aslrFinal}`;
+
+  // 6. Trunk Stability Push-Up (+ clearing)
+  let trunkFinal = getVal('fms_trunk');
+  const extPain = getChecked('fms_extension_pain');
+  if (extPain) trunkFinal = 0; // Spinal Extension clearing pain override
+  const trunkFinalEl = document.getElementById('fms_trunk_final');
+  if (trunkFinalEl) trunkFinalEl.textContent = `نهایی: ${trunkFinal} ${extPain ? '(⚠️ درد)' : ''}`;
+
+  // 7. Rotary Stability (bilateral + clearing)
+  const rotaryL = getVal('fms_rotary_L');
+  const rotaryR = getVal('fms_rotary_R');
+  const flexPain = getChecked('fms_flexion_pain');
+  let rotaryFinal = Math.min(rotaryL, rotaryR);
+  if (flexPain) rotaryFinal = 0; // Spinal Flexion clearing pain override
+  const rotaryFinalEl = document.getElementById('fms_rotary_final');
+  if (rotaryFinalEl) rotaryFinalEl.textContent = `نهایی: ${rotaryFinal} ${flexPain ? '(⚠️ درد)' : ''}`;
+
+  // Total Score (0 - 21)
+  const totalScore = deepSquat + hurdleFinal + lungeFinal + shoulderFinal + aslrFinal + trunkFinal + rotaryFinal;
+  const scoreValEl = document.getElementById('fmsTotalScoreVal');
+  if (scoreValEl) scoreValEl.textContent = totalScore;
+
+  // Injury Risk Classification
+  const riskBadge = document.getElementById('fmsRiskBadge');
+  let riskLevel = 'کم (مطلوب)';
+  if (riskBadge) {
+    if (totalScore < 14) {
+      riskLevel = 'بالا (احتمال آسیب غیربرخوردی)';
+      riskBadge.style.background = 'rgba(239, 68, 68, 0.2)';
+      riskBadge.style.borderColor = '#ef4444';
+      riskBadge.style.color = '#f87171';
+      riskBadge.textContent = 'ریسک آسیب: بسیار بالا (<۱۴) • نیاز فوری به اصلاح الگوها';
+    } else if (totalScore <= 17) {
+      riskLevel = 'متوسط';
+      riskBadge.style.background = 'rgba(234, 179, 8, 0.2)';
+      riskBadge.style.borderColor = '#eab308';
+      riskBadge.style.color = '#facc15';
+      riskBadge.textContent = 'ریسک آسیب: متوسط (۱۴ تا ۱۷) • تمرکز روی حلقه‌های ضعیف';
+    } else {
+      riskLevel = 'بسیار کم (نخبه)';
+      riskBadge.style.background = 'rgba(34, 197, 94, 0.2)';
+      riskBadge.style.borderColor = '#22c55e';
+      riskBadge.style.color = '#4ade80';
+      riskBadge.textContent = 'ریسک آسیب: پایین (>۱۷) • زنجیره کینتیک عالی و پایدار';
+    }
+  }
+
+  // Asymmetry Detection
+  const asymmetries = [];
+  if (hurdleL !== hurdleR) asymmetries.push(`عبور از مانع (چپ: ${hurdleL} / راست: ${hurdleR})`);
+  if (lungeL !== lungeR) asymmetries.push(`لانج خطی (چپ: ${lungeL} / راست: ${lungeR})`);
+  if (shoulderL !== shoulderR) asymmetries.push(`تحرک شانه (چپ: ${shoulderL} / راست: ${shoulderR})`);
+  if (aslrL !== aslrR) asymmetries.push(`بالا آوردن پای صاف ASLR (چپ: ${aslrL} / راست: ${aslrR})`);
+  if (rotaryL !== rotaryR) asymmetries.push(`ثبات چرخشی (چپ: ${rotaryL} / راست: ${rotaryR})`);
+
+  const asymEl = document.getElementById('fmsAsymmetryWarning');
+  if (asymEl) {
+    if (asymmetries.length > 0) {
+      asymEl.style.display = 'block';
+      asymEl.innerHTML = `⚠️ <strong>عدم تقارن طرفی شناسایی شد:</strong> ${asymmetries.join(' • ')}.<br><span style="font-size: 10px; color: #94a3b8;">عدم تقارن دوجانبه خطر آسیب عضلانی را تا ۲.۳ برابر افزایش می‌دهد.</span>`;
+    } else {
+      asymEl.style.display = 'none';
+    }
+  }
+
+  // Gray Cook Weak Link Hierarchy:
+  // 1. Pain (score 0) -> Medical review
+  // 2. Mobility: ASLR, then Shoulder Mobility
+  // 3. Motor Control: Rotary Stability, then Trunk Stability
+  // 4. Functional Movement: Inline Lunge, Hurdle Step, Deep Squat
+  let weakLink = 'تمامی الگوها در سطح بهینه هستند';
+  let prescribedExercise = 'حفظ آمادگی عملکردی و تمرینات پیشرفته پلیومتریک';
+
+  if (shoulderPain || extPain || flexPain || deepSquat === 0 || hurdleFinal === 0 || lungeFinal === 0 || shoulderFinal === 0 || aslrFinal === 0 || trunkFinal === 0 || rotaryFinal === 0) {
+    weakLink = 'بروز درد در حرکات (Pain Flag)';
+    prescribedExercise = 'ارجاع به کادر فیزیوتراپی و توقف تست‌های دارای درد جهت پیشگیری از صدمات مفصلی';
+  } else if (aslrFinal < 2) {
+    weakLink = 'تحرک‌پذیری اکتیو پای صاف (ASLR) و انعطاف زنجیره خلفی';
+    prescribedExercise = 'تمرینات فوم رولینگ همسترینگ و دوقلو، کشش‌های ایزومتریک ساق و لگن (Active Leg Lowering)';
+  } else if (shoulderFinal < 2) {
+    weakLink = 'تحرک‌پذیری کمربند شانه و قفسه سینه';
+    prescribedExercise = 'تمرینات اکستنشن توراسیک با فوم رولر، کشش سینه و چرخش داخلی/خارجی شانه با کش پیلاتس';
+  } else if (rotaryFinal < 2) {
+    weakLink = 'ثبات چرخشی و کنترل عصبی-عضلانی میان‌تنه (Rotary Stability)';
+    prescribedExercise = 'تمرینات برد-داگ قطری (Bird-Dog)، پلانک با لمس زانو و کراس-کرول برای بازآموزی زنجیره مورب';
+  } else if (trunkFinal < 2) {
+    weakLink = 'ثبات اکستنشن تنه و سفتی میان‌تنه (Trunk Push-Up)';
+    prescribedExercise = 'تمرینات پلانک ضد اکستنشن، ددباگ (Dead Bug) و شنای سوئدی اصلاحی با توقف ایزومتریک';
+  } else if (lungeFinal < 2) {
+    weakLink = 'کاهش تکانه و شتاب منفی در وضعیت لانج خطی';
+    prescribedExercise = 'تمرینات اسپلیت اسکات با تکیه‌گاه، تقویت عضلات چهارسر و پرونئال‌ها جهت مهار والگوس زانو';
+  } else if (hurdleFinal < 2) {
+    weakLink = 'ثبات تک‌پایی لگن و موبیلیتی مفصل هیپ (Hurdle Step)';
+    prescribedExercise = 'تمرین گام‌برداری کنترل‌شده تک‌پایی، تقویت سرینی میانی (Glute Medius) و ایستادن تک‌پایی روی فوم';
+  } else if (deepSquat < 2) {
+    weakLink = 'دامنه دورسی فلکشن مچ پا و خمیدگی همزمان مفاصل سه‌گانه در اسکات';
+    prescribedExercise = 'تمرین دورسی‌فلکشن مچ پا با کش، اسکات کمکی با طناب TRX و تحرک هیپ (Goblet Squat)';
+  }
+
+  const weakEl = document.getElementById('fmsWeakLinkSummary');
+  if (weakEl) {
+    weakEl.innerHTML = `
+      <div><strong>اولویت نخست اصلاحی:</strong> <span style="color: #38bdf8;">${weakLink}</span></div>
+      <div style="margin-top: 4px;"><strong>تمرین تجویزی پیشنهادی:</strong> <span style="color: #4ade80;">${prescribedExercise}</span></div>
+    `;
+  }
+
+  return {
+    totalScore,
+    riskLevel,
+    hasAsymmetry: asymmetries.length > 0,
+    asymmetries,
+    weakLink,
+    prescribedExercise,
+    scores: { deepSquat, hurdleFinal, lungeFinal, shoulderFinal, aslrFinal, trunkFinal, rotaryFinal }
+  };
+}
+
+// --- 12.2 RAST (Repeat Anaerobic Sprint Test) Calculation ---
+function calculateRastPower() {
+  const weightInput = document.getElementById('rastWeightInput');
+  const weight = Math.max(30, parseFloat(weightInput ? weightInput.value : 70) || 70);
+
+  const times = [];
+  for (let i = 1; i <= 6; i++) {
+    const el = document.getElementById(`rast_t${i}`);
+    const t = el ? (parseFloat(el.value) || 5.5) : 5.5;
+    times.push(Math.max(3.0, t));
+  }
+
+  // Formula: Power = (Weight * 1225) / Time^3 (Watts)
+  const powers = times.map((t, idx) => {
+    const p = Math.round((weight * 1225) / Math.pow(t, 3));
+    const pEl = document.getElementById(`rast_p${idx + 1}`);
+    if (pEl) pEl.textContent = `${p} W`;
+    return p;
+  });
+
+  const peakPower = Math.max(...powers);
+  const minPower = Math.min(...powers);
+  const sumPower = powers.reduce((a, b) => a + b, 0);
+  const avgPower = Math.round(sumPower / 6);
+  const totalTime = times.reduce((a, b) => a + b, 0);
+  const fatigueIndex = Number(((peakPower - minPower) / totalTime).toFixed(1));
+  const powerDropPercent = Number((((peakPower - minPower) / peakPower) * 100).toFixed(1));
+
+  const peakRel = (peakPower / weight).toFixed(1);
+  const avgRel = (avgPower / weight).toFixed(1);
+  const minRel = (minPower / weight).toFixed(1);
+
+  const peakEl = document.getElementById('rastPeakPowerVal');
+  if (peakEl) peakEl.textContent = `${peakPower} W`;
+  const peakRelEl = document.getElementById('rastPeakRelativeVal');
+  if (peakRelEl) peakRelEl.textContent = `${peakRel} W/kg`;
+
+  const avgEl = document.getElementById('rastAvgPowerVal');
+  if (avgEl) avgEl.textContent = `${avgPower} W`;
+  const avgRelEl = document.getElementById('rastAvgRelativeVal');
+  if (avgRelEl) avgRelEl.textContent = `${avgRel} W/kg`;
+
+  const minEl = document.getElementById('rastMinPowerVal');
+  if (minEl) minEl.textContent = `${minPower} W`;
+  const minRelEl = document.getElementById('rastMinRelativeVal');
+  if (minRelEl) minRelEl.textContent = `${minRel} W/kg`;
+
+  const fiEl = document.getElementById('rastFatigueIndexVal');
+  if (fiEl) fiEl.textContent = `${fatigueIndex} W/s`;
+
+  let fatigueRating = 'عالی (<۱۰)';
+  if (fatigueIndex > 15) {
+    fatigueRating = 'افت بالا (>۱۵)';
+  } else if (fatigueIndex >= 10) {
+    fatigueRating = 'مطلوب (۱۰-۱۵)';
+  }
+  const fiRatingEl = document.getElementById('rastFatigueRatingVal');
+  if (fiRatingEl) fiRatingEl.textContent = `استقامت بی‌هوازی: ${fatigueRating} • افت: ${powerDropPercent}٪`;
+
+  // Draw chart on canvas
+  drawRastCanvasChart(powers);
+
+  return {
+    weight,
+    times,
+    powers,
+    peakPower,
+    peakRelative: peakRel,
+    minPower,
+    minRelative: minRel,
+    avgPower,
+    avgRelative: avgRel,
+    fatigueIndex,
+    fatigueRating,
+    powerDropPercent
+  };
+}
+
+function drawRastCanvasChart(powers) {
+  const canvas = document.getElementById('rastPowerChartCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width;
+  const h = canvas.height;
+
+  ctx.clearRect(0, 0, w, h);
+
+  // Background grid
+  ctx.strokeStyle = 'rgba(51, 65, 85, 0.4)';
+  ctx.lineWidth = 1;
+  for (let i = 1; i <= 3; i++) {
+    const y = (h / 4) * i;
+    ctx.beginPath();
+    ctx.moveTo(35, y);
+    ctx.lineTo(w - 20, y);
+    ctx.stroke();
+  }
+
+  const maxP = Math.max(...powers, 700) * 1.1;
+  const minP = Math.max(0, Math.min(...powers) * 0.85);
+
+  const getX = i => 45 + i * ((w - 75) / 5);
+  const getY = p => h - 25 - ((p - minP) / (maxP - minP)) * (h - 45);
+
+  // Gradient area fill
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, 'rgba(56, 189, 248, 0.4)');
+  grad.addColorStop(1, 'rgba(56, 189, 248, 0.0)');
+
+  ctx.beginPath();
+  ctx.moveTo(getX(0), getY(powers[0]));
+  for (let i = 1; i < powers.length; i++) {
+    ctx.lineTo(getX(i), getY(powers[i]));
+  }
+  ctx.lineTo(getX(5), h - 20);
+  ctx.lineTo(getX(0), h - 20);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Line curve
+  ctx.beginPath();
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 2.5;
+  for (let i = 0; i < powers.length; i++) {
+    const x = getX(i);
+    const y = getY(powers[i]);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+
+  // Points & Labels
+  powers.forEach((p, i) => {
+    const x = getX(i);
+    const y = getY(p);
+
+    ctx.beginPath();
+    ctx.arc(x, y, 4.5, 0, Math.PI * 2);
+    ctx.fillStyle = i === 0 ? '#4ade80' : (i === 5 ? '#f87171' : '#38bdf8');
+    ctx.fill();
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Value label
+    ctx.fillStyle = '#f1f5f9';
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${p}W`, x, y - 8);
+
+    // X-axis sprint label
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '10px sans-serif';
+    ctx.fillText(`نوبت ${i + 1}`, x, h - 6);
+  });
+}
+
+// --- 12.3 VO2 Max & Cardiovascular Protocols ---
+function calculateVo2Max() {
+  const protocolSelect = document.getElementById('vo2ProtocolSelect');
+  const protocol = protocolSelect ? protocolSelect.value : 'rockport';
+
+  const activeAth = typeof getActiveAthlete === 'function' ? getActiveAthlete() : null;
+  const age = activeAth ? (parseInt(activeAth.age) || 20) : 20;
+  const weightKg = activeAth ? (parseFloat(activeAth.weightKg) || 70) : 70;
+  const gender = (activeAth && activeAth.gender === 'female') ? 0 : 1; // 1 = male, 0 = female
+
+  let vo2Max = 45.0;
+  let protocolName = 'راکپورت';
+
+  if (protocol === 'rockport') {
+    protocolName = 'پیاده‌روی ۱ مایل راکپورت';
+    const min = parseFloat(document.getElementById('rockport_min')?.value || 13);
+    const sec = parseFloat(document.getElementById('rockport_sec')?.value || 45);
+    const hr = parseFloat(document.getElementById('rockport_hr')?.value || 142);
+    const timeMin = min + (sec / 60);
+    const weightLbs = weightKg * 2.20462;
+
+    // Rockport formula:
+    // VO2Max = 132.853 - (0.0769 × W_lbs) - (0.3877 × Age) + (6.315 × Gender) - (3.2649 × Time) - (0.1565 × HR)
+    vo2Max = 132.853 - (0.0769 * weightLbs) - (0.3877 * age) + (6.315 * gender) - (3.2649 * timeMin) - (0.1565 * hr);
+  } else if (protocol === 'yoyo') {
+    protocolName = 'Yo-Yo IR2';
+    const dist = parseFloat(document.getElementById('yoyo_distance')?.value || 760);
+    // Formula: VO2Max = (Distance × 0.0136) + 45.3
+    vo2Max = (dist * 0.0136) + 45.3;
+  } else if (protocol === 'beep') {
+    protocolName = 'آزمون بوق MSFT';
+    const level = parseInt(document.getElementById('beep_level')?.value || 10);
+    const shuttle = parseInt(document.getElementById('beep_shuttle')?.value || 6);
+    const speed = 8.5 + (level - 1) * 0.5;
+    const shuttleTime = (72 / speed).toFixed(2);
+
+    // Cumulative shuttles count lookup
+    let totalShuttles = 0;
+    for (let l = 1; l < level; l++) {
+      const sp = 8.5 + (l - 1) * 0.5;
+      const count = Math.ceil(sp * 0.838);
+      totalShuttles += count;
+    }
+    totalShuttles += shuttle;
+
+    // Kilding Formula: VO2 = (0.38 * TotalShuttles) + 25.98
+    vo2Max = (0.38 * totalShuttles) + 25.98;
+
+    const banner = document.getElementById('beepSpecsBanner');
+    if (banner) {
+      banner.textContent = `سرعت مرحله ${level}: ${speed.toFixed(1)} km/h • زمان هر شاتل: ${shuttleTime}s • کل شاتل‌ها: ${totalShuttles}`;
+    }
+  } else if (protocol === 'cooper') {
+    protocolName = '۱۲ دقیقه کوپر';
+    const dist = parseFloat(document.getElementById('vo2_dist_input')?.value || 2800);
+    // Formula: VO2Max = (Distance - 504.9) / 44.73
+    vo2Max = (dist - 504.9) / 44.73;
+  } else if (protocol === 'balke') {
+    protocolName = '۱۵ دقیقه بالک';
+    const dist = parseFloat(document.getElementById('vo2_dist_input')?.value || 3200);
+    // Formula: VO2Max = (((Distance / 15) - 133) × 0.172) + 33.3
+    vo2Max = (((dist / 15) - 133) * 0.172) + 33.3;
+  } else if (protocol === 'run2400') {
+    protocolName = 'دو ۲۴۰۰ متر';
+    const timeMin = parseFloat(document.getElementById('vo2_dist_input')?.value || 10.5);
+    // Formula: VO2Max = 88.02 - (0.1656 * weight) - (2.76 * timeMin) + (3.716 * gender)
+    vo2Max = 88.02 - (0.1656 * weightKg) - (2.76 * timeMin) + (3.716 * gender);
+  }
+
+  vo2Max = Math.max(15, Math.min(90, Number(vo2Max.toFixed(1))));
+
+  const resEl = document.getElementById('vo2ResultVal');
+  if (resEl) resEl.textContent = vo2Max;
+
+  // Rating badge
+  let rating = 'متوسط';
+  let badgeColor = '#38bdf8';
+  let badgeBg = 'rgba(56, 189, 248, 0.2)';
+  if (vo2Max >= 55) {
+    rating = 'نخبه / قهرمانی (Elite Aerobic)';
+    badgeColor = '#4ade80';
+    badgeBg = 'rgba(34, 197, 94, 0.2)';
+  } else if (vo2Max >= 48) {
+    rating = 'عالی (Good Cardiovascular)';
+    badgeColor = '#38bdf8';
+    badgeBg = 'rgba(56, 189, 248, 0.2)';
+  } else if (vo2Max >= 40) {
+    rating = 'متوسط (Average)';
+    badgeColor = '#fbbf24';
+    badgeBg = 'rgba(251, 191, 36, 0.2)';
+  } else {
+    rating = 'ضعیف (نیاز به استقامت پایه)';
+    badgeColor = '#f87171';
+    badgeBg = 'rgba(239, 68, 68, 0.2)';
+  }
+
+  const badgeEl = document.getElementById('vo2RatingBadge');
+  if (badgeEl) {
+    badgeEl.textContent = `سطح: ${rating}`;
+    badgeEl.style.color = badgeColor;
+    badgeEl.style.borderColor = badgeColor;
+    badgeEl.style.background = badgeBg;
+  }
+
+  // Heart Rate Target Zones
+  const maxHr = 220 - age;
+  const aerobicMin = Math.round(maxHr * 0.70);
+  const aerobicMax = Math.round(maxHr * 0.85);
+
+  const hrMaxEl = document.getElementById('hrMaxVal');
+  if (hrMaxEl) hrMaxEl.textContent = `${maxHr} bpm`;
+  const hrMinEl = document.getElementById('hrMinTargetVal');
+  if (hrMinEl) hrMinEl.textContent = `${aerobicMin} bpm`;
+  const hrMaxTargetEl = document.getElementById('hrMaxTargetVal');
+  if (hrMaxTargetEl) hrMaxTargetEl.textContent = `${aerobicMax} bpm`;
+
+  return {
+    vo2Max,
+    protocol,
+    protocolName,
+    rating,
+    hrMax: maxHr,
+    hrTargetZone: `${aerobicMin}-${aerobicMax} bpm`
+  };
+}
+
+// --- 12.4 1RM Muscular Strength Estimation ---
+function calculate1Rm() {
+  const exerciseSelect = document.getElementById('oneRmExerciseSelect');
+  const ex = exerciseSelect ? exerciseSelect.value : 'bench';
+  const exName = exerciseSelect ? exerciseSelect.options[exerciseSelect.selectedIndex].text : 'پرس سینه';
+
+  const weight = parseFloat(document.getElementById('oneRmWeightInput')?.value || 80);
+  const reps = Math.max(1, Math.min(30, parseInt(document.getElementById('oneRmRepsInput')?.value || 6)));
+
+  const activeAth = typeof getActiveAthlete === 'function' ? getActiveAthlete() : null;
+  const bodyWeight = activeAth ? (parseFloat(activeAth.weightKg) || 70) : 70;
+
+  // Formula: %1RM = 100 - (Reps * 2)
+  const pct1Rm = Math.max(40, 100 - (reps * 2));
+  // 1RM = Weight / (pct / 100)
+  const estimated1Rm = Number((weight / (pct1Rm / 100)).toFixed(1));
+  const relativeRatio = Number((estimated1Rm / bodyWeight).toFixed(2));
+
+  const estEl = document.getElementById('oneRmEstimatedVal');
+  if (estEl) estEl.textContent = `${estimated1Rm} kg`;
+
+  const pctEl = document.getElementById('oneRmPercentVal');
+  if (pctEl) pctEl.textContent = `معادل ${pct1Rm}٪ از توان بیشینه`;
+
+  const relEl = document.getElementById('oneRmRelativeRatioVal');
+  if (relEl) relEl.textContent = `${relativeRatio} × وزن بدن`;
+
+  let rating = 'خوب';
+  if (relativeRatio >= 1.5) rating = 'فوق‌العاده (نخبه)';
+  else if (relativeRatio >= 1.2) rating = 'عالی (پیشرفته)';
+  else if (relativeRatio >= 1.0) rating = 'خوب (ورزشی)';
+  else rating = 'متوسط';
+
+  const ratEl = document.getElementById('oneRmRatingVal');
+  if (ratEl) ratEl.textContent = rating;
+
+  // Grip Dynamometer Ratio
+  const grip = parseFloat(document.getElementById('handGripInput')?.value || 48);
+  const gripRatio = ((grip / bodyWeight) * 100).toFixed(1);
+  const gripDisplay = document.getElementById('handGripRatioDisplay');
+  if (gripDisplay) {
+    gripDisplay.innerHTML = `نسبت قدرت پنجه به وزن بدن: <strong>${gripRatio}٪</strong> ${gripRatio > 65 ? '✓ (عالی برای رشته‌های پرتابی و هندبال)' : '(مناسب)'}`;
+  }
+
+  return {
+    exercise: ex,
+    exerciseName: exName,
+    weight,
+    reps,
+    estimated1Rm,
+    relativeRatio,
+    rating,
+    gripKg: grip,
+    gripRatio
+  };
+}
+
+// --- 12.5 Body Composition & LBM ---
+function calculateBodyComposition() {
+  const gender = document.getElementById('bodyCompGenderSelect')?.value || 'male';
+  const bodyFat = parseFloat(document.getElementById('bodyFatPercentInput')?.value || 13.5);
+  const weight = parseFloat(document.getElementById('bodyCompWeightInput')?.value || 72);
+
+  const activeAth = typeof getActiveAthlete === 'function' ? getActiveAthlete() : null;
+  const height = activeAth ? (parseFloat(activeAth.heightCm) || 178) : 178;
+
+  // BMI = weight / (height/100)^2
+  const heightM = height / 100;
+  const bmi = Number((weight / (heightM * heightM)).toFixed(1));
+
+  // Fat Mass & FFBM (Fat-Free Body Mass)
+  const fatMass = Number((weight * (bodyFat / 100)).toFixed(1));
+  const ffbm = Number((weight - fatMass).toFixed(1));
+
+  // LBM Formula with essential fat:
+  // Males: FFBM + 3% essential fat = FFBM * 1.03
+  // Females: FFBM + 12% essential fat = FFBM * 1.12
+  const lbmMultiplier = gender === 'female' ? 1.12 : 1.03;
+  const lbm = Number((ffbm * lbmMultiplier).toFixed(1));
+
+  const bmiEl = document.getElementById('bodyCompBmiVal');
+  if (bmiEl) bmiEl.textContent = bmi;
+  const ffbmEl = document.getElementById('bodyCompFfbmVal');
+  if (ffbmEl) ffbmEl.textContent = `${ffbm} kg`;
+  const lbmEl = document.getElementById('bodyCompLbmVal');
+  if (lbmEl) lbmEl.textContent = `${lbm} kg`;
+
+  const noteEl = document.getElementById('bodyCompEssentialNote');
+  if (noteEl) noteEl.textContent = gender === 'female' ? 'شامل ۱۲٪ چربی ضروری بانوان' : 'شامل ۳٪ چربی ضروری آقایان';
+
+  // Target competition athletic weight
+  const targetFat = gender === 'female' ? 0.16 : 0.10;
+  const idealWeight = Number((ffbm / (1 - targetFat)).toFixed(1));
+  const weightDiff = Number((weight - idealWeight).toFixed(1));
+
+  const targetEl = document.getElementById('targetWeightIdealVal');
+  if (targetEl) {
+    if (weightDiff > 0) {
+      targetEl.textContent = `وزن هدف مسابقه: ${idealWeight} kg (کاهش ${weightDiff} kg بافت چربی خالص)`;
+    } else {
+      targetEl.textContent = `وزن هدف مسابقه: ${idealWeight} kg (ترکیب بدنی کاملاً مسابقه‌ای و خشک)`;
+    }
+  }
+
+  return {
+    bmi,
+    bodyFat,
+    fatMass,
+    ffbm,
+    lbm,
+    idealWeight,
+    weightDiff
+  };
+}
+
+// --- 12.6 Field Skills & Sport Drills ---
+function updateFieldDrillView() {
+  const select = document.getElementById('fieldDrillSelect');
+  if (!select) return;
+  const val = select.value;
+
+  const lbl1 = document.getElementById('fieldDrillInputLabel');
+  const unit1 = document.getElementById('fieldDrillUnit1');
+  const inp1 = document.getElementById('fieldDrillVal1');
+  const row2 = document.getElementById('fieldDrillSecondRow');
+  const feedback = document.getElementById('fieldDrillFeedback');
+
+  if (val === 'hb_dribble_20') {
+    if (lbl1) lbl1.textContent = 'زمان دریبل سرعت ۲۰ متر:';
+    if (unit1) unit1.textContent = 'ثانیه';
+    if (inp1) inp1.value = '3.45';
+    if (row2) row2.style.display = 'none';
+    if (feedback) feedback.textContent = 'رتبه: بسیار سریع (پتانسیل بالا در ضدحملات سرعتی)';
+  } else if (val === 'hb_zigzag_10') {
+    if (lbl1) lbl1.textContent = 'زمان دریبل زیگزاگ ۱۰ مانع:';
+    if (unit1) unit1.textContent = 'ثانیه';
+    if (inp1) inp1.value = '9.80';
+    if (row2) row2.style.display = 'none';
+    if (feedback) feedback.textContent = 'رتبه: چابکی عالی با توپ و تسلط بر هر دو دست';
+  } else if (val === 'hb_wall_pass') {
+    if (lbl1) lbl1.textContent = 'تعداد پاس و دریافت دیوار ۳۰ ثانیه:';
+    if (unit1) unit1.textContent = 'تکرار';
+    if (inp1) inp1.value = '36';
+    if (row2) row2.style.display = 'flex';
+    if (feedback) feedback.textContent = 'رتبه: هماهنگی چشم و دست فوق‌العاده و سرعت عکس‌العمل عالی';
+  } else if (val === 'hb_gk_corners') {
+    if (lbl1) lbl1.textContent = 'زمان لمس ۴ گوشه دروازه:';
+    if (unit1) unit1.textContent = 'ثانیه';
+    if (inp1) inp1.value = '4.15';
+    if (row2) row2.style.display = 'none';
+    if (feedback) feedback.textContent = 'رتبه ویژه دروازه‌بان: سرعت تغییر جهت و ری‌اکشن بی‌نظیر';
+  } else if (val === 'fb_zigzag_6') {
+    if (lbl1) lbl1.textContent = 'زمان دریبل زیگزاگ ۶ مانع:';
+    if (unit1) unit1.textContent = 'ثانیه';
+    if (inp1) inp1.value = '6.30';
+    if (row2) row2.style.display = 'none';
+    if (feedback) feedback.textContent = 'رتبه: کنترل توپ و چابکی در فضای محدود عالی';
+  } else if (val === 'illinois_run') {
+    if (lbl1) lbl1.textContent = 'زمان آزمون چابکی ایلینوی:';
+    if (unit1) unit1.textContent = 'ثانیه';
+    if (inp1) inp1.value = '15.20';
+    if (row2) row2.style.display = 'none';
+    if (feedback) feedback.textContent = 'رتبه: نخبه چابکی (<۱۵.۹ ثانیه برای مردان)';
+  } else if (val === 'shuttle_4x9') {
+    if (lbl1) lbl1.textContent = 'زمان آزمون شاتل ۴×۹ متر با چوب:';
+    if (unit1) unit1.textContent = 'ثانیه';
+    if (inp1) inp1.value = '9.10';
+    if (row2) row2.style.display = 'none';
+    if (feedback) feedback.textContent = 'رتبه: شتاب مثبت و منفی عالی در تغییر مسیر';
+  } else if (val === 'slalom_10') {
+    if (lbl1) lbl1.textContent = 'زمان دوی مارپیچ ۱۰ متر:';
+    if (unit1) unit1.textContent = 'ثانیه';
+    if (inp1) inp1.value = '4.85';
+    if (row2) row2.style.display = 'none';
+    if (feedback) feedback.textContent = 'رتبه: چابکی و هماهنگی پاها در حد عالی';
+  } else if (val === 'burpee_30') {
+    if (lbl1) lbl1.textContent = 'تعداد تکرار برپی در ۳۰ ثانیه:';
+    if (unit1) unit1.textContent = 'تکرار';
+    if (inp1) inp1.value = '18';
+    if (row2) row2.style.display = 'none';
+    if (feedback) feedback.textContent = 'رتبه: توان بی‌هوازی عضلانی و هماهنگی کل بدن عالی (>۱۶)';
+  }
+}
+
+// --- MASTER UI INITIALIZATION FOR SPORTS SCIENCE SUITE ---
+function initSportsScienceSuiteUI() {
+  // Drawer Menu Button
+  const drawerBtn = document.getElementById('drawerItemSportsScienceSuite');
+  if (drawerBtn) {
+    drawerBtn.addEventListener('click', () => {
+      closeDrawer();
+      openSportsScienceSuiteModal();
+    });
+  }
+
+  // Workstation Tool Button
+  const workBtn = document.getElementById('statsSportsScienceBtn');
+  if (workBtn) {
+    workBtn.addEventListener('click', () => {
+      openSportsScienceSuiteModal();
+    });
+  }
+
+  // Modal Close Buttons
+  const closeBtn = document.getElementById('closeSportsScienceModalBtn');
+  const closeX = document.getElementById('closeSportsScienceModalXBtn');
+  if (closeBtn) closeBtn.addEventListener('click', closeSportsScienceSuiteModal);
+  if (closeX) closeX.addEventListener('click', closeSportsScienceSuiteModal);
+
+  // Cross-Navigation buttons
+  const openHbBtn = document.getElementById('openHandballFromSuiteBtn');
+  if (openHbBtn) {
+    openHbBtn.addEventListener('click', () => {
+      closeSportsScienceSuiteModal();
+      if (typeof openHandballScoutingModal === 'function') openHandballScoutingModal();
+    });
+  }
+  const openCmpBtn = document.getElementById('openCompareFromSuiteBtn');
+  if (openCmpBtn) {
+    openCmpBtn.addEventListener('click', () => {
+      closeSportsScienceSuiteModal();
+      if (typeof openCompareAthletesModal === 'function') openCompareAthletesModal();
+    });
+  }
+
+  // Athlete Selector
+  const athleteSelect = document.getElementById('sportsScienceAthleteSelect');
+  if (athleteSelect) {
+    athleteSelect.addEventListener('change', e => {
+      const targetId = e.target.value;
+      if (typeof setActiveAthlete === 'function') setActiveAthlete(targetId);
+      syncSportsScienceAthleteInfo();
+      calculateFmsScore();
+      calculateRastPower();
+      calculateVo2Max();
+      calculate1Rm();
+      calculateBodyComposition();
+    });
+  }
+
+  // Tab switching
+  const tabsNav = document.getElementById('sportsScienceTabsNav');
+  if (tabsNav) {
+    tabsNav.addEventListener('click', e => {
+      const btn = e.target.closest('.sportsScienceTabBtn');
+      if (!btn) return;
+      const targetTab = btn.getAttribute('data-tab');
+
+      document.querySelectorAll('.sportsScienceTabBtn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      document.querySelectorAll('.sportsScienceTabContent').forEach(c => (c.style.display = 'none'));
+      const activeContent = document.getElementById(`sportsScienceTabContent_${targetTab}`);
+      if (activeContent) activeContent.style.display = 'block';
+
+      if (targetTab === 'tabRAST') {
+        setTimeout(calculateRastPower, 50);
+      }
+    });
+  }
+
+  // FMS Event Listeners
+  const fmsInputs = document.querySelectorAll('.fmsScoreSelect, .fmsPainCheck');
+  fmsInputs.forEach(inp => {
+    inp.addEventListener('change', calculateFmsScore);
+  });
+
+  const resetFmsBtn = document.getElementById('resetFmsBtn');
+  if (resetFmsBtn) {
+    resetFmsBtn.addEventListener('click', () => {
+      document.querySelectorAll('.fmsScoreSelect').forEach(s => (s.value = '2'));
+      document.querySelectorAll('.fmsPainCheck').forEach(c => (c.checked = false));
+      calculateFmsScore();
+    });
+  }
+
+  const saveFmsBtn = document.getElementById('saveFmsToHistoryBtn');
+  if (saveFmsBtn) {
+    saveFmsBtn.addEventListener('click', () => {
+      const res = calculateFmsScore();
+      if (typeof saveToHistory === 'function') {
+        saveToHistory('fms', res);
+        alert('✓ کارنامه غربالگری FMS با موفقیت در پرونده ورزشکار ذخیره گردید.');
+      }
+    });
+  }
+
+  // RAST Event Listeners
+  const rastInputs = document.querySelectorAll('#rastWeightInput, .rastTimeInput');
+  rastInputs.forEach(inp => {
+    inp.addEventListener('input', calculateRastPower);
+  });
+
+  const rastSampleBtn = document.getElementById('rastSampleDataBtn');
+  if (rastSampleBtn) {
+    rastSampleBtn.addEventListener('click', () => {
+      const samples = [5.18, 5.29, 5.42, 5.55, 5.71, 5.88];
+      samples.forEach((val, i) => {
+        const inp = document.getElementById(`rast_t${i + 1}`);
+        if (inp) inp.value = val;
+      });
+      calculateRastPower();
+    });
+  }
+
+  const saveRastBtn = document.getElementById('saveRastToHistoryBtn');
+  if (saveRastBtn) {
+    saveRastBtn.addEventListener('click', () => {
+      const res = calculateRastPower();
+      if (typeof saveToHistory === 'function') {
+        saveToHistory('rast', res);
+        alert('✓ رکورد آزمون توان بی‌هوازی RAST در تاریخچه ثبت شد.');
+      }
+    });
+  }
+
+  // VO2 Max Event Listeners
+  const vo2ProtocolSelect = document.getElementById('vo2ProtocolSelect');
+  if (vo2ProtocolSelect) {
+    vo2ProtocolSelect.addEventListener('change', e => {
+      const proto = e.target.value;
+      const rockportSec = document.getElementById('vo2_sec_rockport');
+      const yoyoSec = document.getElementById('vo2_sec_yoyo');
+      const beepSec = document.getElementById('vo2_sec_beep');
+      const distSec = document.getElementById('vo2_sec_distance');
+      const distLbl = document.getElementById('distLabelDynamic');
+
+      if (rockportSec) rockportSec.style.display = proto === 'rockport' ? 'block' : 'none';
+      if (yoyoSec) yoyoSec.style.display = proto === 'yoyo' ? 'block' : 'none';
+      if (beepSec) beepSec.style.display = proto === 'beep' ? 'block' : 'none';
+
+      if (distSec) {
+        if (proto === 'cooper' || proto === 'balke' || proto === 'run2400') {
+          distSec.style.display = 'block';
+          if (distLbl) {
+            if (proto === 'cooper') distLbl.textContent = 'مسافت ۱۲ دقیقه (متر):';
+            else if (proto === 'balke') distLbl.textContent = 'مسافت ۱۵ دقیقه (متر):';
+            else distLbl.textContent = 'زمان دو ۲۴۰۰ متر (دقیقه):';
+          }
+        } else {
+          distSec.style.display = 'none';
+        }
+      }
+      calculateVo2Max();
+    });
+  }
+
+  const vo2Inputs = document.querySelectorAll('#rockport_min, #rockport_sec, #rockport_hr, #yoyo_distance, #beep_level, #beep_shuttle, #vo2_dist_input');
+  vo2Inputs.forEach(inp => {
+    inp.addEventListener('input', calculateVo2Max);
+  });
+
+  const saveVo2Btn = document.getElementById('saveVo2ToHistoryBtn');
+  if (saveVo2Btn) {
+    saveVo2Btn.addEventListener('click', () => {
+      const res = calculateVo2Max();
+      if (typeof saveToHistory === 'function') {
+        saveToHistory('vo2max', res);
+        alert('✓ رکورد اکسیژن بیشینه VO2 Max در پرونده ثبت شد.');
+      }
+    });
+  }
+
+  // 1RM Event Listeners
+  const oneRmInputs = document.querySelectorAll('#oneRmExerciseSelect, #oneRmWeightInput, #oneRmRepsInput, #handGripInput, #pullupsInput, #situps60Input');
+  oneRmInputs.forEach(inp => {
+    inp.addEventListener('input', calculate1Rm);
+    inp.addEventListener('change', calculate1Rm);
+  });
+
+  const save1RmBtn = document.getElementById('save1RmToHistoryBtn');
+  if (save1RmBtn) {
+    save1RmBtn.addEventListener('click', () => {
+      const res = calculate1Rm();
+      if (typeof saveToHistory === 'function') {
+        saveToHistory('one_rm', res);
+        alert('✓ رکورد قدرت عضلانی و ۱RM در پرونده ذخیره شد.');
+      }
+    });
+  }
+
+  // Body Composition Event Listeners
+  const bodyCompInputs = document.querySelectorAll('#bodyCompGenderSelect, #bodyFatPercentInput, #bodyCompWeightInput');
+  bodyCompInputs.forEach(inp => {
+    inp.addEventListener('input', calculateBodyComposition);
+    inp.addEventListener('change', calculateBodyComposition);
+  });
+
+  const saveBodyCompBtn = document.getElementById('saveBodyCompToHistoryBtn');
+  if (saveBodyCompBtn) {
+    saveBodyCompBtn.addEventListener('click', () => {
+      const res = calculateBodyComposition();
+      if (typeof saveToHistory === 'function') {
+        saveToHistory('body_comp', res);
+        alert('✓ ارزیابی ترکیب بدنی و LBM در پرونده ثبت شد.');
+      }
+    });
+  }
+
+  // Field Skills Event Listeners
+  const fieldDrillSelect = document.getElementById('fieldDrillSelect');
+  if (fieldDrillSelect) {
+    fieldDrillSelect.addEventListener('change', updateFieldDrillView);
+  }
+
+  const saveFieldDrillBtn = document.getElementById('saveFieldDrillToHistoryBtn');
+  if (saveFieldDrillBtn) {
+    saveFieldDrillBtn.addEventListener('click', () => {
+      const sel = document.getElementById('fieldDrillSelect');
+      const drillKey = sel ? sel.value : 'drill';
+      const drillName = sel ? sel.options[sel.selectedIndex].text : 'آزمون';
+      const val1 = document.getElementById('fieldDrillVal1')?.value || '0';
+      const unit1 = document.getElementById('fieldDrillUnit1')?.textContent || '';
+      const feedback = document.getElementById('fieldDrillFeedback')?.textContent || '';
+
+      const data = {
+        drillKey,
+        drillName,
+        recordVal: val1,
+        unit: unit1,
+        feedback
+      };
+
+      if (typeof saveToHistory === 'function') {
+        saveToHistory('field_drill', data);
+        alert('✓ رکورد مهارت میدانی در تاریخچه ثبت شد.');
+      }
+    });
+  }
+}
+
+// =========================================================================
+// 13. LIVE HUD CSS TRANSITIONS & DYNAMIC VALUE ANIMATIONS (v1.22.0)
+// Smooth transitions, spring pop scaling, milestone celebrations & metric glows
+// =========================================================================
+
+/**
+ * Triggers a hardware-accelerated CSS animation on a specific live HUD metric
+ * @param {string|HTMLElement} target - The hudVal or hudMetric element or its ID
+ * @param {'pop'|'milestone'|'celebration'|'warn'|'glow'} [type='pop'] - Animation archetype
+ */
+function triggerLiveHudMetricAnimation(target, type = 'pop') {
+  const el = typeof target === 'string' ? document.getElementById(target) : target;
+  if (!el) return;
+
+  const valEl = el.classList && el.classList.contains('hudVal') ? el : el.querySelector?.('.hudVal');
+  const metricEl = el.classList && el.classList.contains('hudMetric') ? el : el.closest?.('.hudMetric');
+
+  if (valEl) {
+    valEl.classList.remove('hudVal-pop', 'hudVal-milestone');
+    void valEl.offsetWidth; // force DOM reflow
+    if (type === 'milestone' || type === 'celebration') {
+      valEl.classList.add('hudVal-milestone');
+    } else {
+      valEl.classList.add('hudVal-pop');
+    }
+  }
+
+  if (metricEl) {
+    metricEl.classList.remove('hudMetric-celebration', 'hudMetric-glow', 'hudMetric-warn', 'hudMetricShimmer');
+    void metricEl.offsetWidth; // force DOM reflow
+    if (type === 'milestone' || type === 'celebration') {
+      metricEl.classList.add('hudMetric-celebration', 'hudMetricShimmer');
+    } else if (type === 'warn') {
+      metricEl.classList.add('hudMetric-warn');
+    } else {
+      metricEl.classList.add('hudMetric-glow', 'hudMetricShimmer');
+    }
+  }
+}
+window.triggerLiveHudMetricAnimation = triggerLiveHudMetricAnimation;
+
+function initLiveHudTransitions() {
+  const huds = document.querySelectorAll('.liveHud');
+  if (!huds.length) return;
+
+  const prevValues = new WeakMap();
+  const lastAnimatedTime = new WeakMap();
+
+  // MutationObserver on all HUD containers for automated, zero-config value animations
+  const hudObserver = new MutationObserver((mutations) => {
+    const now = performance.now();
+    for (const mutation of mutations) {
+      let valEl = null;
+      if (mutation.type === 'characterData') {
+        valEl = mutation.target.parentElement?.closest?.('.hudVal');
+      } else if (mutation.type === 'childList') {
+        if (mutation.target.classList && mutation.target.classList.contains('hudVal')) {
+          valEl = mutation.target;
+        } else {
+          valEl = mutation.target.closest?.('.hudVal') || mutation.target.querySelector?.('.hudVal');
+        }
+      }
+      if (!valEl) continue;
+
+      const currentText = valEl.textContent.trim();
+      const prevText = prevValues.get(valEl);
+      if (prevText === currentText) continue;
+      prevValues.set(valEl, currentText);
+
+      // Don't animate initial page render or uninitialized placeholders
+      if (prevText === undefined || (prevText === '--' && currentText === '--')) continue;
+
+      const valId = valEl.id || '';
+      const isTimer = valId.toLowerCase().includes('timer');
+      const isRepOrCount = valId.endsWith('CountVal') || 
+                           valId.endsWith('RepVal') || 
+                           valId.includes('Lap') || 
+                           valId === 'boscoJumpCountVal' || 
+                           valId === 'agilityLapCountVal';
+      const isStatusOrMilestone = valId.includes('Status') || 
+                                  valId.includes('Alignment') || 
+                                  valId.includes('Gate') || 
+                                  valId.includes('Max');
+      const isWarn = valEl.classList.contains('warn') || 
+                     currentText.includes('⚠️') || 
+                     currentText.includes('خطا') || 
+                     currentText.includes('ناقص');
+
+      // Rate limiting: avoid over-triggering on rapid continuous sub-second timer updates
+      const lastTime = lastAnimatedTime.get(valEl) || 0;
+      const minInterval = isRepOrCount ? 100 : (isTimer ? 350 : 180);
+      if (now - lastTime < minInterval) continue;
+      lastAnimatedTime.set(valEl, now);
+
+      // Determine animation intensity
+      if (isRepOrCount && !isTimer) {
+        triggerLiveHudMetricAnimation(valEl, 'celebration');
+      } else if (isWarn) {
+        triggerLiveHudMetricAnimation(valEl, 'warn');
+      } else if (isStatusOrMilestone) {
+        triggerLiveHudMetricAnimation(valEl, 'glow');
+      } else {
+        triggerLiveHudMetricAnimation(valEl, 'pop');
+      }
+    }
+  });
+
+  huds.forEach(hud => {
+    hudObserver.observe(hud, {
+      childList: true,
+      subtree: true,
+      characterData: true
+    });
+  });
+
+  // Clean up CSS animation classes on animationend to keep DOM clean and responsive
+  document.addEventListener('animationend', (e) => {
+    const target = e.target;
+    if (!target || !target.classList) return;
+    if (target.classList.contains('hudVal-pop')) target.classList.remove('hudVal-pop');
+    if (target.classList.contains('hudVal-milestone')) target.classList.remove('hudVal-milestone');
+    if (target.classList.contains('hudMetric-celebration')) target.classList.remove('hudMetric-celebration');
+    if (target.classList.contains('hudMetric-glow')) target.classList.remove('hudMetric-glow');
+    if (target.classList.contains('hudMetric-warn')) target.classList.remove('hudMetric-warn');
+    if (target.classList.contains('hudMetricShimmer')) target.classList.remove('hudMetricShimmer');
+  }, { passive: true });
+
+  console.log(`⚡ Live HUD Transitions & Workout Animations initialized for ${huds.length} HUD units`);
+}
+
+// --- MASTER INITIALIZATION FOR ROADMAP FEATURES ---
+function initRoadmapFeatures() {
+  initBiomechanicsWorker();
+  initDeviceInclinometer();
+  initLiveAudioCoachUI();
+  initYBalanceUI();
+  initProAgilityUI();
+  initArmCockingUI();
+  initPostureUI();
+  initCompareAthletesUI();
+  initBulkExportUI();
+  initSportsScienceSuiteUI();
+  initLiveHudTransitions();
+  initHandballSkillsSuite();
+  console.log('🚀 13-Point Biomechanics, Scouting & Handball Skills Suite fully active');
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initRoadmapFeatures);
+} else {
+  initRoadmapFeatures();
 }

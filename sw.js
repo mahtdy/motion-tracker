@@ -1,6 +1,6 @@
 // Service Worker with advanced caching strategies
-const VERSION = '1.15.0';
-const CACHE_NAME = `motion-tracker-v1-15-0`;
+const VERSION = '1.23.0';
+const CACHE_NAME = `motion-tracker-v1-23-0`;
 const CORE_CACHE = `${CACHE_NAME}-core`;
 const CDN_CACHE = `${CACHE_NAME}-cdn`;
 const RUNTIME_CACHE = `${CACHE_NAME}-runtime`;
@@ -10,6 +10,7 @@ const CORE_FILES = [
   '/',
   '/index.html',
   '/app.js',
+  '/biomechanics-worker.js',
   '/manifest.json',
   '/icon.svg'
 ];

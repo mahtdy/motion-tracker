@@ -3828,6 +3828,157 @@
     flex-wrap: wrap;
     gap: 8px;
   }
+
+  /* Dedicated FMS UI Controller Styles */
+  .fms-controller-card {
+    background: #1e293b;
+    border: 1.5px solid #38bdf8;
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 12px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+  }
+  .fms-view-toggle {
+    display: inline-flex;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 3px;
+    gap: 4px;
+  }
+  .fms-view-toggle-btn {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+  }
+  .fms-view-toggle-btn.active {
+    background: #0284c7;
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(2, 132, 199, 0.4);
+  }
+  .fms-step-dots {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .fms-step-dot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #0f172a;
+    border: 1.5px solid #334155;
+    color: #94a3b8;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .fms-step-dot:hover {
+    border-color: #38bdf8;
+    color: #f8fafc;
+  }
+  .fms-step-dot.active {
+    border-color: #38bdf8;
+    background: #0369a1;
+    color: #ffffff;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+    transform: scale(1.08);
+  }
+  .fms-step-dot.completed {
+    border-color: #22c55e;
+    background: rgba(34, 197, 94, 0.2);
+    color: #4ade80;
+  }
+  .fms-step-dot.pain-flag {
+    border-color: #ef4444;
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+  }
+  .fms-score-btn-group {
+    display: inline-flex;
+    gap: 4px;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 3px;
+  }
+  .fms-score-btn {
+    border: 1px solid transparent;
+    background: #1e293b;
+    color: #cbd5e1;
+    min-width: 32px;
+    height: 30px;
+    border-radius: 6px;
+    font-weight: 800;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .fms-score-btn:hover {
+    border-color: #475569;
+    color: #ffffff;
+  }
+  .fms-score-btn.active-0 {
+    background: #ef4444;
+    color: #ffffff;
+    border-color: #b91c1c;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+  }
+  .fms-score-btn.active-1 {
+    background: #ea580c;
+    color: #ffffff;
+    border-color: #c2410c;
+    box-shadow: 0 0 8px rgba(234, 88, 12, 0.5);
+  }
+  .fms-score-btn.active-2 {
+    background: #0284c7;
+    color: #ffffff;
+    border-color: #0369a1;
+    box-shadow: 0 0 8px rgba(2, 132, 199, 0.5);
+  }
+  .fms-score-btn.active-3 {
+    background: #16a34a;
+    color: #ffffff;
+    border-color: #15803d;
+    box-shadow: 0 0 8px rgba(22, 163, 74, 0.5);
+  }
+  .fms-clearing-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1.5px solid #334155;
+    background: #0f172a;
+    color: #cbd5e1;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .fms-clearing-toggle-btn.pain-active {
+    background: rgba(239, 68, 68, 0.25);
+    border-color: #ef4444;
+    color: #fca5a5;
+    font-weight: bold;
+    animation: fmsPulseRed 1.8s infinite;
+  }
+  @keyframes fmsPulseRed {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+    50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+  }
 </style>
 </head>
 <body>
@@ -3859,6 +4010,9 @@
             <span id="cam2AthleteBadge" class="cam-athlete-tag">زاویه دوم</span>
           </div>
         </div>
+
+        <!-- Predictive Camera Stream Buffer (Offscreen Background Stream Pre-fetch) -->
+        <video id="predictiveCameraBufferVideo" playsinline webkit-playsinline autoplay muted style="display: none; position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none;"></video>
 
         <!-- Feed 3: Side-by-Side Slow-Motion Review Feed (Last 5-Second Buffer) -->
         <div id="cameraReviewFeed" class="camera-feed-box review-feed-box" style="display: none;">
@@ -4318,6 +4472,19 @@
         </button>
       </div>
 
+      <!-- Quick Launchers: 13-Test Handball Suite & FMS Sports Science -->
+      <div class="topBarGroup" style="display: flex; gap: 5px; align-items: center;">
+        <button type="button" id="quickOpenHandballBtn" class="quickToolBtn" style="background: linear-gradient(135deg, rgba(2, 132, 199, 0.25), rgba(3, 105, 161, 0.35)); border: 1.5px solid #38bdf8; color: #38bdf8; font-weight: bold; padding: 5px 10px; border-radius: 8px; box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);" title="باز کردن سامانه آزمون‌های ۱۳گانه هندبال و کنسول داوری زنده (شوت، پاس، دروازه‌بانی، دریبل)">
+          <span>🤾‍♂️</span>
+          <span>آزمون‌های هندبال و داوری</span>
+          <span style="font-size: 9.5px; background: #0284c7; color: #fff; padding: 1px 6px; border-radius: 9999px;">۱۳ آزمون</span>
+        </button>
+        <button type="button" id="quickOpenSportsScienceBtn" class="quickToolBtn" style="background: linear-gradient(135deg, rgba(14, 165, 233, 0.2), rgba(2, 132, 199, 0.2)); border: 1.5px solid #0284c7; color: #7dd3fc; font-weight: bold; padding: 5px 10px; border-radius: 8px;" title="باز کردن سوییپر آزمون‌های فیزیولوژی ورزشی و غربالگری ۷ الگوی FMS با نشانگر ریسک آسیب">
+          <span>🔬</span>
+          <span>علوم ورزشی و FMS</span>
+        </button>
+      </div>
+
       <!-- Desktop Studio & Multi-Camera Controls -->
       <div class="topBarGroup desktopStudioControls">
         <button id="slowMoReviewBtn" class="quickToolBtn studioBtn" title="بازبینی صحنه آهسته ۵ ثانیه اخیر آخرین آزمون (کلید R)" style="border-color: rgba(245, 158, 11, 0.5); color: #fbbf24;">
@@ -4422,6 +4589,36 @@
         </div>
         <button id="drawerSwitchAthleteBtn" style="background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.4); color: #38bdf8; font-size: 11px; padding: 4px 8px; border-radius: 6px; cursor: pointer;">تغییر ورزشکار</button>
       </div>
+    </div>
+
+    <!-- Dedicated Quick Access Section for Handball 13 Tests & Sports Science FMS -->
+    <div class="drawerSection" style="background: rgba(15, 23, 42, 0.6); border-bottom: 1px solid #334155; padding-bottom: 8px;">
+      <div class="drawerSectionTitle" style="color: #38bdf8;">
+        <span>⭐</span>
+        <span>سامانه‌های تخصصی ویژه</span>
+      </div>
+
+      <button id="drawerItemHandballTop" class="drawerMenuItem" style="background: linear-gradient(135deg, rgba(2, 132, 199, 0.28), rgba(15, 23, 42, 0.9)); border: 1.5px solid #0284c7; margin-bottom: 6px;">
+        <div class="itemLeft">
+          <span class="itemIcon" style="font-size: 20px;">🤾‍♂️</span>
+          <div>
+            <div style="font-weight: 800; color: #38bdf8;">آزمون‌های ۱۳گانه هندبال و داوری زنده</div>
+            <div style="font-size: 10px; color: #cbd5e1;">داشبورد خطاهای شوت و پاس، لمس ۴ گوشه، دروازه‌بانی</div>
+          </div>
+        </div>
+        <span class="drawerBadge special" style="background: #0284c7;">۱۳ آزمون</span>
+      </button>
+
+      <button id="drawerItemSportsScienceTop" class="drawerMenuItem" style="background: linear-gradient(135deg, rgba(14, 165, 233, 0.22), rgba(15, 23, 42, 0.9)); border: 1.5px solid #0ea5e9;">
+        <div class="itemLeft">
+          <span class="itemIcon" style="font-size: 20px;">🔬</span>
+          <div>
+            <div style="font-weight: 800; color: #7dd3fc;">علوم ورزشی و غربالگری ۷گانه FMS</div>
+            <div style="font-size: 10px; color: #cbd5e1;">کنترلر FMS با نشانگر ریسک آسیب، RAST و VO2Max</div>
+          </div>
+        </div>
+        <span class="drawerBadge new" style="background: #0284c7;">FMS ۷ الگو</span>
+      </button>
     </div>
 
     <!-- Section 1: All 10 Tests -->
@@ -4786,14 +4983,14 @@
     </div>
 
     <div id="drawerVersionFooter" style="padding: 14px; text-align: center; font-size: 10px; color: #64748b; margin-top: auto;">
-      سامانه حرکت‌سنج هوشمند • نسخه 1.23.0
+      سامانه حرکت‌سنج هوشمند • نسخه 1.25.0
     </div>
   </div>
 
   <div id="startOverlay">
     <h2>حرکت‌سنج</h2>
     <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin: 4px 0 12px 0;">
-      <span class="version" id="appVersionDisplay" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 2px 10px; border-radius: 9999px; font-size: 11px; border: 1px solid rgba(56, 189, 248, 0.3);">نسخه 1.23.0 (مجموعه جامع ۱۳ آزمون مهارت هندبال، داوری زنده، HUD تعاملی و علوم ورزشی)</span>
+      <span class="version" id="appVersionDisplay" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 2px 10px; border-radius: 9999px; font-size: 11px; border: 1px solid rgba(56, 189, 248, 0.3);">نسخه 1.25.0 (بافرینگ پیش‌بینانه چنددوربینه، کنترلر ۷ الگوی FMS با نشانگر ریسک آسیب، داشبورد خطاهای شوت و پاس و آزمون‌های ۱۳گانه هندبال)</span>
       <button type="button" id="clearCacheReloadBtn" style="background: rgba(255, 255, 255, 0.08); color: #cbd5e1; border: 1px solid #475569; border-radius: 8px; padding: 3px 10px; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 4px;" title="پاکسازی کش مرورگر و بارگذاری نسخه جدید">
         <span>🔄</span>
         <span>بروزرسانی کش</span>
@@ -7089,207 +7286,367 @@
       <button type="button" class="sportsScienceTabBtn" data-tab="tabFieldSkills">🏆 مهارت‌های میدانی</button>
     </div>
 
-    <!-- TAB 1: FMS (Functional Movement Screen) -->
+    <!-- TAB 1: FMS (Functional Movement Screen) Dedicated UI Controller -->
     <div id="sportsScienceTabContent_tabFMS" class="sportsScienceTabContent">
-      <div class="sportsScienceCard">
-        <div class="sportsScienceSectionTitle">
-          <span>🧘</span>
-          <span>پروتکل غربالگری ۷ الگوی حرکتی بنیادی (Functional Movement Screen)</span>
-        </div>
-        <p style="font-size: 11px; color: #94a3b8; margin: 0 0 10px 0; line-height: 1.5;">
-          ارزیابی عدم تقارن حرکتی، ثبات مفصلی و زنجیره کینتیک. در صورت احساس درد در تست‌های پاکسازی (Clearing Tests)، امتیاز آن الگو طبق استاندارد گری کوک فوراً <strong>صفر</strong> محاسبه می‌شود. نمره آزمون‌های دوطرفه برابر با حداقل سمت چپ و راست است.
-        </p>
-
-        <!-- Test 1: Deep Squat -->
-        <div class="fmsRowItem">
-          <div style="flex: 1; min-width: 180px;">
-            <strong style="color: #f8fafc; font-size: 12px;">۱. اسکات عمیق (Deep Squat)</strong>
-            <div style="font-size: 10px; color: #94a3b8;">تحرک دوطرفه و متقارن لگن، زانوها، مچ پا و ستون فقرات</div>
-          </div>
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="font-size: 11px; color: #cbd5e1;">امتیاز (۰-۳):</span>
-            <select id="fms_deepSquat" class="fmsScoreSelect">
-              <option value="3">۳ - اجرای بی‌نقص</option>
-              <option value="2" selected>۲ - اجرای با جبران (پاشنه روی تخته)</option>
-              <option value="1">۱ - ناتوانی در اجرای صحیح</option>
-              <option value="0">۰ - بروز درد</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Test 2: Hurdle Step -->
-        <div class="fmsRowItem">
-          <div style="flex: 1; min-width: 180px;">
-            <strong style="color: #f8fafc; font-size: 12px;">۲. گام برداشتن از روی مانع (Hurdle Step)</strong>
-            <div style="font-size: 10px; color: #94a3b8;">ثبات تک‌پایی، پایداری لگن و گام‌برداری (دو طرفه)</div>
-          </div>
-          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-            <div>
-              <span style="font-size: 10px; color: #cbd5e1;">چپ:</span>
-              <select id="fms_hurdle_L" class="fmsScoreSelect">
-                <option value="3">۳</option><option value="2" selected>۲</option><option value="1">۱</option><option value="0">۰</option>
-              </select>
+      <!-- FMS Master Header & Automatic Risk Assessment Badge -->
+      <div class="fms-controller-card" style="border-color: #0284c7; background: linear-gradient(180deg, #0f172a 0%, #172554 100%);">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; border-bottom: 1px solid rgba(51,65,85,0.7); padding-bottom: 10px; margin-bottom: 10px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="display: flex; flex-direction: column;">
+              <span style="font-size: 10.5px; color: #94a3b8; font-weight: bold;">امتیاز کل غربالگری FMS:</span>
+              <div style="display: flex; align-items: baseline; gap: 6px; margin-top: 1px;">
+                <span id="fmsTotalScoreVal" style="font-size: 36px; font-weight: 900; color: #38bdf8; font-family: monospace; line-height: 1;">۱۴</span>
+                <span style="color: #64748b; font-size: 15px; font-weight: bold;">/ ۲۱</span>
+              </div>
             </div>
-            <div>
-              <span style="font-size: 10px; color: #cbd5e1;">راست:</span>
-              <select id="fms_hurdle_R" class="fmsScoreSelect">
-                <option value="3">۳</option><option value="2" selected>۲</option><option value="1">۱</option><option value="0">۰</option>
-              </select>
+            <!-- 7-Segment Progress Track -->
+            <div style="display: flex; gap: 3px; align-items: center; margin-right: 6px;" id="fmsScoreSegments">
+              <!-- Dynamically updated 7 segments -->
             </div>
-            <span id="fms_hurdle_final" style="font-size: 11px; color: #38bdf8; font-weight: bold; background: rgba(56,189,248,0.15); padding: 2px 6px; border-radius: 4px;">نهایی: ۲</span>
+          </div>
+
+          <!-- The Automatic Risk Assessment Badge -->
+          <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 4px;">
+            <div id="fmsRiskBadge" style="background: rgba(234,179,8,0.25); border: 2px solid #eab308; color: #facc15; padding: 7px 16px; border-radius: 9999px; font-size: 12px; font-weight: 800; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(234,179,8,0.2); transition: all 0.3s ease;">
+              <span>⚠️</span>
+              <span id="fmsRiskBadgeText">ریسک آسیب: متوسط (۱۴ تا ۱۷) • تمرکز روی حلقه‌های ضعیف</span>
+            </div>
+            <div id="fmsRiskSubtext" style="font-size: 10px; color: #94a3b8; max-width: 340px; line-height: 1.4;">
+              الگوهای حرکتی در حد استاندارد پایه؛ توصیه به برطرف کردن عدم تقارن دوجانبه.
+            </div>
           </div>
         </div>
 
-        <!-- Test 3: Inline Lunge -->
-        <div class="fmsRowItem">
-          <div style="flex: 1; min-width: 180px;">
-            <strong style="color: #f8fafc; font-size: 12px;">۳. لانج روی خط (Inline Lunge)</strong>
-            <div style="font-size: 10px; color: #94a3b8;">شتاب‌سنجی منفی، کاهش تکانه و پایداری در سطح ساژیتال</div>
+        <!-- Controller Mode Switcher Bar -->
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+          <div class="fms-view-toggle">
+            <button type="button" id="fmsViewStepperBtn" class="fms-view-toggle-btn active">
+              <span>🎛️</span>
+              <span>کنترلر مرحله‌به‌مرحله</span>
+            </button>
+            <button type="button" id="fmsViewMatrixBtn" class="fms-view-toggle-btn">
+              <span>📋</span>
+              <span>ماتریس جامع ۷ الگو</span>
+            </button>
           </div>
-          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-            <div>
-              <span style="font-size: 10px; color: #cbd5e1;">چپ:</span>
-              <select id="fms_lunge_L" class="fmsScoreSelect">
-                <option value="3">۳</option><option value="2" selected>۲</option><option value="1">۱</option><option value="0">۰</option>
-              </select>
-            </div>
-            <div>
-              <span style="font-size: 10px; color: #cbd5e1;">راست:</span>
-              <select id="fms_lunge_R" class="fmsScoreSelect">
-                <option value="3">۳</option><option value="2" selected>۲</option><option value="1">۱</option><option value="0">۰</option>
-              </select>
-            </div>
-            <span id="fms_lunge_final" style="font-size: 11px; color: #38bdf8; font-weight: bold; background: rgba(56,189,248,0.15); padding: 2px 6px; border-radius: 4px;">نهایی: ۲</span>
-          </div>
-        </div>
 
-        <!-- Test 4: Shoulder Mobility + Clearing -->
-        <div class="fmsRowItem">
-          <div style="flex: 1; min-width: 180px;">
-            <strong style="color: #f8fafc; font-size: 12px;">۴. تحرک‌پذیری شانه (Shoulder Mobility)</strong>
-            <div style="font-size: 10px; color: #94a3b8;">چرخش داخلی/خارجی همزمان مفصل گلنوهومرال و کتف</div>
-            <label style="display: flex; align-items: center; gap: 4px; margin-top: 4px; font-size: 10.5px; color: #f87171; cursor: pointer;">
-              <input type="checkbox" id="fms_shoulder_pain" class="fmsPainCheck">
-              <span>⚠️ تست پاکسازی شانه درد دارد (Shoulder Clearing Pain)</span>
-            </label>
-          </div>
-          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-            <div>
-              <span style="font-size: 10px; color: #cbd5e1;">چپ:</span>
-              <select id="fms_shoulder_L" class="fmsScoreSelect">
-                <option value="3">۳</option><option value="2" selected>۲</option><option value="1">۱</option><option value="0">۰</option>
-              </select>
-            </div>
-            <div>
-              <span style="font-size: 10px; color: #cbd5e1;">راست:</span>
-              <select id="fms_shoulder_R" class="fmsScoreSelect">
-                <option value="3">۳</option><option value="2" selected>۲</option><option value="1">۱</option><option value="0">۰</option>
-              </select>
-            </div>
-            <span id="fms_shoulder_final" style="font-size: 11px; color: #38bdf8; font-weight: bold; background: rgba(56,189,248,0.15); padding: 2px 6px; border-radius: 4px;">نهایی: ۲</span>
-          </div>
-        </div>
-
-        <!-- Test 5: Active Straight-Leg Raise -->
-        <div class="fmsRowItem">
-          <div style="flex: 1; min-width: 180px;">
-            <strong style="color: #f8fafc; font-size: 12px;">۵. بالا آوردن فعال پای صاف (ASLR)</strong>
-            <div style="font-size: 10px; color: #94a3b8;">انعطاف همسترینگ و ثبات عضلات مرکزی در وضعیت تاق‌باز</div>
-          </div>
-          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-            <div>
-              <span style="font-size: 10px; color: #cbd5e1;">چپ:</span>
-              <select id="fms_aslr_L" class="fmsScoreSelect">
-                <option value="3">۳</option><option value="2" selected>۲</option><option value="1">۱</option><option value="0">۰</option>
-              </select>
-            </div>
-            <div>
-              <span style="font-size: 10px; color: #cbd5e1;">راست:</span>
-              <select id="fms_aslr_R" class="fmsScoreSelect">
-                <option value="3">۳</option><option value="2" selected>۲</option><option value="1">۱</option><option value="0">۰</option>
-              </select>
-            </div>
-            <span id="fms_aslr_final" style="font-size: 11px; color: #38bdf8; font-weight: bold; background: rgba(56,189,248,0.15); padding: 2px 6px; border-radius: 4px;">نهایی: ۲</span>
-          </div>
-        </div>
-
-        <!-- Test 6: Trunk Stability Push-Up + Clearing -->
-        <div class="fmsRowItem">
-          <div style="flex: 1; min-width: 180px;">
-            <strong style="color: #f8fafc; font-size: 12px;">۶. شنای سوئدی ثبات تنه (Trunk Stability Push-Up)</strong>
-            <div style="font-size: 10px; color: #94a3b8;">ثبات عضلات مرکزی در صفحه ساژیتال هنگام زنجیره بسته حرکتی</div>
-            <label style="display: flex; align-items: center; gap: 4px; margin-top: 4px; font-size: 10.5px; color: #f87171; cursor: pointer;">
-              <input type="checkbox" id="fms_extension_pain" class="fmsPainCheck">
-              <span>⚠️ تست پاکسازی اکستنشن کمر درد دارد (Extension Clearing Pain)</span>
-            </label>
-          </div>
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="font-size: 11px; color: #cbd5e1;">امتیاز:</span>
-            <select id="fms_trunk" class="fmsScoreSelect">
-              <option value="3">۳</option><option value="2" selected>۲</option><option value="1">۱</option><option value="0">۰</option>
-            </select>
-            <span id="fms_trunk_final" style="font-size: 11px; color: #38bdf8; font-weight: bold; background: rgba(56,189,248,0.15); padding: 2px 6px; border-radius: 4px;">نهایی: ۲</span>
-          </div>
-        </div>
-
-        <!-- Test 7: Rotary Stability + Clearing -->
-        <div class="fmsRowItem">
-          <div style="flex: 1; min-width: 180px;">
-            <strong style="color: #f8fafc; font-size: 12px;">۷. ثبات چرخشی تنه (Rotary Stability)</strong>
-            <div style="font-size: 10px; color: #94a3b8;">هماهنگی عصبی-عضلانی چندمحوره و انتقال انرژی از اندام‌ها به تنه</div>
-            <label style="display: flex; align-items: center; gap: 4px; margin-top: 4px; font-size: 10.5px; color: #f87171; cursor: pointer;">
-              <input type="checkbox" id="fms_flexion_pain" class="fmsPainCheck">
-              <span>⚠️ تست پاکسازی فلکشن ستون فقرات درد دارد (Flexion Clearing Pain)</span>
-            </label>
-          </div>
-          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-            <div>
-              <span style="font-size: 10px; color: #cbd5e1;">چپ:</span>
-              <select id="fms_rotary_L" class="fmsScoreSelect">
-                <option value="3">۳</option><option value="2" selected>۲</option><option value="1">۱</option><option value="0">۰</option>
-              </select>
-            </div>
-            <div>
-              <span style="font-size: 10px; color: #cbd5e1;">راست:</span>
-              <select id="fms_rotary_R" class="fmsScoreSelect">
-                <option value="3">۳</option><option value="2" selected>۲</option><option value="1">۱</option><option value="0">۰</option>
-              </select>
-            </div>
-            <span id="fms_rotary_final" style="font-size: 11px; color: #38bdf8; font-weight: bold; background: rgba(56,189,248,0.15); padding: 2px 6px; border-radius: 4px;">نهایی: ۲</span>
+          <!-- Quick Samples & Actions -->
+          <div style="display: flex; gap: 6px; align-items: center;">
+            <button type="button" id="fmsSampleDataBtn" class="stats-tool-btn" style="font-size: 10.5px; padding: 3px 8px; border-color: #0284c7; color: #38bdf8;">⚡ درج نمونه نرمال</button>
+            <button type="button" id="resetFmsBtn" class="secondary" style="font-size: 10.5px; padding: 3px 8px; border-radius: 6px;">🔄 بازنشانی</button>
           </div>
         </div>
       </div>
 
-      <!-- FMS Results & Corrective Analytics Card -->
-      <div class="sportsScienceCard" style="border-color: #0284c7; background: linear-gradient(180deg, #0f172a 0%, #172554 100%);">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-          <div>
-            <div style="font-size: 11px; color: #94a3b8;">امتیاز کل غربالگری FMS (از ۲۱):</div>
-            <div style="display: flex; align-items: baseline; gap: 6px; margin-top: 2px;">
-              <span id="fmsTotalScoreVal" style="font-size: 32px; font-weight: 900; color: #38bdf8; font-family: monospace;">۱۴</span>
-              <span style="color: #64748b; font-size: 14px;">/ ۲۱</span>
-            </div>
+      <!-- VIEW A: DEDICATED STEP-BY-STEP EXAMINER CONTROLLER -->
+      <div id="fmsStepperContainer">
+        <!-- 7-Pattern Step Navigator Tabs -->
+        <div class="sportsScienceCard" style="padding: 8px 10px; margin-bottom: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-size: 11px; color: #cbd5e1; font-weight: bold;">الگوهای غربالگری گری کوک (FMS 7 Patterns):</span>
+            <span id="fmsStepProgressText" style="font-size: 10.5px; color: #38bdf8; font-weight: bold;">الگوی ۱ از ۷</span>
           </div>
-          <div id="fmsRiskBadge" style="background: rgba(234,179,8,0.2); border: 1.5px solid #eab308; color: #facc15; padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: bold;">
-            ریسک آسیب: متوسط (نیاز به حرکات اصلاحی)
+          <div class="fms-step-dots" id="fmsStepDotsRow">
+            <button type="button" class="fms-step-dot active" data-pattern-index="0" title="۱. اسکات عمیق">۱</button>
+            <button type="button" class="fms-step-dot" data-pattern-index="1" title="۲. گام برداشتن از روی مانع">۲</button>
+            <button type="button" class="fms-step-dot" data-pattern-index="2" title="۳. لانج روی خط">۳</button>
+            <button type="button" class="fms-step-dot" data-pattern-index="3" title="۴. تحرک‌پذیری شانه">۴</button>
+            <button type="button" class="fms-step-dot" data-pattern-index="4" title="۵. بالا آوردن پای صاف">۵</button>
+            <button type="button" class="fms-step-dot" data-pattern-index="5" title="۶. شنای سوئدی ثبات تنه">۶</button>
+            <button type="button" class="fms-step-dot" data-pattern-index="6" title="۷. ثبات چرخشی تنه">۷</button>
           </div>
         </div>
 
-        <div style="margin-top: 12px; padding: 10px; background: rgba(15,23,42,0.7); border-radius: 8px; border: 1px solid #334155;">
-          <div style="font-size: 11.5px; font-weight: bold; color: #cbd5e1; margin-bottom: 4px;">
+        <!-- Dedicated Active Pattern Examiner Card -->
+        <div class="sportsScienceCard" id="fmsActivePatternCard" style="border-color: #38bdf8; background: #0f172a;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span id="fmsActivePatternNumberBadge" style="background: #0284c7; color: #fff; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 6px;">الگوی ۱</span>
+                <span id="fmsActivePatternCategory" style="font-size: 10px; color: #94a3b8; background: rgba(51,65,85,0.7); padding: 2px 6px; border-radius: 4px;">عملکردی سه‌گانه</span>
+              </div>
+              <h4 id="fmsActivePatternTitle" style="color: #f8fafc; margin: 4px 0 2px 0; font-size: 15px; font-weight: 800;">۱. اسکات عمیق (Deep Squat)</h4>
+              <div id="fmsActivePatternSubtitle" style="font-size: 10.5px; color: #94a3b8;">تحرک دوطرفه و متقارن لگن، زانوها، مچ پا و ستون فقرات</div>
+            </div>
+
+            <!-- Pattern Final Score Display -->
+            <div style="text-align: left; background: rgba(30,41,59,0.8); border: 1px solid #334155; border-radius: 8px; padding: 6px 12px;">
+              <span style="font-size: 10px; color: #94a3b8;">نمره نهایی الگو:</span>
+              <div id="fmsActiveFinalBadge" style="font-size: 20px; font-weight: 900; color: #38bdf8; font-family: monospace;">۲ / ۳</div>
+            </div>
+          </div>
+
+          <!-- Clearing Test Warning Banner if applicable -->
+          <div id="fmsClearingTestRow" style="display: none; background: rgba(239,68,68,0.12); border: 1.5px dashed #ef4444; border-radius: 8px; padding: 8px 12px; margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+              <div>
+                <strong style="color: #f87171; font-size: 11.5px;">⚠️ آزمون پاکسازی بالینی درد (Clearing Test):</strong>
+                <div id="fmsClearingTestTitle" style="font-size: 10px; color: #fca5a5;">در صورت احساس هرگونه درد در این تست، نمره الگو فوراً ۰ محاسبه می‌شود.</div>
+              </div>
+              <button type="button" id="fmsClearingPainBtn" class="fms-clearing-toggle-btn">
+                <span>⚠️</span>
+                <span id="fmsClearingPainText">احساس درد در تست پاکسازی</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Touch-Friendly Score Pad for Left / Right or Symmetrical -->
+          <div style="background: rgba(30,41,59,0.7); border: 1px solid #334155; border-radius: 10px; padding: 12px; margin-bottom: 12px;">
+            <!-- Symmetrical Test Row -->
+            <div id="fmsSymmetricalScoreRow" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+              <span style="font-size: 12px; color: #f1f5f9; font-weight: bold;">امتیاز اجرای حرکت:</span>
+              <div class="fms-score-btn-group" id="fmsSymScoreBtns">
+                <button type="button" class="fms-score-btn" data-score="0">۰</button>
+                <button type="button" class="fms-score-btn" data-score="1">۱</button>
+                <button type="button" class="fms-score-btn active-2" data-score="2">۲</button>
+                <button type="button" class="fms-score-btn" data-score="3">۳</button>
+              </div>
+            </div>
+
+            <!-- Bilateral Left / Right Rows -->
+            <div id="fmsBilateralScoreRows" style="display: none; flex-direction: column; gap: 8px;">
+              <!-- Left Side -->
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid rgba(51,65,85,0.5); padding-bottom: 6px;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span style="background: rgba(56,189,248,0.2); color: #38bdf8; font-size: 11px; font-weight: bold; padding: 2px 6px; border-radius: 4px;">سمت چپ (L):</span>
+                  <span id="fmsActiveLScoreLabel" style="font-size: 11px; color: #cbd5e1; font-weight: bold;">۲</span>
+                </div>
+                <div class="fms-score-btn-group" id="fmsLeftScoreBtns">
+                  <button type="button" class="fms-score-btn" data-side="L" data-score="0">۰</button>
+                  <button type="button" class="fms-score-btn" data-side="L" data-score="1">۱</button>
+                  <button type="button" class="fms-score-btn active-2" data-side="L" data-score="2">۲</button>
+                  <button type="button" class="fms-score-btn" data-side="L" data-score="3">۳</button>
+                </div>
+              </div>
+
+              <!-- Right Side -->
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span style="background: rgba(56,189,248,0.2); color: #38bdf8; font-size: 11px; font-weight: bold; padding: 2px 6px; border-radius: 4px;">سمت راست (R):</span>
+                  <span id="fmsActiveRScoreLabel" style="font-size: 11px; color: #cbd5e1; font-weight: bold;">۲</span>
+                </div>
+                <div class="fms-score-btn-group" id="fmsRightScoreBtns">
+                  <button type="button" class="fms-score-btn" data-side="R" data-score="0">۰</button>
+                  <button type="button" class="fms-score-btn" data-side="R" data-score="1">۱</button>
+                  <button type="button" class="fms-score-btn active-2" data-side="R" data-score="2">۲</button>
+                  <button type="button" class="fms-score-btn" data-side="R" data-score="3">۳</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Official Gray Cook Scoring Criteria Box -->
+          <div style="background: rgba(15,23,42,0.8); border: 1px solid #334155; border-radius: 8px; padding: 10px; margin-bottom: 12px;">
+            <div style="font-size: 11px; font-weight: bold; color: #38bdf8; margin-bottom: 6px;">
+              📖 معیارهای امتیازدهی استاندارد گری کوک (Gray Cook Criteria):
+            </div>
+            <div id="fmsActiveCriteriaList" style="font-size: 10.5px; color: #cbd5e1; line-height: 1.6;">
+              <!-- Dynamically populated criteria -->
+            </div>
+            <div id="fmsActiveCoachingTip" style="font-size: 10px; color: #94a3b8; margin-top: 6px; border-top: 1px solid rgba(51,65,85,0.6); padding-top: 4px;">
+              💡 <strong>نکته ارزیاب:</strong> وضعیت استقرار، قرارگیری چوب و عدم اعمال نیروی شتابی ناگهانی.
+            </div>
+          </div>
+
+          <!-- Stepper Navigation Footer -->
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+            <button type="button" id="fmsPrevPatternBtn" class="secondary" style="font-size: 11.5px; padding: 6px 14px; border-radius: 6px;">
+              <span>➡️ الگوی قبلی</span>
+            </button>
+            <span style="font-size: 11px; color: #94a3b8;">تغییر الگوها با لمس شماره‌ها یا کلیدها</span>
+            <button type="button" id="fmsNextPatternBtn" class="primary-blue" style="font-size: 11.5px; padding: 6px 14px; border-radius: 6px; font-weight: bold;">
+              <span>الگوی بعدی ⬅️</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW B: COMPREHENSIVE MATRIX VIEW (ALL 7 PATTERNS) -->
+      <div id="fmsMatrixContainer" style="display: none;">
+        <div class="sportsScienceCard">
+          <div class="sportsScienceSectionTitle">
+            <span>📋</span>
+            <span>ماتریس کامل ارزیابی ۷ الگوی بنیادی FMS</span>
+          </div>
+
+          <!-- Test 1: Deep Squat -->
+          <div class="fmsRowItem">
+            <div style="flex: 1; min-width: 180px;">
+              <strong style="color: #f8fafc; font-size: 12px;">۱. اسکات عمیق (Deep Squat)</strong>
+              <div style="font-size: 10px; color: #94a3b8;">تحرک دوطرفه و متقارن لگن، زانوها، مچ پا و ستون فقرات</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 11px; color: #cbd5e1;">امتیاز:</span>
+              <select id="fms_deepSquat" class="fmsScoreSelect">
+                <option value="3">۳ - اجرای بی‌نقص</option>
+                <option value="2" selected>۲ - با جبران (تخته کمکی)</option>
+                <option value="1">۱ - ناتوانی در اجرا</option>
+                <option value="0">۰ - بروز درد</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Test 2: Hurdle Step -->
+          <div class="fmsRowItem">
+            <div style="flex: 1; min-width: 180px;">
+              <strong style="color: #f8fafc; font-size: 12px;">۲. گام برداشتن از روی مانع (Hurdle Step)</strong>
+              <div style="font-size: 10px; color: #94a3b8;">ثبات تک‌پایی، پایداری لگن و گام‌برداری (دو طرفه)</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <div>
+                <span style="font-size: 10px; color: #cbd5e1;">چپ:</span>
+                <select id="fms_hurdle_L" class="fmsScoreSelect">
+                  <option value="3">۳</option><option value="2" selected>۲</option><option value="1">۱</option><option value="0">۰</option>
+                </select>
+              </div>
+              <div>
+                <span style="font-size: 10px; color: #cbd5e1;">راست:</span>
+                <select id="fms_hurdle_R" class="fmsScoreSelect">
+                  <option value="3">۳</option><option value="2" selected>۲</option><option value="1">۱</option><option value="0">۰</option>
+                </select>
+              </div>
+              <span id="fms_hurdle_final" style="font-size: 11px; color: #38bdf8; font-weight: bold; background: rgba(56,189,248,0.15); padding: 2px 6px; border-radius: 4px;">نهایی: ۲</span>
+            </div>
+          </div>
+
+          <!-- Test 3: Inline Lunge -->
+          <div class="fmsRowItem">
+            <div style="flex: 1; min-width: 180px;">
+              <strong style="color: #f8fafc; font-size: 12px;">۳. لانج روی خط (Inline Lunge)</strong>
+              <div style="font-size: 10px; color: #94a3b8;">شتاب‌سنجی منفی، کاهش تکانه و پایداری در سطح ساژیتال</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <div>
+                <span style="font-size: 10px; color: #cbd5e1;">چپ:</span>
+                <select id="fms_lunge_L" class="fmsScoreSelect">
+                  <option value="3">۳</option><option value="2" selected>۲</option><option value="1">۱</option><option value="0">۰</option>
+                </select>
+              </div>
+              <div>
+                <span style="font-size: 10px; color: #cbd5e1;">راست:</span>
+                <select id="fms_lunge_R" class="fmsScoreSelect">
+                  <option value="3">۳</option><option value="2" selected>۲</option><option value="1">۱</option><option value="0">۰</option>
+                </select>
+              </div>
+              <span id="fms_lunge_final" style="font-size: 11px; color: #38bdf8; font-weight: bold; background: rgba(56,189,248,0.15); padding: 2px 6px; border-radius: 4px;">نهایی: ۲</span>
+            </div>
+          </div>
+
+          <!-- Test 4: Shoulder Mobility + Clearing -->
+          <div class="fmsRowItem">
+            <div style="flex: 1; min-width: 180px;">
+              <strong style="color: #f8fafc; font-size: 12px;">۴. تحرک‌پذیری شانه (Shoulder Mobility)</strong>
+              <div style="font-size: 10px; color: #94a3b8;">چرخش داخلی/خارجی همزمان مفصل گلنوهومرال و کتف</div>
+              <label style="display: flex; align-items: center; gap: 4px; margin-top: 4px; font-size: 10.5px; color: #f87171; cursor: pointer;">
+                <input type="checkbox" id="fms_shoulder_pain" class="fmsPainCheck">
+                <span>⚠️ تست پاکسازی شانه درد دارد (Shoulder Clearing Pain)</span>
+              </label>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <div>
+                <span style="font-size: 10px; color: #cbd5e1;">چپ:</span>
+                <select id="fms_shoulder_L" class="fmsScoreSelect">
+                  <option value="3">۳</option><option value="2" selected>۲</option><option value="1">۱</option><option value="0">۰</option>
+                </select>
+              </div>
+              <div>
+                <span style="font-size: 10px; color: #cbd5e1;">راست:</span>
+                <select id="fms_shoulder_R" class="fmsScoreSelect">
+                  <option value="3">۳</option><option value="2" selected>۲</option><option value="1">۱</option><option value="0">۰</option>
+                </select>
+              </div>
+              <span id="fms_shoulder_final" style="font-size: 11px; color: #38bdf8; font-weight: bold; background: rgba(56,189,248,0.15); padding: 2px 6px; border-radius: 4px;">نهایی: ۲</span>
+            </div>
+          </div>
+
+          <!-- Test 5: Active Straight-Leg Raise -->
+          <div class="fmsRowItem">
+            <div style="flex: 1; min-width: 180px;">
+              <strong style="color: #f8fafc; font-size: 12px;">۵. بالا آوردن فعال پای صاف (ASLR)</strong>
+              <div style="font-size: 10px; color: #94a3b8;">انعطاف همسترینگ و ثبات عضلات مرکزی در وضعیت تاق‌باز</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <div>
+                <span style="font-size: 10px; color: #cbd5e1;">چپ:</span>
+                <select id="fms_aslr_L" class="fmsScoreSelect">
+                  <option value="3">۳</option><option value="2" selected>۲</option><option value="1">۱</option><option value="0">۰</option>
+                </select>
+              </div>
+              <div>
+                <span style="font-size: 10px; color: #cbd5e1;">راست:</span>
+                <select id="fms_aslr_R" class="fmsScoreSelect">
+                  <option value="3">۳</option><option value="2" selected>۲</option><option value="1">۱</option><option value="0">۰</option>
+                </select>
+              </div>
+              <span id="fms_aslr_final" style="font-size: 11px; color: #38bdf8; font-weight: bold; background: rgba(56,189,248,0.15); padding: 2px 6px; border-radius: 4px;">نهایی: ۲</span>
+            </div>
+          </div>
+
+          <!-- Test 6: Trunk Stability Push-Up + Clearing -->
+          <div class="fmsRowItem">
+            <div style="flex: 1; min-width: 180px;">
+              <strong style="color: #f8fafc; font-size: 12px;">۶. شنای سوئدی ثبات تنه (Trunk Stability Push-Up)</strong>
+              <div style="font-size: 10px; color: #94a3b8;">ثبات عضلات مرکزی در صفحه ساژیتال هنگام زنجیره بسته حرکتی</div>
+              <label style="display: flex; align-items: center; gap: 4px; margin-top: 4px; font-size: 10.5px; color: #f87171; cursor: pointer;">
+                <input type="checkbox" id="fms_extension_pain" class="fmsPainCheck">
+                <span>⚠️ تست پاکسازی اکستنشن کمر درد دارد (Extension Clearing Pain)</span>
+              </label>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 11px; color: #cbd5e1;">امتیاز:</span>
+              <select id="fms_trunk" class="fmsScoreSelect">
+                <option value="3">۳</option><option value="2" selected>۲</option><option value="1">۱</option><option value="0">۰</option>
+              </select>
+              <span id="fms_trunk_final" style="font-size: 11px; color: #38bdf8; font-weight: bold; background: rgba(56,189,248,0.15); padding: 2px 6px; border-radius: 4px;">نهایی: ۲</span>
+            </div>
+          </div>
+
+          <!-- Test 7: Rotary Stability + Clearing -->
+          <div class="fmsRowItem">
+            <div style="flex: 1; min-width: 180px;">
+              <strong style="color: #f8fafc; font-size: 12px;">۷. ثبات چرخشی تنه (Rotary Stability)</strong>
+              <div style="font-size: 10px; color: #94a3b8;">هماهنگی عصبی-عضلانی چندمحوره و انتقال انرژی از اندام‌ها به تنه</div>
+              <label style="display: flex; align-items: center; gap: 4px; margin-top: 4px; font-size: 10.5px; color: #f87171; cursor: pointer;">
+                <input type="checkbox" id="fms_flexion_pain" class="fmsPainCheck">
+                <span>⚠️ تست پاکسازی فلکشن ستون فقرات درد دارد (Flexion Clearing Pain)</span>
+              </label>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <div>
+                <span style="font-size: 10px; color: #cbd5e1;">چپ:</span>
+                <select id="fms_rotary_L" class="fmsScoreSelect">
+                  <option value="3">۳</option><option value="2" selected>۲</option><option value="1">۱</option><option value="0">۰</option>
+                </select>
+              </div>
+              <div>
+                <span style="font-size: 10px; color: #cbd5e1;">راست:</span>
+                <select id="fms_rotary_R" class="fmsScoreSelect">
+                  <option value="3">۳</option><option value="2" selected>۲</option><option value="1">۱</option><option value="0">۰</option>
+                </select>
+              </div>
+              <span id="fms_rotary_final" style="font-size: 11px; color: #38bdf8; font-weight: bold; background: rgba(56,189,248,0.15); padding: 2px 6px; border-radius: 4px;">نهایی: ۲</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FMS Analytics, Weak Link & Corrective Prescription Card -->
+      <div class="sportsScienceCard" style="border-color: #38bdf8; background: #1e293b;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <div style="font-size: 12px; font-weight: 800; color: #38bdf8;">
             🔍 تحلیل اولویت زنجیره اصلاحی (Weak Link Hierarchy):
           </div>
-          <div id="fmsWeakLinkSummary" style="font-size: 11px; color: #94a3b8; line-height: 1.6;">
-            <!-- Generated dynamically -->
-          </div>
-          <div id="fmsAsymmetryWarning" style="margin-top: 6px; font-size: 11px; color: #f59e0b; display: none;">
-            ⚠️ عدم تقارن راست و چپ شناسایی شد: خطر آسیب در اندام با دامنه کمتر.
-          </div>
+          <span style="font-size: 10px; color: #94a3b8;">طبق استاندارد ارزیابی عملکردی گری کوک</span>
+        </div>
+        <div id="fmsWeakLinkSummary" style="font-size: 11px; color: #cbd5e1; line-height: 1.6; background: rgba(15,23,42,0.8); border: 1px solid #334155; border-radius: 8px; padding: 10px;">
+          <!-- Generated dynamically -->
+        </div>
+        <div id="fmsAsymmetryWarning" style="margin-top: 8px; font-size: 11px; color: #f59e0b; display: none; background: rgba(245,158,11,0.12); border: 1px solid #f59e0b; border-radius: 8px; padding: 8px 10px;">
+          ⚠️ عدم تقارن راست و چپ شناسایی شد: خطر آسیب در اندام با دامنه کمتر.
         </div>
 
         <div class="btnRow" style="margin-top: 12px;">
           <button type="button" id="saveFmsToHistoryBtn" class="primary-blue" style="background: #0284c7; flex: 1.5; font-weight: bold;">💾 ثبت کارنامه FMS در پرونده ورزشکار</button>
-          <button type="button" id="resetFmsBtn" class="secondary" style="flex: 0.8;">بازنشانی</button>
         </div>
       </div>
     </div>
@@ -7736,7 +8093,8 @@
       </div>
     </div>
     <div class="stats-win-actions">
-      <button id="statsSportsScienceBtn" class="stats-tool-btn" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.4);" title="موتور جامع آزمون‌های فیزیولوژی ورزشی (FMS, RAST, VO2Max, 1RM)">🧪 آزمون‌های فیزیولوژی</button>
+      <button id="statsHandballSuiteBtn" class="stats-tool-btn" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); font-weight: bold;" title="سامانه جامع آزمون‌های ۱۳گانه هندبال و داوری زنده (شوت، پاس، دروازه‌بانی، دریبل)">🤾‍♂️ آزمون‌های هندبال (۱۳)</button>
+      <button id="statsSportsScienceBtn" class="stats-tool-btn" style="color: #7dd3fc; border-color: rgba(14, 165, 233, 0.4); font-weight: bold;" title="موتور جامع آزمون‌های فیزیولوژی ورزشی و غربالگری ۷ الگوی FMS (FMS, RAST, VO2Max, 1RM)">🔬 علوم ورزشی و FMS</button>
       <button id="statsReviewBtn" class="stats-tool-btn" style="color: #fbbf24; border-color: rgba(245, 158, 11, 0.4);" title="بازبینی صحنه آهسته ۵ ثانیه اخیر آزمون (کلید R)">🎬 بازبینی ۵ث</button>
       <button id="statsFocusControlBtn" class="stats-tool-btn" title="کنترل و قفل فوکوس سخت‌افزاری دوربین (F)">🎯 فوکوس بیومتریک</button>
       <button id="statsToggleJointAnglesBtn" class="stats-tool-btn" title="نمایش یا پنهان‌سازی زوایای بین مفاصل روی اسکلت (A)">📐 زوایای مفاصل</button>
@@ -7745,6 +8103,141 @@
       <button id="statsLayoutSplitBtn" class="stats-tool-btn active" title="نمای دوپنجره (دوربین + مشخصات)">🖥️ دوپنجره</button>
       <button id="statsLayoutCamBtn" class="stats-tool-btn" title="فقط کادر دوربین">📷 دوربین</button>
       <button id="statsPopoutBtn" class="stats-tool-btn" title="باز کردن در دو پنجره مجزا (Pop-Out)">🪟 پنجره مجزا</button>
+    </div>
+  </div>
+
+  <!-- Workstation Dedicated Handball 13-Test & Referee Quick Launch Hub -->
+  <div id="workstationHandballQuickCard" class="stats-card" style="margin-bottom: 12px; border: 1.5px solid rgba(56, 189, 248, 0.45); background: linear-gradient(180deg, #0f172a 0%, #082f49 100%); border-radius: 12px; padding: 12px; box-shadow: 0 4px 18px rgba(2, 132, 199, 0.25);">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(56, 189, 248, 0.3); padding-bottom: 8px; margin-bottom: 10px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 20px;">🤾‍♂️</span>
+        <div>
+          <h4 style="margin: 0; font-size: 13px; font-weight: 900; color: #38bdf8;">سامانه آزمون‌های ۱۳گانه هندبال و داوری زنده</h4>
+          <span style="font-size: 10px; color: #94a3b8;">خطاهای شوت و پاس، لمس ۴ گوشه دروازه، مهارت‌های دروازه‌بانی</span>
+        </div>
+      </div>
+      <button type="button" id="workstationOpenHandballModalBtn" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: #fff; border: none; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+        <span>اجرای کامل</span>
+        <span>↗</span>
+      </button>
+    </div>
+
+    <!-- Quick 1-Click Direct Launch Grid -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+      <button type="button" class="hb-quick-launch-btn" data-test="shoot_3step_simple" style="background: rgba(30, 41, 59, 0.85); border: 1px solid rgba(56, 189, 248, 0.35); color: #f8fafc; border-radius: 8px; padding: 7px 8px; text-align: right; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: bold;">
+        <span style="font-size: 15px;">🎯</span>
+        <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+          <div style="color: #38bdf8;">داشبورد خطاهای شوت</div>
+          <div style="font-size: 9.5px; color: #94a3b8; font-weight: normal;">گل، خطای پا، مانع ۹متر</div>
+        </div>
+      </button>
+
+      <button type="button" class="hb-quick-launch-btn" data-test="pass_catch_3m_wall" style="background: rgba(30, 41, 59, 0.85); border: 1px solid rgba(56, 189, 248, 0.35); color: #f8fafc; border-radius: 8px; padding: 7px 8px; text-align: right; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: bold;">
+        <span style="font-size: 15px;">🏐</span>
+        <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+          <div style="color: #38bdf8;">پاس و دریافت ۳م دیوار</div>
+          <div style="font-size: 9.5px; color: #94a3b8; font-weight: normal;">افتادن توپ و توقف زمان</div>
+        </div>
+      </button>
+
+      <button type="button" class="hb-quick-launch-btn" data-test="gk_4corners_diagonal" style="background: rgba(30, 41, 59, 0.85); border: 1.5px solid rgba(34, 197, 94, 0.5); color: #4ade80; border-radius: 8px; padding: 7px 8px; text-align: right; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: bold;">
+        <span style="font-size: 15px;">🧤</span>
+        <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+          <div style="color: #4ade80;">لمس ۴ گوشه ضربدری</div>
+          <div style="font-size: 9.5px; color: #cbd5e1; font-weight: normal;">توالی قطری و چهارچوب</div>
+        </div>
+      </button>
+
+      <button type="button" class="hb-quick-launch-btn" data-test="shoot_penalty_7m" style="background: rgba(30, 41, 59, 0.85); border: 1px solid rgba(56, 189, 248, 0.35); color: #f8fafc; border-radius: 8px; padding: 7px 8px; text-align: right; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: bold;">
+        <span style="font-size: 15px;">⏱️</span>
+        <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+          <div style="color: #38bdf8;">داوری و پنالتی ۷متر</div>
+          <div style="font-size: 9.5px; color: #94a3b8; font-weight: normal;">تایمر معکوس ۳۰ ثانیه</div>
+        </div>
+      </button>
+
+      <button type="button" class="hb-quick-launch-btn" data-cat="goalkeeping" style="background: rgba(30, 41, 59, 0.85); border: 1px solid rgba(168, 85, 247, 0.35); color: #c084fc; border-radius: 8px; padding: 7px 8px; text-align: right; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: bold;">
+        <span style="font-size: 15px;">🥅</span>
+        <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+          <div style="color: #c084fc;">مهارت‌های دروازه‌بانی</div>
+          <div style="font-size: 9.5px; color: #94a3b8; font-weight: normal;">۵ آزمون تخصصی واکنش</div>
+        </div>
+      </button>
+
+      <button type="button" class="hb-quick-launch-btn" data-cat="shooting" style="background: rgba(30, 41, 59, 0.85); border: 1px solid rgba(245, 158, 11, 0.35); color: #fbbf24; border-radius: 8px; padding: 7px 8px; text-align: right; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: bold;">
+        <span style="font-size: 15px;">⚡</span>
+        <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+          <div style="color: #fbbf24;">مهارت‌های شوت</div>
+          <div style="font-size: 9.5px; color: #94a3b8; font-weight: normal;">۴ آزمون شوت، مانع، گوش</div>
+        </div>
+      </button>
+
+      <button type="button" class="hb-quick-launch-btn" data-cat="dribble" style="background: rgba(30, 41, 59, 0.85); border: 1px solid rgba(56, 189, 248, 0.35); color: #38bdf8; border-radius: 8px; padding: 7px 8px; text-align: right; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: bold;">
+        <span style="font-size: 15px;">🏃</span>
+        <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+          <div style="color: #38bdf8;">مهارت‌های دریبلینگ</div>
+          <div style="font-size: 9.5px; color: #94a3b8; font-weight: normal;">۴ آزمون سرعت و زیگزاگ</div>
+        </div>
+      </button>
+
+      <button type="button" class="hb-quick-launch-btn" data-tab="scouting" style="background: rgba(30, 41, 59, 0.85); border: 1px solid rgba(236, 72, 153, 0.35); color: #f472b6; border-radius: 8px; padding: 7px 8px; text-align: right; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: bold;">
+        <span style="font-size: 15px;">📊</span>
+        <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+          <div style="color: #f472b6;">استعدادیابی و پست‌ها</div>
+          <div style="font-size: 9.5px; color: #94a3b8; font-weight: normal;">رادار و تطابق پست بازی</div>
+        </div>
+      </button>
+    </div>
+  </div>
+
+  <!-- Workstation FMS 7-Pattern & Sports Science Quick Launch Hub -->
+  <div id="workstationFmsQuickCard" class="stats-card" style="margin-bottom: 12px; border: 1.5px solid rgba(14, 165, 233, 0.4); background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%); border-radius: 12px; padding: 12px; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(51, 65, 85, 0.8); padding-bottom: 8px; margin-bottom: 10px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 20px;">🔬</span>
+        <div>
+          <h4 style="margin: 0; font-size: 13px; font-weight: 900; color: #7dd3fc;">کنترلر ۷ الگوی FMS و آزمون‌های فیزیولوژی</h4>
+          <span style="font-size: 10px; color: #94a3b8;">نشانگر خودکار ریسک آسیب، آزمون‌های RAST و VO2Max</span>
+        </div>
+      </div>
+      <button type="button" id="workstationOpenSportsScienceModalBtn" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: #fff; border: none; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+        <span>ارزیابی</span>
+        <span>↗</span>
+      </button>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+      <button type="button" class="fms-quick-launch-btn" data-tab="tabFMS" style="background: rgba(30, 41, 59, 0.85); border: 1px solid rgba(56, 189, 248, 0.35); color: #38bdf8; border-radius: 8px; padding: 7px 8px; text-align: right; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: bold;">
+        <span>🧘</span>
+        <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+          <div>کنترلر ۷ الگوی FMS</div>
+          <div style="font-size: 9.5px; color: #94a3b8; font-weight: normal;">نشانگر خطر آسیب</div>
+        </div>
+      </button>
+
+      <button type="button" class="fms-quick-launch-btn" data-tab="tabRAST" style="background: rgba(30, 41, 59, 0.85); border: 1px solid rgba(245, 158, 11, 0.35); color: #fbbf24; border-radius: 8px; padding: 7px 8px; text-align: right; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: bold;">
+        <span>⚡</span>
+        <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+          <div>توان بی‌هوازی RAST</div>
+          <div style="font-size: 9.5px; color: #94a3b8; font-weight: normal;">توان اوج و خستگی</div>
+        </div>
+      </button>
+
+      <button type="button" class="fms-quick-launch-btn" data-tab="tabVO2" style="background: rgba(30, 41, 59, 0.85); border: 1px solid rgba(34, 197, 94, 0.35); color: #4ade80; border-radius: 8px; padding: 7px 8px; text-align: right; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: bold;">
+        <span>🫀</span>
+        <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+          <div>استقامت و VO2 Max</div>
+          <div style="font-size: 9.5px; color: #94a3b8; font-weight: normal;">راکپورت و بیپ‌تست</div>
+        </div>
+      </button>
+
+      <button type="button" class="fms-quick-launch-btn" data-tab="tab1RM" style="background: rgba(30, 41, 59, 0.85); border: 1px solid rgba(168, 85, 247, 0.35); color: #c084fc; border-radius: 8px; padding: 7px 8px; text-align: right; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: bold;">
+        <span>🏋️‍♂️</span>
+        <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+          <div>تخمین ۱ تکرار بیشینه</div>
+          <div style="font-size: 9.5px; color: #94a3b8; font-weight: normal;">فرمول‌های قدرتی 1RM</div>
+        </div>
+      </button>
     </div>
   </div>
 
@@ -8182,6 +8675,42 @@
       <div id="multiCamFocusSummary" style="font-size: 11px; color: #cbd5e1; background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 10px; line-height: 1.6;">
         <div id="cam1FocusModalStatus">📷 <strong>دوربین ۱:</strong> در حال بررسی قابلیت‌های سنسور...</div>
         <div id="cam2FocusModalStatus" style="margin-top: 4px; color: #94a3b8;">🎥 <strong>دوربین ۲:</strong> غیرفعال</div>
+      </div>
+    </div>
+
+    <!-- Predictive Camera Stream Buffering & Low-Latency Switching Card -->
+    <div class="cam-config-group" style="background: rgba(15, 23, 42, 0.85); border: 1.5px solid #0284c7; border-radius: 12px; padding: 12px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 20px;">⚡</span>
+          <div>
+            <strong style="color: #38bdf8; font-size: 13px;">بافرینگ پیش‌بینانه و پیش‌بارگذاری استریم‌ها (Predictive Stream Buffer)</strong>
+            <div style="font-size: 10px; color: #94a3b8;">پیش‌بارگذاری سنسورهای ثانویه در پس‌زمینه برای حذف وقفه هنگام تغییر آزمون یا زاویه</div>
+          </div>
+        </div>
+        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+          <input type="checkbox" id="togglePredictiveBuffering" checked style="accent-color: #0284c7; width: 18px; height: 18px;">
+          <span style="font-size: 11px; color: #cbd5e1;">فعال</span>
+        </label>
+      </div>
+
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;">
+        <div id="predictiveBufferStatusBadge" style="background: rgba(34, 197, 94, 0.15); border: 1px solid #22c55e; color: #4ade80; border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: bold; display: flex; align-items: center; gap: 6px;">
+          <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 8px #22c55e;"></span>
+          <span id="predictiveBufferStatusText">وضعیت: استریم پشتیبان آماده و بافر شد (تأخیر سوییچ: ~۱۲ms)</span>
+        </div>
+        <div id="predictiveLatencyReductionBadge" style="background: rgba(56, 189, 248, 0.15); border: 1px solid #38bdf8; color: #38bdf8; border-radius: 6px; padding: 4px 10px; font-size: 11px;">
+          ⚡ کاهش ۹۰٪ زمان تأخیر سوییچ
+        </div>
+      </div>
+
+      <div style="font-size: 11px; color: #cbd5e1; line-height: 1.5; background: #0f172a; border-radius: 6px; padding: 8px; border: 1px solid #334155;">
+        <div id="predictiveTargetHint">🎯 <strong>سنسور پیش‌بینی‌شده برای آزمون فعال:</strong> <span id="predictiveTargetSensorName" style="color: #38bdf8;">دوربین زاویه دوم / زاویه عریض</span></div>
+        <div style="font-size: 10px; color: #94a3b8; margin-top: 4px;">با تغییر آزمون ورزشی یا فعال‌سازی بررسی صحنه آهسته، جریان ویدیویی سنسور بهینه در کش گرم سخت‌افزار نگه‌داشته می‌شود تا سوییچ در کمتر از یک فریم انجام شود.</div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; margin-top: 8px; gap: 6px;">
+        <button type="button" id="prefetchCamerasNowBtn" class="stats-tool-btn" style="font-size: 10.5px; padding: 4px 10px; color: #38bdf8; border-color: #0284c7;">⚡ پیش‌بارگذاری دستی سنسورها</button>
       </div>
     </div>
 

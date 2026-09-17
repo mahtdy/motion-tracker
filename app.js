@@ -10275,7 +10275,7 @@ function situpProcessFrame(kp) {
   // 'lowering': returning back down to the mat
   if (situpState === 'down') {
     situpStatusMessage = 'موقعیت شروع (پایین)';
-    if (angle < 105) {
+    if (angle < 108) {
       situpState = 'rising';
       situpMinAngleThisRep = angle;
       situpStatusMessage = 'در حال بالا آمدن...';
@@ -10286,19 +10286,19 @@ function situpProcessFrame(kp) {
     }
     situpStatusMessage = 'در حال بالا آمدن...';
 
-    // Check for Insufficient Range of Motion (Premature reversal before reaching 75°)
-    if (angle > situpMinAngleThisRep + 9 && situpMinAngleThisRep > 82) {
+    // Check for Insufficient Range of Motion (Premature reversal before reaching 78°)
+    if (angle > situpMinAngleThisRep + 10 && situpMinAngleThisRep > 86) {
       triggerAiFormWarning('SITUP_INSUFFICIENT_ROM', {
         mode: 'situp',
         shortText: '⚠️ دامنه ناقص',
         title: 'اخطار فرم: دامنه ناقص (عدم بالا آمدن کامل تنه)',
-        detail: `حداقل زاویه رسیده ${Math.round(situpMinAngleThisRep)}° (نیاز به زاویه کمتر از ۷۵°) • لمس ناکافی زانوها`,
+        detail: `حداقل زاویه رسیده ${Math.round(situpMinAngleThisRep)}° (نیاز به زاویه کمتر از ۷۸°) • لمس ناکافی زانوها`,
         advice: '💡 تنه را کاملاً به سمت زانوها جمع کنید تا تکرار معتبر شمرده شود.',
         severity: 'critical'
       });
     }
 
-    if (angle <= 75) {
+    if (angle <= 78) {
       situpState = 'up';
       situpStatusMessage = 'دامنه کامل (بالا) ✨';
       if (activeAiFormWarning && activeAiFormWarning.type === 'SITUP_INSUFFICIENT_ROM') {
@@ -10310,7 +10310,7 @@ function situpProcessFrame(kp) {
     }
   } else if (situpState === 'up') {
     situpStatusMessage = 'دامنه کامل - بازگشت به پایین';
-    if (angle > 90) {
+    if (angle > 88) {
       situpState = 'lowering';
       situpStatusMessage = 'در حال بازگشت به زمین...';
     }
@@ -10318,7 +10318,7 @@ function situpProcessFrame(kp) {
     situpStatusMessage = 'در حال بازگشت به زمین...';
 
     // Check for Insufficient Range of Motion on return (reversing up before touching down)
-    if (angle < situpMinAngleThisRep + 15 && angle < 105 && situpMinAngleThisRep <= 75) {
+    if (angle < situpMinAngleThisRep + 15 && angle < 100 && situpMinAngleThisRep <= 78) {
       // Trying to bounce back up without full return
       triggerAiFormWarning('SITUP_INSUFFICIENT_ROM', {
         mode: 'situp',
@@ -10330,7 +10330,7 @@ function situpProcessFrame(kp) {
       });
     }
 
-    if (angle >= 120) {
+    if (angle >= 115) {
       // Rep completed!
       situpState = 'down';
       situpRepCount++;
@@ -10711,13 +10711,14 @@ function pushupProcessFrame(kp) {
   }
 
   // Push-up State Machine:
-  // 'up': arms straight / extended (elbow > 140°)
-  // 'descending': lowering chest towards ground
-  // 'down': 90-degree depth reached (elbow <= 92°)
-  // 'ascending': pressing back up to straight arms
+  // High-speed tracking optimization:
+  // 'up': arms straight / extended (elbow > 132° to catch fast reps without needing stiff over-lockout)
+  // 'descending': lowering chest towards ground (< 126°)
+  // 'down': 90-degree depth reached (elbow <= 96° accommodates rapid turnaround without missing bottom frame)
+  // 'ascending': pressing back up to straight arms (> 112°)
   if (pushupState === 'up') {
     pushupStatusMessage = 'بالا (آماده خم شدن)';
-    if (elbowAngle < 125) {
+    if (elbowAngle < 126) {
       pushupState = 'descending';
       pushupMinElbowAngleThisRep = elbowAngle;
       pushupStatusMessage = 'در حال پایین رفتن...';
@@ -10728,19 +10729,19 @@ function pushupProcessFrame(kp) {
     }
     pushupStatusMessage = 'در حال پایین رفتن...';
 
-    // Check for Insufficient Range of Motion (Premature reversal before 92 degrees)
-    if (elbowAngle > pushupMinElbowAngleThisRep + 8 && pushupMinElbowAngleThisRep > 96) {
+    // Check for Insufficient Range of Motion (Premature reversal before 96 degrees)
+    if (elbowAngle > pushupMinElbowAngleThisRep + 10 && pushupMinElbowAngleThisRep > 102) {
       triggerAiFormWarning('PUSHUP_INSUFFICIENT_ROM', {
         mode: 'pushup',
         shortText: '⚠️ دامنه ناقص',
         title: 'اخطار فرم: عمق ناکافی (دامنه حرکتی ناقص)',
-        detail: `حداقل زاویه آرنج ${Math.round(pushupMinElbowAngleThisRep)}° (نیاز به عمق ۹۰ درجه یا کمتر)`,
+        detail: `حداقل زاویه آرنج ${Math.round(pushupMinElbowAngleThisRep)}° (نیاز به عمق ۹۰ الی ۹۵ درجه)`,
         advice: '💡 سینه را بیشتر به زمین نزدیک کنید تا زاویه آرنج به ۹۰ درجه برسد.',
         severity: 'critical'
       });
     }
 
-    if (elbowAngle <= 92) {
+    if (elbowAngle <= 96) {
       pushupState = 'down';
       pushupStatusMessage = 'عمق استاندارد (۹۰ درجه) ✨';
       if (activeAiFormWarning && activeAiFormWarning.type === 'PUSHUP_INSUFFICIENT_ROM') {
@@ -10755,13 +10756,13 @@ function pushupProcessFrame(kp) {
       pushupMinElbowAngleThisRep = elbowAngle;
     }
     pushupStatusMessage = 'عمق ۹۰° کامل - به بالا فشار دهید';
-    if (elbowAngle > 115) {
+    if (elbowAngle > 110) {
       pushupState = 'ascending';
       pushupStatusMessage = 'در حال بالا آمدن...';
     }
   } else if (pushupState === 'ascending') {
     pushupStatusMessage = 'در حال بالا آمدن...';
-    if (elbowAngle >= 142) {
+    if (elbowAngle >= 134) {
       // Rep completed!
       pushupState = 'up';
       pushupRepCount++;
@@ -11797,7 +11798,7 @@ function squatLungeProcessFrame(kp) {
       squatLungeDepthStatusText = 'در حال فرود...';
     }
 
-    if (kneeAngle <= targetDepthAngle) {
+    if (kneeAngle <= targetDepthAngle + 4) {
       squatLungeState = 'bottom';
       squatLungeDepthStatusText = `عمق هدف ${targetDepthAngle}° کامل شد ✓`;
       playChime(784, 'sine', 0.08); // G5 acoustic feedback
@@ -11809,13 +11810,13 @@ function squatLungeProcessFrame(kp) {
       squatLungeMinKneeAngleThisRep = kneeAngle;
     }
     squatLungeDepthStatusText = 'عمق کامل - بازگشت به بالا';
-    if (kneeAngle > Math.min(130, targetDepthAngle + 22)) {
+    if (kneeAngle > Math.min(130, targetDepthAngle + 18)) {
       squatLungeState = 'ascending';
       squatLungeDepthStatusText = 'در حال صعود و اکستنشن...';
     }
   } else if (squatLungeState === 'ascending') {
     squatLungeDepthStatusText = 'در حال صعود...';
-    if (kneeAngle >= 155) {
+    if (kneeAngle >= 148) {
       // Rep completed!
       squatLungeState = 'up';
       squatLungeRepCount++;
@@ -15353,11 +15354,25 @@ function initHandballSkillsSuite() {
     openHandballScoutingModal('skills');
   });
 
-  // Compact Top Bar Quick Launcher
+  // Compact Top Bar Quick Launcher & Start Overlay Direct Shortcuts
   document.getElementById('quickOpenHandballBtn')?.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
     openHandballScoutingModal('skills');
+  });
+
+  document.getElementById('overlayHandballShortcutBtn')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openHandballScoutingModal('skills');
+  });
+
+  document.getElementById('overlaySportsScienceShortcutBtn')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (typeof openSportsScienceSuiteModal === 'function') {
+      openSportsScienceSuiteModal();
+    }
   });
 
   // Workstation Suite Actions and Header
@@ -16293,14 +16308,14 @@ class PointKalmanFilter2D {
     const dist = Math.hypot(dx, dy);
 
     // In zero-lag sports tracking mode (default):
-    // MediaPipe BlazePose already includes internal 1-Euro smoothing.
-    // When moving (> 1.8px), track 100% instantly with ZERO lag.
-    // When virtually motionless (< 1.8px), suppress sub-pixel camera sensor jitter.
+    // For high-speed athletic movements (fast pushups, sprints, agility),
+    // deliver 100% instant 1:1 keypoint tracking with zero phase delay.
+    // Micro-smoothing is applied ONLY during near-total stillness (< 1.2px) to prevent sensor flicker.
     const isZeroLag = (typeof poseZeroLagMode === 'undefined') || poseZeroLagMode;
     if (isZeroLag) {
-      if (dist < 1.8 && (score || 0) >= 0.25) {
-        // Subtle micro-tremor suppression when standing completely still
-        this.x = this.x + 0.75 * dx;
+      if (dist < 1.2 && (score || 0) >= 0.25) {
+        // Subtle micro-tremor suppression when virtually motionless
+        this.x = this.x + 0.85 * dx;
         this.y = this.y + 0.75 * dy;
       } else {
         // Real-time athletic movement: instant 1:1 snap (ZERO lag!)
@@ -16313,7 +16328,7 @@ class PointKalmanFilter2D {
     }
 
     // Adaptive smoothing fallback (if user explicitly disables zero-lag)
-    const alpha = dist > 4.0 ? 1.0 : Math.max(0.7, dist / 4.0);
+    const alpha = dist > 3.0 ? 1.0 : Math.max(0.8, dist / 3.0);
     this.x = this.x + alpha * dx;
     this.y = this.y + alpha * dy;
     this.vx = dx / dt;
@@ -16327,8 +16342,8 @@ const poseKalmanFilters = {};
 const oneEuroFilters = {};
 const runnerXKalmanFilter = new KalmanFilter1D(0.012, 0.04);
 let lastPoseDetectionTime = 0;
-let oneEuroFilterEnabled = true;
-let oneEuroBetaValue = 0.007;
+let oneEuroFilterEnabled = false; // Disabled by default for zero-lag high-speed athletic tracking
+let oneEuroBetaValue = 0.08;
 
 /**
  * 1€ (One-Euro) Filter implementation for anatomical keypoints jitter reduction.
@@ -18269,15 +18284,15 @@ if (openCameraSettingsBtn) {
 }
 
 // ================== VERSION CHECK ==================
-const APP_VERSION = '1.25.0';
+const APP_VERSION = '1.26.0';
 console.log(`%c🚀 Motion Tracker v${APP_VERSION}`, 'color: #22c55e; font-size: 16px; font-weight: bold');
-console.log('%c✨ Multi-Camera Predictive Buffering, FMS 7-Pattern UI Controller & 13 Handball Skill Tests Activated', 'color: #38bdf8; font-size: 12px');
+console.log('%c✨ Zero-Lag High-Speed Athletic Pose Tracking, 13 Handball Skill Tests & FMS Suite Activated', 'color: #38bdf8; font-size: 12px');
 
 // Synchronize version tags across DOM elements
 function syncAppVersionDisplay() {
   const appVerEl = document.getElementById('appVersionDisplay');
   if (appVerEl) {
-    appVerEl.textContent = `نسخه ${APP_VERSION} (مجموعه جامع ۱۳ آزمون مهارت هندبال، کنترلر FMS و بافرینگ پیش‌بینانه چند دوربینه)`;
+    appVerEl.textContent = `نسخه ${APP_VERSION} (ردیابی فوق‌سریع و بدون تأخیر تکرارها، بسته ۱۳ آزمون هندبال و علوم ورزشی)`;
   }
   const drawerFooterVer = document.getElementById('drawerVersionFooter');
   if (drawerFooterVer) {
